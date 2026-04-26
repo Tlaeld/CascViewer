@@ -7,6 +7,11 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		C1A0EBD11DE92127659B3300 /* CDNConfig.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4E39B4D1CD21D0464CAA3CE0 /* CDNConfig.cpp */; };
+		B2B43A90C034F9B9E4A4B09B /* CDNCacheManager.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0F540B1A5FC8CBA58ED0AC72 /* CDNCacheManager.cpp */; };
+		B2477E24D22ABDC6610A1F21 /* OnlineCascStorage.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 6A519DB0E3B1C17EC913A721 /* OnlineCascStorage.cpp */; };
+		2EC0D95E05EE9CCA0BE47901 /* libcurl.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 1AA2D4B030A2E2A07F7D82C4 /* libcurl.tbd */; };
+
 		01556AE5F71A5D284F8B8DAD /* CascRootFile_Install.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E685D742F7529CDB954EF066 /* CascRootFile_Install.cpp */; };
 		02FF2989C83AE287D1D90A5D /* CascViewerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDC871518AA0909451F89C72 /* CascViewerApp.swift */; };
 		172E6E146C2A14931A56F7FF /* MainWindowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B6BCE37A9280E35F34F1154 /* MainWindowView.swift */; };
@@ -47,6 +52,7 @@
 		F5F10E6FDD4971F4513ECB3D /* Mime.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 23607A5F1D7C0F155E14B24B /* Mime.cpp */; };
 		F6767672290F47B5453CD517 /* CascOpenStorage.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 67562BD9B2A0706D6DF74178 /* CascOpenStorage.cpp */; };
 		F82B9B63F9F175BB716E67A1 /* aes.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DA4F4F44C601D45F8DCDC6DC /* aes.cpp */; };
+		5F9295D1028D4284A77CCD04 /* LocalCascStorage.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D0BEF00136D44B61844D5F8E /* LocalCascStorage.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -60,6 +66,14 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		5E278F1A5538DC74DE9FB809 /* CDNConfig.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = CDNConfig.h; path = CDNConfig.h; sourceTree = "<group>"; };
+		DC8A1F6757D8076C56C7CF02 /* CDNCacheManager.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = CDNCacheManager.h; path = CDNCacheManager.h; sourceTree = "<group>"; };
+		99785A2F89F06F30CDA7CE89 /* OnlineCascStorage.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = OnlineCascStorage.h; path = OnlineCascStorage.h; sourceTree = "<group>"; };
+		4E39B4D1CD21D0464CAA3CE0 /* CDNConfig.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = CDNConfig.cpp; path = CDNConfig.cpp; sourceTree = "<group>"; };
+		0F540B1A5FC8CBA58ED0AC72 /* CDNCacheManager.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = CDNCacheManager.cpp; path = CDNCacheManager.cpp; sourceTree = "<group>"; };
+		6A519DB0E3B1C17EC913A721 /* OnlineCascStorage.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = OnlineCascStorage.cpp; path = OnlineCascStorage.cpp; sourceTree = "<group>"; };
+		1AA2D4B030A2E2A07F7D82C4 /* libcurl.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libcurl.tbd; path = usr/lib/libcurl.tbd; sourceTree = SDKROOT; };
+
 		0CC9B29BD5D0439390006776 /* ArraySparse.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = ArraySparse.h; path = CascLib/src/common/ArraySparse.h; sourceTree = "<group>"; };
 		0D92554856EB259EF384EE77 /* md5.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = md5.h; path = CascLib/src/hashes/md5.h; sourceTree = "<group>"; };
 		0EAF6700599D831770C9F3C8 /* CASCStorageService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CASCStorageService.swift; sourceTree = "<group>"; };
@@ -128,6 +142,8 @@
 		FC5C84A9F2AD07503B530655 /* CascLib.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = CascLib.h; path = CascLib/src/CascLib.h; sourceTree = "<group>"; };
 		FF97E7A9848A040719B153D1 /* cmf.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = cmf.cpp; path = CascLib/src/overwatch/cmf.cpp; sourceTree = "<group>"; };
 		65026C1A98250F8A0A5275C9 /* cmf-key.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = "cmf-key.cpp"; path = "CascLib/src/overwatch/cmf-key.cpp"; sourceTree = "<group>"; };
+		0ECCA4827CA34CBCAB734CEC /* LocalCascStorage.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = LocalCascStorage.h; path = LocalCascStorage.h; sourceTree = "<group>"; };
+		D0BEF00136D44B61844D5F8E /* LocalCascStorage.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = LocalCascStorage.cpp; path = LocalCascStorage.cpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -137,6 +153,8 @@
 			files = (
 				5E95E0D8C88BC7847CFE36E7 /* Cocoa.framework in Frameworks */,
 				51FF2C4CA3B4BD63979EFAEE /* libz.tbd in Frameworks */,
+				2EC0D95E05EE9CCA0BE47901 /* libcurl.tbd in Frameworks */,
+
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -154,6 +172,11 @@
 		08400918A96D5A1C897B3FA8 /* src */ = {
 			isa = PBXGroup;
 			children = (
+				D0BEF00136D44B61844D5F8E /* LocalCascStorage.cpp */,
+				4E39B4D1CD21D0464CAA3CE0 /* CDNConfig.cpp */,
+				0F540B1A5FC8CBA58ED0AC72 /* CDNCacheManager.cpp */,
+				6A519DB0E3B1C17EC913A721 /* OnlineCascStorage.cpp */,
+
 			);
 			name = src;
 			path = src;
@@ -240,6 +263,8 @@
 			children = (
 				900AED00E1A39E66BC68C16B /* OS X */,
 				DE915E0C8899B4E0AC257F43 /* libz.tbd */,
+				1AA2D4B030A2E2A07F7D82C4 /* libcurl.tbd */,
+
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -301,6 +326,11 @@
 		D84338248434269F32594FAD /* include */ = {
 			isa = PBXGroup;
 			children = (
+				0ECCA4827CA34CBCAB734CEC /* LocalCascStorage.h */,
+				5E278F1A5538DC74DE9FB809 /* CDNConfig.h */,
+				DC8A1F6757D8076C56C7CF02 /* CDNCacheManager.h */,
+				99785A2F89F06F30CDA7CE89 /* OnlineCascStorage.h */,
+
 			);
 			name = include;
 			path = include;
@@ -527,6 +557,11 @@
 				BDD431DF64EF2F8D373EA6B8 /* CascRootFile_TVFS.cpp in Sources */,
 				F36C9645ACD6ABC997C3A2B3 /* CascRootFile_OW.cpp in Sources */,
 				197B1B4D2CA41F96379ABBC4 /* CascRootFile_WoW.cpp in Sources */,
+				5F9295D1028D4284A77CCD04 /* LocalCascStorage.cpp in Sources */,
+				C1A0EBD11DE92127659B3300 /* CDNConfig.cpp in Sources */,
+				B2B43A90C034F9B9E4A4B09B /* CDNCacheManager.cpp in Sources */,
+				B2477E24D22ABDC6610A1F21 /* OnlineCascStorage.cpp in Sources */,
+
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

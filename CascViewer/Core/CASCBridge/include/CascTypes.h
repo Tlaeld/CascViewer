@@ -34,6 +34,7 @@ enum class CascError {
     NetworkError,
     CDNConfigError,
     DecodingError,
+    NotImplemented,
     Unknown
 };
 
