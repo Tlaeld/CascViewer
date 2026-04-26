@@ -18,7 +18,7 @@ struct FileListView: View {
                         Text(entry.formattedSize)
                     }
                     TableColumn("Type") { entry in
-                        Text(entry.isDirectory ? "Folder" : (URL(fileURLWithPath: entry.name).pathExtension.uppercased()))
+                        Text(entry.isDirectory ? "Folder" : fileExtension(for: entry.name))
                     }
                 } rows: {
                     ForEach(storage.entries) { entry in
@@ -30,6 +30,9 @@ struct FileListView: View {
                        let entry = storage.entries.first(where: { $0.id == id }) {
                         appState.selectedPath = entry.fullPath
                     }
+                }
+                .onChange(of: storage.entries) { _ in
+                    selection.removeAll()
                 }
                 .contextMenu(forSelectionType: CASCFileEntry.ID.self) { items in
                     Button("Extract...") {
@@ -54,5 +57,9 @@ struct FileListView: View {
                 .foregroundColor(.secondary)
             }
         }
+    }
+
+    private func fileExtension(for name: String) -> String {
+        (name as NSString).pathExtension.uppercased()
     }
 }

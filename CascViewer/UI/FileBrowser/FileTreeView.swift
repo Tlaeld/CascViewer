@@ -2,12 +2,12 @@ import SwiftUI
 
 struct FileTreeView: View {
     @EnvironmentObject var appState: AppState
+    @State private var directories: [String] = []
 
     var body: some View {
         List {
             if let storage = appState.currentStorage, !storage.entries.isEmpty {
-                let directories = extractDirectories(from: storage.entries)
-                ForEach(directories.sorted(), id: \.self) { dir in
+                ForEach(directories, id: \.self) { dir in
                     Label(dir.isEmpty ? "(root)" : dir, systemImage: "folder")
                         .onTapGesture {
                             Task {
@@ -21,6 +21,13 @@ struct FileTreeView: View {
             }
         }
         .listStyle(.sidebar)
+        .onChange(of: appState.currentStorage?.entries) { _ in
+            if let entries = appState.currentStorage?.entries {
+                directories = extractDirectories(from: entries).sorted()
+            } else {
+                directories = []
+            }
+        }
     }
 
     private func extractDirectories(from entries: [CASCFileEntry]) -> Set<String> {
@@ -31,7 +38,7 @@ struct FileTreeView: View {
                 let dir = String(path[..<lastSlash])
                 dirs.insert(dir)
             } else {
-                dirs.insert("")  // root-level files
+                dirs.insert("")
             }
         }
         return dirs
