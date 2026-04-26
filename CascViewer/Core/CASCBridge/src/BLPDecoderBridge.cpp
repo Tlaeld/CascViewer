@@ -52,41 +52,48 @@ std::expected<BLPDecodeResult, CascError> BLPDecoderBridge::decode(const std::ve
             return std::unexpected(CascError::DecodingError);
         }
 
-        const auto* header = reinterpret_cast<const BLP2Header*>(blpData.data());
+        BLP2Header header;
+        std::memcpy(&header, blpData.data(), sizeof(BLP2Header));
+
         result.format = BLPFormat::BLP2;
-        result.width = header->width;
-        result.height = header->height;
-        result.hasAlpha = header->alphaDepth > 0;
+        result.width = header.width;
+        result.height = header.height;
+        result.hasAlpha = header.alphaDepth > 0;
+
+        // Sanity check dimensions
+        if (header.width > 16384 || header.height > 16384) {
+            return std::unexpected(CascError::DecodingError);
+        }
 
         // Count mip levels with valid offsets
         result.mipLevels = 0;
         for (int i = 0; i < 16; ++i) {
-            if (header->mipmapOffsets[i] > 0) {
+            if (header.mipmapOffsets[i] > 0) {
                 result.mipLevels++;
             } else {
                 break;
             }
         }
 
-        if (header->compression == 1) {
+        if (header.compression == 1) {
             // Raw/uncompressed
             result.compression = BLPCompression::Raw;
 
-            uint32_t firstOffset = header->mipmapOffsets[0];
-            uint32_t firstSize = header->mipmapSizes[0];
-            uint32_t expectedSize = header->width * header->height * 4;
+            uint32_t firstOffset = header.mipmapOffsets[0];
+            uint32_t firstSize = header.mipmapSizes[0];
+            size_t expectedSize = static_cast<size_t>(header.width) * header.height * 4;
 
             if (firstOffset == 0 || firstSize == 0) {
                 return std::unexpected(CascError::DecodingError);
             }
 
-            if (firstOffset + firstSize > blpData.size()) {
+            if (static_cast<size_t>(firstOffset) + static_cast<size_t>(firstSize) > blpData.size()) {
                 return std::unexpected(CascError::DecodingError);
             }
 
             BLPFrame frame;
-            frame.width = header->width;
-            frame.height = header->height;
+            frame.width = header.width;
+            frame.height = header.height;
             frame.rgbaData.resize(expectedSize);
 
             // Copy raw RGBA data
@@ -99,13 +106,13 @@ std::expected<BLPDecodeResult, CascError> BLPDecoderBridge::decode(const std::ve
             if (result.mipLevels > 1) {
                 result.mipMaps.resize(result.mipLevels);
                 for (uint32_t mip = 0; mip < result.mipLevels; ++mip) {
-                    uint32_t offset = header->mipmapOffsets[mip];
-                    uint32_t size = header->mipmapSizes[mip];
-                    uint32_t mipWidth = std::max(1U, header->width >> mip);
-                    uint32_t mipHeight = std::max(1U, header->height >> mip);
-                    uint32_t mipExpectedSize = mipWidth * mipHeight * 4;
+                    uint32_t offset = header.mipmapOffsets[mip];
+                    uint32_t size = header.mipmapSizes[mip];
+                    uint32_t mipWidth = std::max(1U, header.width >> mip);
+                    uint32_t mipHeight = std::max(1U, header.height >> mip);
+                    size_t mipExpectedSize = static_cast<size_t>(mipWidth) * mipHeight * 4;
 
-                    if (offset == 0 || size == 0 || offset + size > blpData.size()) {
+                    if (offset == 0 || size == 0 || static_cast<size_t>(offset) + static_cast<size_t>(size) > blpData.size()) {
                         continue;
                     }
 
@@ -117,7 +124,7 @@ std::expected<BLPDecodeResult, CascError> BLPDecoderBridge::decode(const std::ve
                     result.mipMaps[mip].push_back(mipFrame);
                 }
             }
-        } else if (header->compression == 2) {
+        } else if (header.compression == 2) {
             // DXTC - not yet supported
             return std::unexpected(CascError::DecodingError);
         } else {
