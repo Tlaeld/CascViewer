@@ -4,13 +4,11 @@ struct BLPViewerWindow: View {
     let fileName: String
     let imageData: Data
     @StateObject private var viewModel = BLPViewerViewModel()
-    @Environment(\.dismiss) private var dismiss
-
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Button("Back") {
-                    dismiss()
+                Button("Close") {
+                    NSApplication.shared.keyWindow?.close()
                 }
 
                 Text(fileName)
@@ -70,28 +68,31 @@ class BLPViewerViewModel: ObservableObject {
     @Published var isPlaying = false
     @Published var currentFrameIndex = 0
     @Published var showingExportPanel = false
+    @Published var errorMessage: String?
 
     private var decodedResult: BLPDecodeResult?
     private var playbackTimer: Timer?
+
+    deinit {
+        playbackTimer?.invalidate()
+    }
 
     func loadFile(data: Data) async {
         let coordinator = BLPDecoderCoordinator()
         do {
             let result = try await coordinator.decode(data: data)
-            await MainActor.run {
-                self.decodedResult = result
-                self.imageInfo = BLPImageInfo(
-                    format: result.format,
-                    width: result.width,
-                    height: result.height,
-                    mipLevels: result.mipLevels,
-                    frameCount: result.frameCount,
-                    hasAlpha: result.hasAlpha
-                )
-                self.updateCurrentFrame()
-            }
+            self.decodedResult = result
+            self.imageInfo = BLPImageInfo(
+                format: result.format,
+                width: result.width,
+                height: result.height,
+                mipLevels: result.mipLevels,
+                frameCount: result.frameCount,
+                hasAlpha: result.hasAlpha
+            )
+            self.updateCurrentFrame()
         } catch {
-            // Handle decode error
+            self.errorMessage = "Failed to decode BLP: \(error.localizedDescription)"
         }
     }
 
