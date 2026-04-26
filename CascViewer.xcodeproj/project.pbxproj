@@ -14,6 +14,8 @@
 		197B1B4D2CA41F96379ABBC4 /* CascRootFile_WoW.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 573143E92267442F4D7B6A98 /* CascRootFile_WoW.cpp */; };
 		25B9B34C3912FEEF2E00BD28 /* CascFiles.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DFC33452ACA17436061E5626 /* CascFiles.cpp */; };
 		27FE348AC978ACE4040B10F6 /* CascViewerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFE966467010291B97D25EFC /* CascViewerTests.swift */; };
+		308B59ECC23544008EF5FA04 /* BridgeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30CF441EFCAA4921BCA96139 /* BridgeTests.swift */; };
+		3FC64AAADCAC494DBC9CD0BB /* ServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7ACAD71F179479399D317B5 /* ServiceTests.swift */; };
 		2EC0D95E05EE9CCA0BE47901 /* libcurl.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 1AA2D4B030A2E2A07F7D82C4 /* libcurl.tbd */; };
 		35FD3BB8F88FC22459CA8A23 /* CascBridge+Sendable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2458F6C63AF9557BC2D751E0 /* CascBridge+Sendable.swift */; };
 		39D9B3484F0602C4D0C0AD0B /* BLPImageInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECAC951BA9367B1B54A50B52 /* BLPImageInfo.swift */; };
@@ -139,6 +141,8 @@
 		A7D133EEFE591AC22BE06B4C /* overwatch.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = overwatch.h; path = CascLib/src/overwatch/overwatch.h; sourceTree = "<group>"; };
 		A8FEB22D1DEEB4FF00E64B06 /* lookup.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = lookup.h; path = CascLib/src/jenkins/lookup.h; sourceTree = "<group>"; };
 		AFE966467010291B97D25EFC /* CascViewerTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CascViewerTests.swift; sourceTree = "<group>"; };
+		30CF441EFCAA4921BCA96139 /* BridgeTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BridgeTests.swift; sourceTree = "<group>"; };
+		A7ACAD71F179479399D317B5 /* ServiceTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ServiceTests.swift; sourceTree = "<group>"; };
 		B1DB78AD7C1635C26329BCA1 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		B7EB086980673D41B0CBF8AB /* Sockets.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = Sockets.cpp; path = CascLib/src/common/Sockets.cpp; sourceTree = "<group>"; };
 		BCAA1FA5080793E0EB87FF18 /* apm.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = apm.cpp; path = CascLib/src/overwatch/apm.cpp; sourceTree = "<group>"; };
@@ -305,6 +309,8 @@
 			isa = PBXGroup;
 			children = (
 				AFE966467010291B97D25EFC /* CascViewerTests.swift */,
+				30CF441EFCAA4921BCA96139 /* BridgeTests.swift */,
+				A7ACAD71F179479399D317B5 /* ServiceTests.swift */,
 				3F0CE6201AD76D5461554E67 /* Info.plist */,
 			);
 			name = CascViewerTests;
@@ -615,6 +621,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				27FE348AC978ACE4040B10F6 /* CascViewerTests.swift in Sources */,
+				308B59ECC23544008EF5FA04 /* BridgeTests.swift in Sources */,
+				3FC64AAADCAC494DBC9CD0BB /* ServiceTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
