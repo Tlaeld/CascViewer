@@ -68,6 +68,7 @@ struct ToolbarView: View {
                         if service.error == nil {
                             await MainActor.run {
                                 appState.currentStorage?.close()
+                                appState.currentStorageHandle = storage
                                 appState.currentStorage = service
                             }
                         } else {
