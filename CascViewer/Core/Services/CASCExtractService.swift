@@ -20,25 +20,31 @@ final class CASCExtractService: ObservableObject {
         progress = 0
         defer { isExtracting = false }
 
+        var handle = storage
         let total = entries.count
         for (index, entry) in entries.enumerated() {
             currentFile = entry.name
+            let sanitizedPath = entry.fullPath
+                .components(separatedBy: "/")
+                .filter { $0 != ".." && !$0.isEmpty }
+                .joined(separator: "/")
+
             let destPath: String
             if preserveStructure {
-                destPath = destination.appendingPathComponent(entry.fullPath).path
+                destPath = destination.appendingPathComponent(sanitizedPath).path
             } else {
                 destPath = destination.appendingPathComponent(entry.name).path
             }
 
-            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            let result: CascBridge.CascError = await withCheckedContinuation { (continuation: CheckedContinuation<CascBridge.CascError, Never>) in
                 queue.async {
-                    let result = self.storage.extractFile(std.string(entry.fullPath), std.string(destPath))
-                    if result != .None {
-                        continuation.resume(throwing: self.mapError(result))
-                    } else {
-                        continuation.resume()
-                    }
+                    let result = handle.extractFile(std.string(sanitizedPath), std.string(destPath))
+                    continuation.resume(returning: result)
                 }
+            }
+
+            if result != .None {
+                throw mapError(result)
             }
 
             progress = Double(index + 1) / Double(total)

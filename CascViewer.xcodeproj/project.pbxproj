@@ -15,6 +15,7 @@
 		25B9B34C3912FEEF2E00BD28 /* CascFiles.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DFC33452ACA17436061E5626 /* CascFiles.cpp */; };
 		27FE348AC978ACE4040B10F6 /* CascViewerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFE966467010291B97D25EFC /* CascViewerTests.swift */; };
 		2EC0D95E05EE9CCA0BE47901 /* libcurl.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 1AA2D4B030A2E2A07F7D82C4 /* libcurl.tbd */; };
+		35FD3BB8F88FC22459CA8A23 /* CascBridge+Sendable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2458F6C63AF9557BC2D751E0 /* CascBridge+Sendable.swift */; };
 		39D9B3484F0602C4D0C0AD0B /* BLPImageInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECAC951BA9367B1B54A50B52 /* BLPImageInfo.swift */; };
 		424ABEEC87C920DAAC4B4E5A /* Directory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F3407A3868639BD7C2EA268B /* Directory.cpp */; };
 		4AA258605695FB01E746E1B3 /* Sockets.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B7EB086980673D41B0CBF8AB /* Sockets.cpp */; };
@@ -90,6 +91,7 @@
 		1E6BDD2FE92B775AD3157BD4 /* Path.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = Path.h; path = CascLib/src/common/Path.h; sourceTree = "<group>"; };
 		20D05AD073882AA3AE97A8F7 /* CascRootFile_TVFS.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = CascRootFile_TVFS.cpp; path = CascLib/src/CascRootFile_TVFS.cpp; sourceTree = "<group>"; };
 		23607A5F1D7C0F155E14B24B /* Mime.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = Mime.cpp; path = CascLib/src/common/Mime.cpp; sourceTree = "<group>"; };
+		2458F6C63AF9557BC2D751E0 /* CascBridge+Sendable.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = "CascBridge+Sendable.swift"; path = "CascBridge+Sendable.swift"; sourceTree = "<group>"; };
 		2761450A441A10DA77FEBF86 /* CASCSearchService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CASCSearchService.swift; sourceTree = "<group>"; };
 		278A09974B745D208E54D7D8 /* Common.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = Common.h; path = CascLib/src/common/Common.h; sourceTree = "<group>"; };
 		2B321136423FAF8FC571698A /* lookup3.c */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.c; name = lookup3.c; path = CascLib/src/jenkins/lookup3.c; sourceTree = "<group>"; };
@@ -224,6 +226,7 @@
 				D201A7934AC3A3D661C6CB4C /* CASCExtractService.swift */,
 				0080CDFEC7BC5E29ED5C8AD0 /* BLPDecoderCoordinator.swift */,
 				F805F4E1E7783D486B22281C /* CDNConfigService.swift */,
+				2458F6C63AF9557BC2D751E0 /* CascBridge+Sendable.swift */,
 			);
 			name = Services;
 			path = Services;
@@ -603,6 +606,7 @@
 				AFFE10EAE618391FADB5F697 /* CASCError.swift in Sources */,
 				39D9B3484F0602C4D0C0AD0B /* BLPImageInfo.swift in Sources */,
 				53402D15180DB908F43C3BE9 /* BLPDecoderBridge.cpp in Sources */,
+				35FD3BB8F88FC22459CA8A23 /* CascBridge+Sendable.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -20,21 +20,19 @@ final class CASCStorageService: ObservableObject {
     func openLocal(path: String) async {
         isLoading = true
         error = nil
-
-        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+        var handle = storage
+        let result = await withCheckedContinuation { (continuation: CheckedContinuation<CascBridge.CascError, Never>) in
             queue.async {
-                let result = self.storage.open(std.string(path))
-                Task { @MainActor in
-                    self.isLoading = false
-                    if result != .None {
-                        self.error = self.mapError(result)
-                    } else {
-                        self.refreshStorageInfo()
-                        self.listDirectory(path: "")
-                    }
-                    continuation.resume()
-                }
+                let result = handle.open(std.string(path))
+                continuation.resume(returning: result)
             }
+        }
+        isLoading = false
+        if result != .None {
+            self.error = mapError(result)
+        } else {
+            await refreshStorageInfo()
+            await listDirectory(path: "")
         }
     }
 
@@ -42,46 +40,47 @@ final class CASCStorageService: ObservableObject {
         isLoading = true
         error = nil
         let config = "\(product):\(region)"
-        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+        var handle = storage
+        let result = await withCheckedContinuation { (continuation: CheckedContinuation<CascBridge.CascError, Never>) in
             queue.async {
-                let result = self.storage.open(std.string(config))
-                Task { @MainActor in
-                    self.isLoading = false
-                    if result != .None {
-                        self.error = self.mapError(result)
-                    } else {
-                        self.refreshStorageInfo()
-                        self.listDirectory(path: "")
-                    }
-                    continuation.resume()
-                }
+                let result = handle.open(std.string(config))
+                continuation.resume(returning: result)
             }
+        }
+        isLoading = false
+        if result != .None {
+            self.error = mapError(result)
+        } else {
+            await refreshStorageInfo()
+            await listDirectory(path: "")
         }
     }
 
-    func listDirectory(path: String) {
+    func listDirectory(path: String) async {
         isLoading = true
-        queue.async {
-            var error = CascBridge.CascError.None
-            let items = self.storage.listDirectory(std.string(path), &error)
-            DispatchQueue.main.async {
-                self.isLoading = false
-                if error != .None {
-                    self.error = self.mapError(error)
-                } else {
-                    self.entries = (0..<items.size()).map { i in
-                        let entry = items[i]
-                        return CASCFileEntry(
-                            name: String(entry.name),
-                            fullPath: String(entry.fullPath),
-                            type: entry.type == .File ? .file : .directory,
-                            size: entry.size,
-                            encodingKey: String(entry.encodingKey)
-                        )
-                    }
-                    self.currentPath = path
-                }
+        var handle = storage
+        let (items, err) = await withCheckedContinuation { (continuation: CheckedContinuation<([CascBridge.CascFileEntry], CascBridge.CascError), Never>) in
+            queue.async {
+                var error = CascBridge.CascError.None
+                let rawEntries = handle.listDirectory(std.string(path), &error)
+                let entries = (0..<rawEntries.size()).map { rawEntries[$0] }
+                continuation.resume(returning: (entries, error))
             }
+        }
+        isLoading = false
+        if err != .None {
+            self.error = mapError(err)
+        } else {
+            self.entries = items.map { entry in
+                CASCFileEntry(
+                    name: String(entry.name),
+                    fullPath: String(entry.fullPath),
+                    type: entry.type == .File ? .file : .directory,
+                    size: entry.size,
+                    encodingKey: String(entry.encodingKey)
+                )
+            }
+            self.currentPath = path
         }
     }
 
@@ -92,10 +91,16 @@ final class CASCStorageService: ObservableObject {
         storageInfo = nil
     }
 
-    private func refreshStorageInfo() {
-        var error = CascBridge.CascError.None
-        let info = storage.getStorageInfo(&error)
-        if error == .None {
+    private func refreshStorageInfo() async {
+        var handle = storage
+        let (info, err) = await withCheckedContinuation { (continuation: CheckedContinuation<(CascBridge.CascStorageInfo, CascBridge.CascError), Never>) in
+            queue.async {
+                var error = CascBridge.CascError.None
+                let info = handle.getStorageInfo(&error)
+                continuation.resume(returning: (info, error))
+            }
+        }
+        if err == .None {
             self.storageInfo = CASCStorageInfo(
                 productName: String(info.productName),
                 buildVersion: String(info.buildVersion),
