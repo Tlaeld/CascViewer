@@ -8,22 +8,18 @@ struct MainWindowView: View {
     var body: some View {
         VStack(spacing: 0) {
             ToolbarView()
-                .environmentObject(appState)
 
             Divider()
 
             HSplitView {
                 FileTreeView()
-                    .environmentObject(appState)
                     .frame(minWidth: 150, idealWidth: sidebarWidth, maxWidth: 400)
 
                 VSplitView {
                     FileListView()
-                        .environmentObject(appState)
 
                     if inspectorVisible {
                         FilePreviewPanel()
-                            .environmentObject(appState)
                             .frame(minHeight: 100, idealHeight: 200)
                     }
                 }
@@ -32,8 +28,15 @@ struct MainWindowView: View {
             Divider()
 
             StatusBarView()
-                .environmentObject(appState)
         }
         .frame(minWidth: 900, minHeight: 600)
+        .alert("Error", isPresented: .init(
+            get: { appState.errorMessage != nil },
+            set: { if !$0 { appState.errorMessage = nil } }
+        )) {
+            Button("OK") { appState.errorMessage = nil }
+        } message: {
+            Text(appState.errorMessage ?? "")
+        }
     }
 }

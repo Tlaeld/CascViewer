@@ -17,6 +17,10 @@ final class CASCStorageService: ObservableObject {
         self.storage = storage
     }
 
+    deinit {
+        storage.close()
+    }
+
     func openLocal(path: String) async {
         isLoading = true
         error = nil
