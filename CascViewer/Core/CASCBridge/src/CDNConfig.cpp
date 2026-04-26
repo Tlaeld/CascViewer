@@ -59,8 +59,10 @@ static std::string trim(const std::string& s)
     return std::string(start, end);
 }
 
-std::expected<CDNBuildConfig, CascError> CDNConfig::fetchConfig(const std::string& product, const std::string& region)
+CDNBuildConfig CDNConfig::fetchConfig(const std::string& product, const std::string& region, CascError& error)
 {
+    error = CascError::None;
+
     std::string versionsUrl = "http://us.patch.battle.net:1119/" + product + "/versions";
     std::string cdnsUrl = "http://us.patch.battle.net:1119/" + product + "/cdns";
 
@@ -68,7 +70,8 @@ std::expected<CDNBuildConfig, CascError> CDNConfig::fetchConfig(const std::strin
     std::string cdnsText = downloadText(cdnsUrl);
 
     if (versionsText.empty() || cdnsText.empty()) {
-        return std::unexpected(CascError::NetworkError);
+        error = CascError::NetworkError;
+        return {};
     }
 
     CDNBuildConfig config;
@@ -78,7 +81,8 @@ std::expected<CDNBuildConfig, CascError> CDNConfig::fetchConfig(const std::strin
     std::string headerLine;
     std::string dataLine;
     if (!std::getline(versionsStream, headerLine)) {
-        return std::unexpected(CascError::CDNConfigError);
+        error = CascError::CDNConfigError;
+        return {};
     }
     // Skip any comment/blank lines to find data line
     while (std::getline(versionsStream, dataLine)) {
@@ -87,7 +91,8 @@ std::expected<CDNBuildConfig, CascError> CDNConfig::fetchConfig(const std::strin
         }
     }
     if (dataLine.empty()) {
-        return std::unexpected(CascError::CDNConfigError);
+        error = CascError::CDNConfigError;
+        return {};
     }
 
     std::vector<std::string> headers = splitLine(headerLine, '|');
@@ -111,7 +116,8 @@ std::expected<CDNBuildConfig, CascError> CDNConfig::fetchConfig(const std::strin
     std::istringstream cdnsStream(cdnsText);
     std::string cdnsHeaderLine;
     if (!std::getline(cdnsStream, cdnsHeaderLine)) {
-        return std::unexpected(CascError::CDNConfigError);
+        error = CascError::CDNConfigError;
+        return {};
     }
 
     std::vector<std::string> cdnsHeaders = splitLine(cdnsHeaderLine, '|');
@@ -126,7 +132,8 @@ std::expected<CDNBuildConfig, CascError> CDNConfig::fetchConfig(const std::strin
     }
 
     if (nameIdx < 0 || pathIdx < 0 || hostsIdx < 0) {
-        return std::unexpected(CascError::CDNConfigError);
+        error = CascError::CDNConfigError;
+        return {};
     }
 
     std::string cdnLine;
@@ -152,7 +159,8 @@ std::expected<CDNBuildConfig, CascError> CDNConfig::fetchConfig(const std::strin
     }
 
     if (config.buildConfigHash.empty()) {
-        return std::unexpected(CascError::CDNConfigError);
+        error = CascError::CDNConfigError;
+        return {};
     }
 
     return config;

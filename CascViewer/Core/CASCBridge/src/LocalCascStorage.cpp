@@ -51,23 +51,26 @@ void LocalCascStorage::close()
     }
 }
 
-std::expected<void, CascError> LocalCascStorage::open(const std::string& localPath)
+CascError LocalCascStorage::open(const std::string& localPath)
 {
     if (hStorage != nullptr) {
         close();
     }
 
     if (!CascOpenStorage(localPath.c_str(), CASC_LOCALE_ALL, &hStorage)) {
-        return std::unexpected(mapCascError(GetCascError()));
+        return mapCascError(GetCascError());
     }
 
-    return {};
+    return CascError::None;
 }
 
-std::expected<std::vector<CascFileEntry>, CascError> LocalCascStorage::listDirectory(const std::string& path)
+std::vector<CascFileEntry> LocalCascStorage::listDirectory(const std::string& path, CascError& error)
 {
+    error = CascError::None;
+
     if (hStorage == nullptr) {
-        return std::unexpected(CascError::StorageNotFound);
+        error = CascError::StorageNotFound;
+        return {};
     }
 
     struct FindCloser {
@@ -79,11 +82,12 @@ std::expected<std::vector<CascFileEntry>, CascError> LocalCascStorage::listDirec
     CASC_FIND_DATA findData = {};
     HANDLE hFind = CascFindFirstFile(hStorage, mask.c_str(), &findData, nullptr);
     if (hFind == INVALID_HANDLE_VALUE) {
-        DWORD error = GetCascError();
-        if (error == ERROR_NO_MORE_FILES || error == ERROR_FILE_NOT_FOUND) {
-            return std::vector<CascFileEntry>{};
+        DWORD cascError = GetCascError();
+        if (cascError == ERROR_NO_MORE_FILES || cascError == ERROR_FILE_NOT_FOUND) {
+            return {};
         }
-        return std::unexpected(mapCascError(error));
+        error = mapCascError(cascError);
+        return {};
     }
 
     FindCloser closer{hFind};
@@ -102,26 +106,32 @@ std::expected<std::vector<CascFileEntry>, CascError> LocalCascStorage::listDirec
     return entries;
 }
 
-std::expected<std::vector<uint8_t>, CascError> LocalCascStorage::readFile(const std::string& cascPath)
+std::vector<uint8_t> LocalCascStorage::readFile(const std::string& cascPath, CascError& error)
 {
+    error = CascError::None;
+
     if (hStorage == nullptr) {
-        return std::unexpected(CascError::StorageNotFound);
+        error = CascError::StorageNotFound;
+        return {};
     }
 
     HANDLE hFile = nullptr;
     if (!CascOpenFile(hStorage, cascPath.c_str(), CASC_LOCALE_ALL, CASC_OPEN_BY_NAME, &hFile)) {
-        return std::unexpected(mapCascError(GetCascError()));
+        error = mapCascError(GetCascError());
+        return {};
     }
 
     ULONGLONG fileSize64 = 0;
     if (!CascGetFileSize64(hFile, &fileSize64)) {
         CascCloseFile(hFile);
-        return std::unexpected(CascError::ReadError);
+        error = CascError::ReadError;
+        return {};
     }
 
     if (fileSize64 > static_cast<ULONGLONG>(std::numeric_limits<size_t>::max())) {
         CascCloseFile(hFile);
-        return std::unexpected(CascError::ReadError);
+        error = CascError::ReadError;
+        return {};
     }
 
     size_t fileSize = static_cast<size_t>(fileSize64);
@@ -130,7 +140,8 @@ std::expected<std::vector<uint8_t>, CascError> LocalCascStorage::readFile(const 
         buffer.resize(fileSize);
     } catch (const std::bad_alloc&) {
         CascCloseFile(hFile);
-        return std::unexpected(CascError::ReadError);
+        error = CascError::ReadError;
+        return {};
     }
 
     constexpr size_t CHUNK_SIZE = static_cast<size_t>(std::numeric_limits<DWORD>::max());
@@ -140,7 +151,8 @@ std::expected<std::vector<uint8_t>, CascError> LocalCascStorage::readFile(const 
         DWORD bytesRead = 0;
         if (!CascReadFile(hFile, buffer.data() + offset, toRead, &bytesRead)) {
             CascCloseFile(hFile);
-            return std::unexpected(CascError::ReadError);
+            error = CascError::ReadError;
+            return {};
         }
         offset += bytesRead;
     }
@@ -149,12 +161,12 @@ std::expected<std::vector<uint8_t>, CascError> LocalCascStorage::readFile(const 
     return buffer;
 }
 
-std::expected<void, CascError> LocalCascStorage::extractFile(const std::string& cascPath,
-                                                               const std::string& destPath,
-                                                               const ProgressCallback& progress)
+CascError LocalCascStorage::extractFile(const std::string& cascPath,
+                                        const std::string& destPath,
+                                        const ProgressCallback& progress)
 {
     if (hStorage == nullptr) {
-        return std::unexpected(CascError::StorageNotFound);
+        return CascError::StorageNotFound;
     }
 
     constexpr size_t BUFFER_SIZE = 1024 * 1024;  // 1 MB chunks
@@ -162,25 +174,25 @@ std::expected<void, CascError> LocalCascStorage::extractFile(const std::string& 
     try {
         chunk.resize(BUFFER_SIZE);
     } catch (const std::bad_alloc&) {
-        return std::unexpected(CascError::ReadError);
+        return CascError::ReadError;
     }
 
     HANDLE hFile = nullptr;
     if (!CascOpenFile(hStorage, cascPath.c_str(), CASC_LOCALE_ALL, CASC_OPEN_BY_NAME, &hFile)) {
-        return std::unexpected(mapCascError(GetCascError()));
+        return mapCascError(GetCascError());
     }
 
     FILE* fp = std::fopen(destPath.c_str(), "wb");
     if (fp == nullptr) {
         CascCloseFile(hFile);
-        return std::unexpected(CascError::InvalidPath);
+        return CascError::InvalidPath;
     }
 
     ULONGLONG fileSize64 = 0;
     if (!CascGetFileSize64(hFile, &fileSize64)) {
         CascCloseFile(hFile);
         std::fclose(fp);
-        return std::unexpected(CascError::ReadError);
+        return CascError::ReadError;
     }
     uint64_t totalRead = 0;
 
@@ -190,12 +202,12 @@ std::expected<void, CascError> LocalCascStorage::extractFile(const std::string& 
         if (!CascReadFile(hFile, chunk.data(), toRead, &bytesRead)) {
             CascCloseFile(hFile);
             std::fclose(fp);
-            return std::unexpected(CascError::ReadError);
+            return CascError::ReadError;
         }
         if (std::fwrite(chunk.data(), 1, bytesRead, fp) != bytesRead) {
             CascCloseFile(hFile);
             std::fclose(fp);
-            return std::unexpected(CascError::ReadError);
+            return CascError::ReadError;
         }
         totalRead += bytesRead;
         if (progress) {
@@ -205,20 +217,24 @@ std::expected<void, CascError> LocalCascStorage::extractFile(const std::string& 
 
     CascCloseFile(hFile);
     if (std::fclose(fp) != 0) {
-        return std::unexpected(CascError::ReadError);
+        return CascError::ReadError;
     }
-    return {};
+    return CascError::None;
 }
 
-std::expected<CascStorageInfo, CascError> LocalCascStorage::getStorageInfo()
+CascStorageInfo LocalCascStorage::getStorageInfo(CascError& error)
 {
+    error = CascError::None;
+
     if (hStorage == nullptr) {
-        return std::unexpected(CascError::StorageNotFound);
+        error = CascError::StorageNotFound;
+        return {};
     }
 
     DWORD fileCount = 0;
     if (!CascGetStorageInfo(hStorage, CascStorageLocalFileCount, &fileCount, sizeof(fileCount), nullptr)) {
-        return std::unexpected(CascError::Unknown);
+        error = CascError::Unknown;
+        return {};
     }
 
     CascStorageInfo info;

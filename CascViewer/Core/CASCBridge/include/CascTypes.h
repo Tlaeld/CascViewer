@@ -5,7 +5,7 @@
 
 namespace CascBridge {
 
-enum class FileType {
+enum class FileType : uint8_t {
     File,
     Directory
 };
@@ -25,7 +25,8 @@ struct CascStorageInfo {
     uint64_t totalSize;
 };
 
-enum class CascError {
+enum class CascError : uint8_t {
+    None,
     InvalidPath,
     StorageNotFound,
     StorageCorrupted,

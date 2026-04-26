@@ -1,18 +1,17 @@
 #pragma once
 #include "CascTypes.h"
 #include <vector>
-#include <expected>
 #include <cstdint>
 
 namespace CascBridge {
 
-enum class BLPFormat {
+enum class BLPFormat : uint8_t {
     BLP0,  // Unknown/invalid
     BLP1,
     BLP2
 };
 
-enum class BLPCompression {
+enum class BLPCompression : uint8_t {
     Raw,
     DXTC1,
     DXTC3,
@@ -40,7 +39,7 @@ struct BLPDecodeResult {
 
 class BLPDecoderBridge {
 public:
-    std::expected<BLPDecodeResult, CascError> decode(const std::vector<uint8_t>& blpData);
+    BLPDecodeResult decode(const uint8_t* data, size_t length, CascError& error);
 };
 
 } // namespace CascBridge

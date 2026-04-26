@@ -1,7 +1,6 @@
 #pragma once
 #include <string>
 #include <vector>
-#include <expected>
 #include "CascTypes.h"
 
 namespace CascBridge {
@@ -21,7 +20,7 @@ struct CDNBuildConfig {
 
 class CDNConfig {
 public:
-    std::expected<CDNBuildConfig, CascError> fetchConfig(const std::string& product, const std::string& region);
+    CDNBuildConfig fetchConfig(const std::string& product, const std::string& region, CascError& error);
 private:
     std::string downloadText(const std::string& url);
 };

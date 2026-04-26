@@ -31,29 +31,34 @@ struct BLP1Header {
 };
 #pragma pack(pop)
 
-std::expected<BLPDecodeResult, CascError> BLPDecoderBridge::decode(const std::vector<uint8_t>& blpData) {
-    if (blpData.size() < 4) {
-        return std::unexpected(CascError::DecodingError);
+BLPDecodeResult BLPDecoderBridge::decode(const uint8_t* data, size_t length, CascError& error) {
+    error = CascError::None;
+
+    if (length < 4) {
+        error = CascError::DecodingError;
+        return {};
     }
 
     // Check magic bytes
-    bool isBLP2 = (std::strncmp(reinterpret_cast<const char*>(blpData.data()), "BLP2", 4) == 0);
-    bool isBLP1 = (std::strncmp(reinterpret_cast<const char*>(blpData.data()), "BLP1", 4) == 0);
+    bool isBLP2 = (std::strncmp(reinterpret_cast<const char*>(data), "BLP2", 4) == 0);
+    bool isBLP1 = (std::strncmp(reinterpret_cast<const char*>(data), "BLP1", 4) == 0);
 
     if (!isBLP2 && !isBLP1) {
-        return std::unexpected(CascError::DecodingError);
+        error = CascError::DecodingError;
+        return {};
     }
 
     BLPDecodeResult result;
     result.frameCount = 1;
 
     if (isBLP2) {
-        if (blpData.size() < sizeof(BLP2Header)) {
-            return std::unexpected(CascError::DecodingError);
+        if (length < sizeof(BLP2Header)) {
+            error = CascError::DecodingError;
+            return {};
         }
 
         BLP2Header header;
-        std::memcpy(&header, blpData.data(), sizeof(BLP2Header));
+        std::memcpy(&header, data, sizeof(BLP2Header));
 
         result.format = BLPFormat::BLP2;
         result.width = header.width;
@@ -62,7 +67,8 @@ std::expected<BLPDecodeResult, CascError> BLPDecoderBridge::decode(const std::ve
 
         // Sanity check dimensions
         if (header.width > 16384 || header.height > 16384) {
-            return std::unexpected(CascError::DecodingError);
+            error = CascError::DecodingError;
+            return {};
         }
 
         // Count mip levels with valid offsets
@@ -84,11 +90,13 @@ std::expected<BLPDecodeResult, CascError> BLPDecoderBridge::decode(const std::ve
             size_t expectedSize = static_cast<size_t>(header.width) * header.height * 4;
 
             if (firstOffset == 0 || firstSize == 0) {
-                return std::unexpected(CascError::DecodingError);
+                error = CascError::DecodingError;
+                return {};
             }
 
-            if (static_cast<size_t>(firstOffset) + static_cast<size_t>(firstSize) > blpData.size()) {
-                return std::unexpected(CascError::DecodingError);
+            if (static_cast<size_t>(firstOffset) + static_cast<size_t>(firstSize) > length) {
+                error = CascError::DecodingError;
+                return {};
             }
 
             BLPFrame frame;
@@ -97,7 +105,7 @@ std::expected<BLPDecodeResult, CascError> BLPDecoderBridge::decode(const std::ve
             frame.rgbaData.resize(expectedSize);
 
             // Copy raw RGBA data
-            const uint8_t* src = blpData.data() + firstOffset;
+            const uint8_t* src = data + firstOffset;
             std::memcpy(frame.rgbaData.data(), src, std::min(static_cast<size_t>(firstSize), static_cast<size_t>(expectedSize)));
 
             result.frames.push_back(frame);
@@ -112,7 +120,7 @@ std::expected<BLPDecodeResult, CascError> BLPDecoderBridge::decode(const std::ve
                     uint32_t mipHeight = std::max(1U, header.height >> mip);
                     size_t mipExpectedSize = static_cast<size_t>(mipWidth) * mipHeight * 4;
 
-                    if (offset == 0 || size == 0 || static_cast<size_t>(offset) + static_cast<size_t>(size) > blpData.size()) {
+                    if (offset == 0 || size == 0 || static_cast<size_t>(offset) + static_cast<size_t>(size) > length) {
                         continue;
                     }
 
@@ -120,20 +128,23 @@ std::expected<BLPDecodeResult, CascError> BLPDecoderBridge::decode(const std::ve
                     mipFrame.width = mipWidth;
                     mipFrame.height = mipHeight;
                     mipFrame.rgbaData.resize(mipExpectedSize);
-                    std::memcpy(mipFrame.rgbaData.data(), blpData.data() + offset, std::min(static_cast<size_t>(size), static_cast<size_t>(mipExpectedSize)));
+                    std::memcpy(mipFrame.rgbaData.data(), data + offset, std::min(static_cast<size_t>(size), static_cast<size_t>(mipExpectedSize)));
                     result.mipMaps[mip].push_back(mipFrame);
                 }
             }
         } else if (header.compression == 2) {
             // DXTC - not yet supported
-            return std::unexpected(CascError::DecodingError);
+            error = CascError::DecodingError;
+            return {};
         } else {
             result.compression = BLPCompression::Unknown;
-            return std::unexpected(CascError::DecodingError);
+            error = CascError::DecodingError;
+            return {};
         }
     } else {
         // BLP1 - not yet supported
-        return std::unexpected(CascError::DecodingError);
+        error = CascError::DecodingError;
+        return {};
     }
 
     return result;

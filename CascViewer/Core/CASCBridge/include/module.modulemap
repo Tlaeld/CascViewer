@@ -1,0 +1,8 @@
+module CascBridge {
+    header "CascTypes.h"
+    header "CascStorageHandle.h"
+    header "CDNConfig.h"
+    header "CDNCacheManager.h"
+    header "BLPDecoderBridge.h"
+    export *
+}

@@ -97,17 +97,17 @@ bool CDNCacheManager::hasChunk(const std::string& encodingKey) const
     return stat(chunkPath(encodingKey).c_str(), &st) == 0 && S_ISREG(st.st_mode);
 }
 
-std::expected<void, CascError> CDNCacheManager::downloadChunk(const std::string& url, const std::string& destPath)
+CascError CDNCacheManager::downloadChunk(const std::string& url, const std::string& destPath)
 {
     std::FILE* fp = std::fopen(destPath.c_str(), "wb");
     if (!fp) {
-        return std::unexpected(CascError::ReadError);
+        return CascError::ReadError;
     }
 
     CURL* curl = curl_easy_init();
     if (!curl) {
         std::fclose(fp);
-        return std::unexpected(CascError::NetworkError);
+        return CascError::NetworkError;
     }
 
     curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
@@ -125,30 +125,33 @@ std::expected<void, CascError> CDNCacheManager::downloadChunk(const std::string&
 
     if (res != CURLE_OK || httpCode != 200) {
         std::remove(destPath.c_str());
-        return std::unexpected(CascError::NetworkError);
+        return CascError::NetworkError;
     }
 
-    return {};
+    return CascError::None;
 }
 
-std::expected<std::vector<uint8_t>, CascError> CDNCacheManager::getChunk(const std::string& encodingKey,
-                                                                          const std::string& cdnUrl)
+std::vector<uint8_t> CDNCacheManager::getChunk(const std::string& encodingKey,
+                                               const std::string& cdnUrl,
+                                               CascError& error)
 {
+    error = CascError::None;
     std::string path = chunkPath(encodingKey);
 
     if (!hasChunk(encodingKey)) {
         std::string subDir = path.substr(0, path.find_last_of('/'));
         ensureDirectoryRecursive(subDir);
 
-        auto result = downloadChunk(cdnUrl, path);
-        if (!result.has_value()) {
-            return std::unexpected(result.error());
+        error = downloadChunk(cdnUrl, path);
+        if (error != CascError::None) {
+            return {};
         }
     }
 
     std::ifstream file(path, std::ios::binary | std::ios::ate);
     if (!file.is_open()) {
-        return std::unexpected(CascError::ReadError);
+        error = CascError::ReadError;
+        return {};
     }
 
     std::streamsize size = file.tellg();
@@ -158,7 +161,8 @@ std::expected<std::vector<uint8_t>, CascError> CDNCacheManager::getChunk(const s
     if (size > 0) {
         buffer.resize(static_cast<size_t>(size));
         if (!file.read(reinterpret_cast<char*>(buffer.data()), size)) {
-            return std::unexpected(CascError::ReadError);
+            error = CascError::ReadError;
+            return {};
         }
     }
 
