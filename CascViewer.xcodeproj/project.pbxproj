@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		61cc49ff07334b63a1f9de517f83efda /* SearchPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = c1c7d93268ec4530b5e3690592b665bc /* SearchPanelView.swift */; };
+		3bf7e1d0aaed40008075e0142d66e6e4 /* ProgressOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 947a1fea18a94f38bc8292a69a7a5d90 /* ProgressOverlay.swift */; };
 		01556AE5F71A5D284F8B8DAD /* CascRootFile_Install.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E685D742F7529CDB954EF066 /* CascRootFile_Install.cpp */; };
 		02FF2989C83AE287D1D90A5D /* CascViewerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDC871518AA0909451F89C72 /* CascViewerApp.swift */; };
 		06A83327074E651AD8980A84 /* BLPDecoderCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0080CDFEC7BC5E29ED5C8AD0 /* BLPDecoderCoordinator.swift */; };
@@ -182,6 +184,8 @@
 		09735D48B9B53C7CD4B0B5A385536583 /* FileTreeView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FileTreeView.swift; sourceTree = "<group>"; };
 		9DE766F954D9B014A10A4A372929444F /* FileListView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FileListView.swift; sourceTree = "<group>"; };
 		1CE0B9866ABEC28A52AD9DA460D84BA2 /* FilePreviewPanel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FilePreviewPanel.swift; sourceTree = "<group>"; };
+		c1c7d93268ec4530b5e3690592b665bc /* SearchPanelView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SearchPanelView.swift; sourceTree = "<group>"; };
+		947a1fea18a94f38bc8292a69a7a5d90 /* ProgressOverlay.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ProgressOverlay.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -291,6 +295,7 @@
 		52876911EFB6B64D630AE9C3 /* Search */ = {
 			isa = PBXGroup;
 			children = (
+				c1c7d93268ec4530b5e3690592b665bc /* SearchPanelView.swift */,
 			);
 			name = Search;
 			path = Search;
@@ -350,6 +355,7 @@
 		952931FFD7A7D0C9C3E055E5 /* Common */ = {
 			isa = PBXGroup;
 			children = (
+				947a1fea18a94f38bc8292a69a7a5d90 /* ProgressOverlay.swift */,
 			);
 			name = Common;
 			path = Common;
@@ -633,6 +639,8 @@
 			74EE42895653FED52D9F0337C6DAADEE /* FileTreeView.swift in Sources */,
 			9353117A4C9C9675F7827DEA28AA0032 /* FileListView.swift in Sources */,
 			462578381ED52C1C7CF09D6739A38542 /* FilePreviewPanel.swift in Sources */,
+			61cc49ff07334b63a1f9de517f83efda /* SearchPanelView.swift in Sources */,
+			3bf7e1d0aaed40008075e0142d66e6e4 /* ProgressOverlay.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

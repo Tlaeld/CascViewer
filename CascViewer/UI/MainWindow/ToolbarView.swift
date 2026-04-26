@@ -5,6 +5,7 @@ struct ToolbarView: View {
     @EnvironmentObject var appState: AppState
     @State private var searchText = ""
     @State private var showingOpenPanel = false
+    @State private var showingSearchPanel = false
 
     var body: some View {
         HStack(spacing: 12) {
@@ -25,6 +26,14 @@ struct ToolbarView: View {
                     Task {
                         await appState.currentStorage?.listDirectory(path: appState.currentStorage?.currentPath ?? "")
                     }
+                }
+
+                Button("Search") {
+                    showingSearchPanel = true
+                }
+                .sheet(isPresented: $showingSearchPanel) {
+                    SearchPanelView()
+                        .frame(minWidth: 500, minHeight: 600)
                 }
             }
 
