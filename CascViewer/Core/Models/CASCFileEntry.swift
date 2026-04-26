@@ -1,14 +1,15 @@
 import Foundation
 
-struct CASCFileEntry: Identifiable, Hashable {
-    let id = UUID()
+struct CASCFileEntry: Identifiable, Hashable, Sendable {
     let name: String
     let fullPath: String
     let type: FileType
     let size: UInt64
     let encodingKey: String
 
-    enum FileType {
+    var id: String { fullPath }
+
+    enum FileType: Sendable {
         case file
         case directory
     }

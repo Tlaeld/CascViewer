@@ -1,6 +1,6 @@
 import Foundation
 
-enum CASCError: Error, LocalizedError {
+enum CASCError: Error, LocalizedError, Sendable {
     case invalidPath
     case storageNotFound
     case storageCorrupted

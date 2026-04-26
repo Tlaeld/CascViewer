@@ -1,6 +1,6 @@
 import Foundation
 
-struct BLPImageInfo {
+struct BLPImageInfo: Sendable {
     let format: BLPFormat
     let width: UInt32
     let height: UInt32
@@ -8,7 +8,7 @@ struct BLPImageInfo {
     let frameCount: UInt32
     let hasAlpha: Bool
 
-    enum BLPFormat {
+    enum BLPFormat: Sendable {
         case blp1
         case blp2
     }

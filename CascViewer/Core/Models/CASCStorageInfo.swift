@@ -1,6 +1,6 @@
 import Foundation
 
-struct CASCStorageInfo {
+struct CASCStorageInfo: Sendable {
     let productName: String
     let buildVersion: String
     let totalFiles: UInt64
