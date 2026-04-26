@@ -82,7 +82,7 @@ std::vector<CascFileEntry> LocalCascStorage::listDirectory(const std::string& pa
         ~FindCloser() { if (h != INVALID_HANDLE_VALUE) CascFindClose(h); }
     };
 
-    std::string mask = path.empty() ? "*" : path + "\\*";
+    std::string mask = path.empty() ? "*" : path + "/*";
     CASC_FIND_DATA findData = {};
     HANDLE hFind = CascFindFirstFile(hStorage, mask.c_str(), &findData, nullptr);
     if (hFind == INVALID_HANDLE_VALUE) {

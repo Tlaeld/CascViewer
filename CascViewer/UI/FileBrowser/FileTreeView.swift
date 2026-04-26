@@ -44,8 +44,12 @@ struct FileTreeView: View {
         var dirs = Set<String>()
         for entry in entries {
             let path = entry.fullPath
-            if let lastSlash = path.lastIndex(of: "/") {
-                let dir = String(path[..<lastSlash])
+            // CascLib may use \ or / as separator depending on platform
+            let separators: CharacterSet = ["/", "\\"]
+            let nsPath = path as NSString
+            let lastSep = nsPath.rangeOfCharacter(from: separators, options: .backwards)
+            if lastSep.location != NSNotFound {
+                let dir = nsPath.substring(to: lastSep.location)
                 dirs.insert(dir)
             } else {
                 dirs.insert("")
