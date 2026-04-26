@@ -7,14 +7,46 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		01556AE5F71A5D284F8B8DAD /* CascRootFile_Install.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E685D742F7529CDB954EF066 /* CascRootFile_Install.cpp */; };
 		02FF2989C83AE287D1D90A5D /* CascViewerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDC871518AA0909451F89C72 /* CascViewerApp.swift */; };
 		172E6E146C2A14931A56F7FF /* MainWindowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B6BCE37A9280E35F34F1154 /* MainWindowView.swift */; };
+		197B1B4D2CA41F96379ABBC4 /* CascRootFile_WoW.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 573143E92267442F4D7B6A98 /* CascRootFile_WoW.cpp */; };
+		25B9B34C3912FEEF2E00BD28 /* CascFiles.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DFC33452ACA17436061E5626 /* CascFiles.cpp */; };
 		27FE348AC978ACE4040B10F6 /* CascViewerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFE966467010291B97D25EFC /* CascViewerTests.swift */; };
+		424ABEEC87C920DAAC4B4E5A /* Directory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F3407A3868639BD7C2EA268B /* Directory.cpp */; };
+		4AA258605695FB01E746E1B3 /* Sockets.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B7EB086980673D41B0CBF8AB /* Sockets.cpp */; };
+		51FF2C4CA3B4BD63979EFAEE /* libz.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = DE915E0C8899B4E0AC257F43 /* libz.tbd */; };
+		529BF5E678F2BD950A440D88 /* CascRootFile_Diablo3.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 821951C36FC08A869EADC182 /* CascRootFile_Diablo3.cpp */; };
+		53B3774597432B71EAF87108 /* RootHandler.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 3C5DC5E6A96CAE5935AABAF4 /* RootHandler.cpp */; };
 		55A1A7B2DFFE07299CACDE22 /* CASCStorageService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EAF6700599D831770C9F3C8 /* CASCStorageService.swift */; };
 		5E95E0D8C88BC7847CFE36E7 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 65A12BF1D648414026DAF157 /* Cocoa.framework */; };
+		6684747161DAFF1508B89607 /* CascDecrypt.cpp in Sources */ = {isa = PBXBuildFile; fileRef = C7B3993B5DD2B9BAB97089B8 /* CascDecrypt.cpp */; };
+		7DF6A5C45692C2B8C08D2969 /* ListFile.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A71329496ECA91E09CBC2223 /* ListFile.cpp */; };
+		83D4FDD835ED3EC9ABFC68A6 /* CascIndexFiles.cpp in Sources */ = {isa = PBXBuildFile; fileRef = C76566A5C1EFA2D1F14473CD /* CascIndexFiles.cpp */; };
+		8733DAC65D4C0E31DE3E2B77 /* CascOpenFile.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 6456A97D7F3B22F851619C83 /* CascOpenFile.cpp */; };
+		8D8E1147AE582A1F71956949 /* Common.cpp in Sources */ = {isa = PBXBuildFile; fileRef = C407F73545CE66D9E086A335 /* Common.cpp */; };
+		9221E9AB5DB11F08CA124134 /* CascDumpData.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 91A4C1B8FCD866FBF6F8A446 /* CascDumpData.cpp */; };
+		9D7760B822B15675792546BB /* CascRootFile_MNDX.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F48A957337D0DA302C31BF54 /* CascRootFile_MNDX.cpp */; };
+		A1711B9E4C58F33355DE0A89 /* cmf.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FF97E7A9848A040719B153D1 /* cmf.cpp */; };
+		A523C08217354268DEEC09C5 /* CascFindFile.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4947D00BC8F1B6A93F86FD8F /* CascFindFile.cpp */; };
+		A5AA332C62E60E36005607F6 /* CascReadFile.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 343D3D1253E74997181CF840 /* CascReadFile.cpp */; };
 		B3CFC4C0A529025B4BC55DCB /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D10EBED085E4B4286FDD9D9 /* AppState.swift */; };
+		B6A2628E1AB1979CD0118AB5 /* Csv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 903A6074953CCD3D24F4EB65 /* Csv.cpp */; };
+		B6CBA3311C5A32B894703F94 /* sha1.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 552F10D7E0DF7836BBDB395D /* sha1.cpp */; };
+		BC39F5663F558DC4888266E1 /* FileTree.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 13EE8E2EAF607AFE5380A534 /* FileTree.cpp */; };
+		BDD431DF64EF2F8D373EA6B8 /* CascRootFile_TVFS.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 20D05AD073882AA3AE97A8F7 /* CascRootFile_TVFS.cpp */; };
+		CB7D493FFB970DB98CDCF788 /* md5.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 514472C8EC4C506706F46690 /* md5.cpp */; };
+		CC27540714E29CA130EE9D2F /* CascDecompress.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 6C289CDBB7ED62A067619C29 /* CascDecompress.cpp */; };
+		CD25F0AEB1212D5E1ED59ACA /* CascRootFile_Text.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 5D8E54A9B51444C8E39402BA /* CascRootFile_Text.cpp */; };
+		CEB5629AE8F0117EBEFC072C /* FileStream.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 163D27D9001ABE92A4C87117 /* FileStream.cpp */; };
 		D5E1827D062484478F8E4332 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 0F1CC7D58B59DC3D8363D661 /* Assets.xcassets */; };
 		DA778C1081073CC588816768 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 65A12BF1D648414026DAF157 /* Cocoa.framework */; };
+		DF57FEABB555D9FCC555C5CD /* apm.cpp in Sources */ = {isa = PBXBuildFile; fileRef = BCAA1FA5080793E0EB87FF18 /* apm.cpp */; };
+		EF24B13E19DDCF616FE63FF6 /* lookup3.c in Sources */ = {isa = PBXBuildFile; fileRef = 2B321136423FAF8FC571698A /* lookup3.c */; };
+		F36C9645ACD6ABC997C3A2B3 /* CascRootFile_OW.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 99179986A1B6D057F25FDE88 /* CascRootFile_OW.cpp */; };
+		F5F10E6FDD4971F4513ECB3D /* Mime.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 23607A5F1D7C0F155E14B24B /* Mime.cpp */; };
+		F6767672290F47B5453CD517 /* CascOpenStorage.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 67562BD9B2A0706D6DF74178 /* CascOpenStorage.cpp */; };
+		F82B9B63F9F175BB716E67A1 /* aes.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DA4F4F44C601D45F8DCDC6DC /* aes.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -28,17 +60,73 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		0CC9B29BD5D0439390006776 /* ArraySparse.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = ArraySparse.h; path = CascLib/src/common/ArraySparse.h; sourceTree = "<group>"; };
+		0D92554856EB259EF384EE77 /* md5.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = md5.h; path = CascLib/src/hashes/md5.h; sourceTree = "<group>"; };
 		0EAF6700599D831770C9F3C8 /* CASCStorageService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CASCStorageService.swift; sourceTree = "<group>"; };
 		0F1CC7D58B59DC3D8363D661 /* Assets.xcassets */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		1167740686BF24CB9E179A46 /* Csv.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = Csv.h; path = CascLib/src/common/Csv.h; sourceTree = "<group>"; };
+		13EE8E2EAF607AFE5380A534 /* FileTree.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = FileTree.cpp; path = CascLib/src/common/FileTree.cpp; sourceTree = "<group>"; };
+		163D27D9001ABE92A4C87117 /* FileStream.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = FileStream.cpp; path = CascLib/src/common/FileStream.cpp; sourceTree = "<group>"; };
+		1E6BDD2FE92B775AD3157BD4 /* Path.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = Path.h; path = CascLib/src/common/Path.h; sourceTree = "<group>"; };
+		20D05AD073882AA3AE97A8F7 /* CascRootFile_TVFS.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = CascRootFile_TVFS.cpp; path = CascLib/src/CascRootFile_TVFS.cpp; sourceTree = "<group>"; };
+		23607A5F1D7C0F155E14B24B /* Mime.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = Mime.cpp; path = CascLib/src/common/Mime.cpp; sourceTree = "<group>"; };
+		278A09974B745D208E54D7D8 /* Common.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = Common.h; path = CascLib/src/common/Common.h; sourceTree = "<group>"; };
+		2B321136423FAF8FC571698A /* lookup3.c */ = {isa = PBXFileReference; includeInIndex = 1; name = lookup3.c; path = CascLib/src/jenkins/lookup3.c; sourceTree = "<group>"; };
+		343D3D1253E74997181CF840 /* CascReadFile.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = CascReadFile.cpp; path = CascLib/src/CascReadFile.cpp; sourceTree = "<group>"; };
+		3C5DC5E6A96CAE5935AABAF4 /* RootHandler.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = RootHandler.cpp; path = CascLib/src/common/RootHandler.cpp; sourceTree = "<group>"; };
 		3F0CE6201AD76D5461554E67 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		43DC46B47C216703772EFD6C /* Sockets.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = Sockets.h; path = CascLib/src/common/Sockets.h; sourceTree = "<group>"; };
+		4947D00BC8F1B6A93F86FD8F /* CascFindFile.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = CascFindFile.cpp; path = CascLib/src/CascFindFile.cpp; sourceTree = "<group>"; };
+		50C1780ED047054296A0784E /* Mime.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = Mime.h; path = CascLib/src/common/Mime.h; sourceTree = "<group>"; };
+		514472C8EC4C506706F46690 /* md5.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = md5.cpp; path = CascLib/src/hashes/md5.cpp; sourceTree = "<group>"; };
+		552F10D7E0DF7836BBDB395D /* sha1.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = sha1.cpp; path = CascLib/src/hashes/sha1.cpp; sourceTree = "<group>"; };
+		56197109DDE0EDDE98940B70 /* aes.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = aes.h; path = CascLib/src/overwatch/aes.h; sourceTree = "<group>"; };
+		573143E92267442F4D7B6A98 /* CascRootFile_WoW.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = CascRootFile_WoW.cpp; path = CascLib/src/CascRootFile_WoW.cpp; sourceTree = "<group>"; };
 		5B6BCE37A9280E35F34F1154 /* MainWindowView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MainWindowView.swift; sourceTree = "<group>"; };
+		5D8E54A9B51444C8E39402BA /* CascRootFile_Text.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = CascRootFile_Text.cpp; path = CascLib/src/CascRootFile_Text.cpp; sourceTree = "<group>"; };
+		6456A97D7F3B22F851619C83 /* CascOpenFile.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = CascOpenFile.cpp; path = CascLib/src/CascOpenFile.cpp; sourceTree = "<group>"; };
+		64FC4685DB07B929A3E1077A /* CascStructs.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = CascStructs.h; path = CascLib/src/CascStructs.h; sourceTree = "<group>"; };
 		65A12BF1D648414026DAF157 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.0.sdk/System/Library/Frameworks/Cocoa.framework; sourceTree = DEVELOPER_DIR; };
+		67562BD9B2A0706D6DF74178 /* CascOpenStorage.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = CascOpenStorage.cpp; path = CascLib/src/CascOpenStorage.cpp; sourceTree = "<group>"; };
+		6C289CDBB7ED62A067619C29 /* CascDecompress.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = CascDecompress.cpp; path = CascLib/src/CascDecompress.cpp; sourceTree = "<group>"; };
+		75500683DAEB073431CF1602 /* RootHandler.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = RootHandler.h; path = CascLib/src/common/RootHandler.h; sourceTree = "<group>"; };
+		790C1485CDB6765BA5B123FE /* aes_local.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = aes_local.h; path = CascLib/src/overwatch/aes_local.h; sourceTree = "<group>"; };
+		821951C36FC08A869EADC182 /* CascRootFile_Diablo3.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = CascRootFile_Diablo3.cpp; path = CascLib/src/CascRootFile_Diablo3.cpp; sourceTree = "<group>"; };
+		83CB9F9F03DDE013788A95F7 /* ListFile.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = ListFile.h; path = CascLib/src/common/ListFile.h; sourceTree = "<group>"; };
+		903A6074953CCD3D24F4EB65 /* Csv.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = Csv.cpp; path = CascLib/src/common/Csv.cpp; sourceTree = "<group>"; };
+		91A4C1B8FCD866FBF6F8A446 /* CascDumpData.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = CascDumpData.cpp; path = CascLib/src/CascDumpData.cpp; sourceTree = "<group>"; };
+		99179986A1B6D057F25FDE88 /* CascRootFile_OW.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = CascRootFile_OW.cpp; path = CascLib/src/CascRootFile_OW.cpp; sourceTree = "<group>"; };
+		9A54EC3617391F1161024B73 /* CascPort.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = CascPort.h; path = CascLib/src/CascPort.h; sourceTree = "<group>"; };
 		9D10EBED085E4B4286FDD9D9 /* AppState.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
 		9DAFFCFDEF255B1550EC271E /* CascViewerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CascViewerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		9EAA813064588827985FFDA2 /* Map.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = Map.h; path = CascLib/src/common/Map.h; sourceTree = "<group>"; };
+		A71329496ECA91E09CBC2223 /* ListFile.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = ListFile.cpp; path = CascLib/src/common/ListFile.cpp; sourceTree = "<group>"; };
+		A7D133EEFE591AC22BE06B4C /* overwatch.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = overwatch.h; path = CascLib/src/overwatch/overwatch.h; sourceTree = "<group>"; };
+		A8FEB22D1DEEB4FF00E64B06 /* lookup.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = lookup.h; path = CascLib/src/jenkins/lookup.h; sourceTree = "<group>"; };
 		AFE966467010291B97D25EFC /* CascViewerTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CascViewerTests.swift; sourceTree = "<group>"; };
 		B1DB78AD7C1635C26329BCA1 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		B7EB086980673D41B0CBF8AB /* Sockets.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = Sockets.cpp; path = CascLib/src/common/Sockets.cpp; sourceTree = "<group>"; };
+		BCAA1FA5080793E0EB87FF18 /* apm.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = apm.cpp; path = CascLib/src/overwatch/apm.cpp; sourceTree = "<group>"; };
+		C407F73545CE66D9E086A335 /* Common.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = Common.cpp; path = CascLib/src/common/Common.cpp; sourceTree = "<group>"; };
+		C6D8D142ED589A28C7CB49F2 /* Array.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = Array.h; path = CascLib/src/common/Array.h; sourceTree = "<group>"; };
+		C76566A5C1EFA2D1F14473CD /* CascIndexFiles.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = CascIndexFiles.cpp; path = CascLib/src/CascIndexFiles.cpp; sourceTree = "<group>"; };
+		C7B3993B5DD2B9BAB97089B8 /* CascDecrypt.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = CascDecrypt.cpp; path = CascLib/src/CascDecrypt.cpp; sourceTree = "<group>"; };
+		C8E915AE3C262778DFA024E9 /* CascCommon.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = CascCommon.h; path = CascLib/src/CascCommon.h; sourceTree = "<group>"; };
+		D0836201F1A4827AFEC15BE6 /* IndexMap.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = IndexMap.h; path = CascLib/src/common/IndexMap.h; sourceTree = "<group>"; };
+		D33DFA9266FEAD8F207D433F /* Directory.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = Directory.h; path = CascLib/src/common/Directory.h; sourceTree = "<group>"; };
+		D95150A0D489A1CB1DA54B9E /* FileStream.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = FileStream.h; path = CascLib/src/common/FileStream.h; sourceTree = "<group>"; };
+		DA4F4F44C601D45F8DCDC6DC /* aes.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = aes.cpp; path = CascLib/src/overwatch/aes.cpp; sourceTree = "<group>"; };
+		DB9ED63BC77B8DABADBA8B52 /* sha1.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = sha1.h; path = CascLib/src/hashes/sha1.h; sourceTree = "<group>"; };
 		DDC871518AA0909451F89C72 /* CascViewerApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CascViewerApp.swift; sourceTree = "<group>"; };
+		DE915E0C8899B4E0AC257F43 /* libz.tbd */ = {isa = PBXFileReference; includeInIndex = 1; name = libz.tbd; path = usr/lib/libz.tbd; sourceTree = SDKROOT; };
+		DFC33452ACA17436061E5626 /* CascFiles.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = CascFiles.cpp; path = CascLib/src/CascFiles.cpp; sourceTree = "<group>"; };
 		E02F76D597B6627F7D920DBE /* CascViewer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CascViewer.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		E685D742F7529CDB954EF066 /* CascRootFile_Install.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = CascRootFile_Install.cpp; path = CascLib/src/CascRootFile_Install.cpp; sourceTree = "<group>"; };
+		EAB5FF31E29C5475FA8FC4BC /* FileTree.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = FileTree.h; path = CascLib/src/common/FileTree.h; sourceTree = "<group>"; };
+		F3407A3868639BD7C2EA268B /* Directory.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = Directory.cpp; path = CascLib/src/common/Directory.cpp; sourceTree = "<group>"; };
+		F48A957337D0DA302C31BF54 /* CascRootFile_MNDX.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = CascRootFile_MNDX.cpp; path = CascLib/src/CascRootFile_MNDX.cpp; sourceTree = "<group>"; };
+		FC5C84A9F2AD07503B530655 /* CascLib.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = CascLib.h; path = CascLib/src/CascLib.h; sourceTree = "<group>"; };
+		FF97E7A9848A040719B153D1 /* cmf.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = cmf.cpp; path = CascLib/src/overwatch/cmf.cpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -47,6 +135,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				5E95E0D8C88BC7847CFE36E7 /* Cocoa.framework in Frameworks */,
+				51FF2C4CA3B4BD63979EFAEE /* libz.tbd in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -93,6 +182,7 @@
 				6848B678D6B0DFE9C03C0649 /* Frameworks */,
 				4EEA17C9D9AE01DE53EEA192 /* CascViewer */,
 				77925DAAF85B93C1321224E8 /* CascViewerTests */,
+				FB5EFF0FAA82854690727308 /* CascLib */,
 			);
 			sourceTree = "<group>";
 		};
@@ -148,6 +238,7 @@
 			isa = PBXGroup;
 			children = (
 				900AED00E1A39E66BC68C16B /* OS X */,
+				DE915E0C8899B4E0AC257F43 /* libz.tbd */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -246,6 +337,68 @@
 			path = UI;
 			sourceTree = "<group>";
 		};
+		FB5EFF0FAA82854690727308 /* CascLib */ = {
+			isa = PBXGroup;
+			children = (
+				C407F73545CE66D9E086A335 /* Common.cpp */,
+				F3407A3868639BD7C2EA268B /* Directory.cpp */,
+				903A6074953CCD3D24F4EB65 /* Csv.cpp */,
+				163D27D9001ABE92A4C87117 /* FileStream.cpp */,
+				13EE8E2EAF607AFE5380A534 /* FileTree.cpp */,
+				A71329496ECA91E09CBC2223 /* ListFile.cpp */,
+				23607A5F1D7C0F155E14B24B /* Mime.cpp */,
+				3C5DC5E6A96CAE5935AABAF4 /* RootHandler.cpp */,
+				B7EB086980673D41B0CBF8AB /* Sockets.cpp */,
+				514472C8EC4C506706F46690 /* md5.cpp */,
+				552F10D7E0DF7836BBDB395D /* sha1.cpp */,
+				2B321136423FAF8FC571698A /* lookup3.c */,
+				BCAA1FA5080793E0EB87FF18 /* apm.cpp */,
+				FF97E7A9848A040719B153D1 /* cmf.cpp */,
+				DA4F4F44C601D45F8DCDC6DC /* aes.cpp */,
+				6C289CDBB7ED62A067619C29 /* CascDecompress.cpp */,
+				C7B3993B5DD2B9BAB97089B8 /* CascDecrypt.cpp */,
+				91A4C1B8FCD866FBF6F8A446 /* CascDumpData.cpp */,
+				DFC33452ACA17436061E5626 /* CascFiles.cpp */,
+				4947D00BC8F1B6A93F86FD8F /* CascFindFile.cpp */,
+				C76566A5C1EFA2D1F14473CD /* CascIndexFiles.cpp */,
+				6456A97D7F3B22F851619C83 /* CascOpenFile.cpp */,
+				67562BD9B2A0706D6DF74178 /* CascOpenStorage.cpp */,
+				343D3D1253E74997181CF840 /* CascReadFile.cpp */,
+				821951C36FC08A869EADC182 /* CascRootFile_Diablo3.cpp */,
+				E685D742F7529CDB954EF066 /* CascRootFile_Install.cpp */,
+				F48A957337D0DA302C31BF54 /* CascRootFile_MNDX.cpp */,
+				5D8E54A9B51444C8E39402BA /* CascRootFile_Text.cpp */,
+				20D05AD073882AA3AE97A8F7 /* CascRootFile_TVFS.cpp */,
+				99179986A1B6D057F25FDE88 /* CascRootFile_OW.cpp */,
+				573143E92267442F4D7B6A98 /* CascRootFile_WoW.cpp */,
+				C8E915AE3C262778DFA024E9 /* CascCommon.h */,
+				FC5C84A9F2AD07503B530655 /* CascLib.h */,
+				9A54EC3617391F1161024B73 /* CascPort.h */,
+				64FC4685DB07B929A3E1077A /* CascStructs.h */,
+				C6D8D142ED589A28C7CB49F2 /* Array.h */,
+				0CC9B29BD5D0439390006776 /* ArraySparse.h */,
+				278A09974B745D208E54D7D8 /* Common.h */,
+				1167740686BF24CB9E179A46 /* Csv.h */,
+				D33DFA9266FEAD8F207D433F /* Directory.h */,
+				D95150A0D489A1CB1DA54B9E /* FileStream.h */,
+				EAB5FF31E29C5475FA8FC4BC /* FileTree.h */,
+				D0836201F1A4827AFEC15BE6 /* IndexMap.h */,
+				83CB9F9F03DDE013788A95F7 /* ListFile.h */,
+				9EAA813064588827985FFDA2 /* Map.h */,
+				50C1780ED047054296A0784E /* Mime.h */,
+				1E6BDD2FE92B775AD3157BD4 /* Path.h */,
+				75500683DAEB073431CF1602 /* RootHandler.h */,
+				43DC46B47C216703772EFD6C /* Sockets.h */,
+				A8FEB22D1DEEB4FF00E64B06 /* lookup.h */,
+				0D92554856EB259EF384EE77 /* md5.h */,
+				DB9ED63BC77B8DABADBA8B52 /* sha1.h */,
+				56197109DDE0EDDE98940B70 /* aes.h */,
+				790C1485CDB6765BA5B123FE /* aes_local.h */,
+				A7D133EEFE591AC22BE06B4C /* overwatch.h */,
+			);
+			name = CascLib;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -341,6 +494,37 @@
 				B3CFC4C0A529025B4BC55DCB /* AppState.swift in Sources */,
 				172E6E146C2A14931A56F7FF /* MainWindowView.swift in Sources */,
 				55A1A7B2DFFE07299CACDE22 /* CASCStorageService.swift in Sources */,
+				8D8E1147AE582A1F71956949 /* Common.cpp in Sources */,
+				424ABEEC87C920DAAC4B4E5A /* Directory.cpp in Sources */,
+				B6A2628E1AB1979CD0118AB5 /* Csv.cpp in Sources */,
+				CEB5629AE8F0117EBEFC072C /* FileStream.cpp in Sources */,
+				BC39F5663F558DC4888266E1 /* FileTree.cpp in Sources */,
+				7DF6A5C45692C2B8C08D2969 /* ListFile.cpp in Sources */,
+				F5F10E6FDD4971F4513ECB3D /* Mime.cpp in Sources */,
+				53B3774597432B71EAF87108 /* RootHandler.cpp in Sources */,
+				4AA258605695FB01E746E1B3 /* Sockets.cpp in Sources */,
+				CB7D493FFB970DB98CDCF788 /* md5.cpp in Sources */,
+				B6CBA3311C5A32B894703F94 /* sha1.cpp in Sources */,
+				EF24B13E19DDCF616FE63FF6 /* lookup3.c in Sources */,
+				DF57FEABB555D9FCC555C5CD /* apm.cpp in Sources */,
+				A1711B9E4C58F33355DE0A89 /* cmf.cpp in Sources */,
+				F82B9B63F9F175BB716E67A1 /* aes.cpp in Sources */,
+				CC27540714E29CA130EE9D2F /* CascDecompress.cpp in Sources */,
+				6684747161DAFF1508B89607 /* CascDecrypt.cpp in Sources */,
+				9221E9AB5DB11F08CA124134 /* CascDumpData.cpp in Sources */,
+				25B9B34C3912FEEF2E00BD28 /* CascFiles.cpp in Sources */,
+				A523C08217354268DEEC09C5 /* CascFindFile.cpp in Sources */,
+				83D4FDD835ED3EC9ABFC68A6 /* CascIndexFiles.cpp in Sources */,
+				8733DAC65D4C0E31DE3E2B77 /* CascOpenFile.cpp in Sources */,
+				F6767672290F47B5453CD517 /* CascOpenStorage.cpp in Sources */,
+				A5AA332C62E60E36005607F6 /* CascReadFile.cpp in Sources */,
+				529BF5E678F2BD950A440D88 /* CascRootFile_Diablo3.cpp in Sources */,
+				01556AE5F71A5D284F8B8DAD /* CascRootFile_Install.cpp in Sources */,
+				9D7760B822B15675792546BB /* CascRootFile_MNDX.cpp in Sources */,
+				CD25F0AEB1212D5E1ED59ACA /* CascRootFile_Text.cpp in Sources */,
+				BDD431DF64EF2F8D373EA6B8 /* CascRootFile_TVFS.cpp in Sources */,
+				F36C9645ACD6ABC997C3A2B3 /* CascRootFile_OW.cpp in Sources */,
+				197B1B4D2CA41F96379ABBC4 /* CascRootFile_WoW.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -372,10 +556,17 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
 				COMBINE_HIDPI_IMAGES = YES;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					CASCLIB_NO_AUTO_LINK_LIBRARY,
+					CASCLIB_NODEBUG,
+					CASC_USE_SYSTEM_ZLIB,
+				);
 				GENERATE_INFOPLIST_FILE = NO;
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(SRCROOT)/CascViewer/Core/CASCBridge/include",
+					"$(SRCROOT)/CascLib/src",
 				);
 				INFOPLIST_FILE = CascViewer/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
@@ -545,9 +736,16 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
 				COMBINE_HIDPI_IMAGES = YES;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					CASCLIB_NO_AUTO_LINK_LIBRARY,
+					CASCLIB_NODEBUG,
+					CASC_USE_SYSTEM_ZLIB,
+				);
 				GENERATE_INFOPLIST_FILE = NO;
 				HEADER_SEARCH_PATHS = (
 					"$(SRCROOT)/CascViewer/Core/CASCBridge/include",
+					"$(SRCROOT)/CascLib/src",
 				);
 				INFOPLIST_FILE = CascViewer/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
