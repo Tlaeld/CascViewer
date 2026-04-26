@@ -21,6 +21,11 @@ struct FileTreeView: View {
             }
         }
         .listStyle(.sidebar)
+        .onAppear {
+            if let entries = appState.currentStorage?.entries {
+                directories = Self.extractDirectories(from: entries).sorted()
+            }
+        }
         .onChange(of: appState.currentStorage?.entries) { _ in
             guard let entries = appState.currentStorage?.entries else {
                 directories = []
