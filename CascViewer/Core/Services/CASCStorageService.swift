@@ -6,7 +6,6 @@ import CascBridge
 final class CASCStorageService: ObservableObject {
     @Published var currentPath: String = ""
     @Published var entries: [CASCFileEntry] = []
-    @Published var allEntries: [CASCFileEntry] = []
     @Published var storageInfo: CASCStorageInfo?
     @Published var isLoading = false
     @Published var error: CASCError?
@@ -88,26 +87,14 @@ final class CASCStorageService: ObservableObject {
         if err != .None {
             self.error = mapError(err)
         } else {
-            if path.isEmpty {
-                self.allEntries = newEntries
-                // Root: show only top-level items to avoid rendering tens of thousands of rows
-                self.entries = newEntries.filter { Self.isTopLevel($0.fullPath) }
-            } else {
-                self.entries = newEntries
-            }
+            self.entries = newEntries
             self.currentPath = path
         }
-    }
-
-    private static func isTopLevel(_ path: String) -> Bool {
-        let trimmed = path.trimmingCharacters(in: .init(charactersIn: "/\\"))
-        return !trimmed.contains("/") && !trimmed.contains("\\")
     }
 
     func close() {
         handle.close()
         entries = []
-        allEntries = []
         currentPath = ""
         storageInfo = nil
     }

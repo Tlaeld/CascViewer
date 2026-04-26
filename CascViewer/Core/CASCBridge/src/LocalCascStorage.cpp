@@ -97,6 +97,9 @@ std::vector<CascFileEntry> LocalCascStorage::listDirectory(const std::string& pa
     FindCloser closer{hFind};
 
     std::vector<CascFileEntry> entries;
+    entries.reserve(256);
+    int count = 0;
+    const int MAX_ENTRIES = 2000;
     do {
         CascFileEntry entry;
         entry.name = findData.szPlainName ? findData.szPlainName : findData.szFileName;
@@ -105,7 +108,8 @@ std::vector<CascFileEntry> LocalCascStorage::listDirectory(const std::string& pa
         entry.size = findData.FileSize;
         entry.encodingKey = ekeyToHex(findData.EKey);
         entries.push_back(std::move(entry));
-    } while (CascFindNextFile(hFind, &findData));
+        count++;
+    } while (count < MAX_ENTRIES && CascFindNextFile(hFind, &findData));
 
     return entries;
 }

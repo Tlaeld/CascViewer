@@ -2,28 +2,33 @@ import SwiftUI
 
 struct FileTreeView: View {
     @EnvironmentObject var appState: AppState
-    @State private var topLevelDirs: [String] = []
 
     var body: some View {
         List {
-            if let storage = appState.currentStorage, !storage.allEntries.isEmpty {
-                Section("Directories") {
-                    ForEach(topLevelDirs, id: \.self) { dir in
-                        HStack(spacing: 6) {
-                            Image(systemName: "folder.fill")
-                                .foregroundColor(.accentColor)
-                                .font(.system(size: 12))
-                            Text(dir)
-                                .font(.system(size: 12))
-                            Spacer()
-                        }
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            Task {
-                                await storage.listDirectory(path: dir)
+            if let storage = appState.currentStorage {
+                if !storage.entries.isEmpty || storage.currentPath.isEmpty {
+                    Section("Directories") {
+                        ForEach(directories(from: storage.entries), id: \.self) { dir in
+                            HStack(spacing: 6) {
+                                Image(systemName: "folder.fill")
+                                    .foregroundColor(.accentColor)
+                                    .font(.system(size: 12))
+                                Text(dir.isEmpty ? "(root)" : dir)
+                                    .font(.system(size: 12))
+                                Spacer()
+                            }
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                Task {
+                                    await storage.listDirectory(path: dir)
+                                }
                             }
                         }
                     }
+                } else {
+                    Text("No entries")
+                        .foregroundColor(.secondary)
+                        .font(.callout)
                 }
             } else {
                 Text("Open a storage to browse")
@@ -32,28 +37,22 @@ struct FileTreeView: View {
             }
         }
         .listStyle(.sidebar)
-        .onAppear {
-            if let entries = appState.currentStorage?.allEntries {
-                topLevelDirs = Self.topLevelDirs(from: entries)
-            }
-        }
-        .onChange(of: appState.currentStorage?.allEntries) { _ in
-            if let entries = appState.currentStorage?.allEntries {
-                topLevelDirs = Self.topLevelDirs(from: entries)
-            } else {
-                topLevelDirs = []
-            }
-        }
     }
 
-    private nonisolated static func topLevelDirs(from entries: [CASCFileEntry]) -> [String] {
+    private func directories(from entries: [CASCFileEntry]) -> [String] {
         var dirs = Set<String>()
         for entry in entries {
-            let components = entry.fullPath.split(separator: "/", omittingEmptySubsequences: true)
-            if let first = components.first {
-                dirs.insert(String(first))
+            let path = entry.fullPath
+            let nsPath = path as NSString
+            let separators = CharacterSet(charactersIn: "/\\")
+            let lastSep = nsPath.rangeOfCharacter(from: separators, options: .backwards)
+            if lastSep.location != NSNotFound {
+                let dir = nsPath.substring(to: lastSep.location)
+                dirs.insert(dir)
+            } else {
+                dirs.insert("")
             }
         }
-        return dirs.sorted()
+        return Array(dirs).sorted()
     }
 }
