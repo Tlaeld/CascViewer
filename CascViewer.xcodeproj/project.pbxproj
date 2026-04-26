@@ -159,7 +159,7 @@
 				3F0CE6201AD76D5461554E67 /* Info.plist */,
 			);
 			name = CascViewerTests;
-			path = CascViewer/Tests;
+			path = CascViewerTests;
 			sourceTree = "<group>";
 		};
 		81EC0ECE6621CE70FBAA2E98 /* CASCBridge */ = {
@@ -375,7 +375,6 @@
 				GENERATE_INFOPLIST_FILE = NO;
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
-					"$(SRCROOT)/CascLib/src",
 					"$(SRCROOT)/CascViewer/Core/CASCBridge/include",
 				);
 				INFOPLIST_FILE = CascViewer/Resources/Info.plist;
@@ -511,11 +510,12 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = CascViewer/Tests/Info.plist;
+				INFOPLIST_FILE = CascViewerTests/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.cascviewer.CascViewerTests;
 				SDKROOT = macosx;
+				SWIFT_OBJC_INTEROP_MODE = objcxx;
 				SWIFT_VERSION = 5.9;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/CascViewer.app/Contents/MacOS/CascViewer";
 			};
@@ -526,11 +526,12 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = CascViewer/Tests/Info.plist;
+				INFOPLIST_FILE = CascViewerTests/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.cascviewer.CascViewerTests;
 				SDKROOT = macosx;
+				SWIFT_OBJC_INTEROP_MODE = objcxx;
 				SWIFT_VERSION = 5.9;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/CascViewer.app/Contents/MacOS/CascViewer";
 			};
@@ -546,8 +547,6 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				HEADER_SEARCH_PATHS = (
-					"$(inherited)",
-					"$(SRCROOT)/CascLib/src",
 					"$(SRCROOT)/CascViewer/Core/CASCBridge/include",
 				);
 				INFOPLIST_FILE = CascViewer/Resources/Info.plist;

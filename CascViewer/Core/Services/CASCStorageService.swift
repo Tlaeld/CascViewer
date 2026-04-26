@@ -1,5 +1,5 @@
 import Foundation
 
-class CASCStorageService {
+final class CASCStorageService {
     // Placeholder
 }

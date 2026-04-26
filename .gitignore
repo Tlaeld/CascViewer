@@ -1,0 +1,27 @@
+# Xcode
+xcuserdata/
+*.xcscmblueprint
+*.xccheckout
+*.moved-aside
+DerivedData/
+build/
+*.hmap
+*.ipa
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Swift Package Manager
+.build/
+Package.resolved
+
+# CocoaPods
+Pods/
+
+# Carthage
+Carthage/Build/
+
+# Archives
+*.xcarchive
