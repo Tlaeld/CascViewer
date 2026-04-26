@@ -1,8 +1,10 @@
 #pragma once
 #include "CascTypes.h"
-#include <functional>
+#include <cstdint>
 #include <expected>
+#include <functional>
 #include <string>
+#include <vector>
 
 namespace CascBridge {
 
@@ -22,7 +24,7 @@ public:
     virtual std::expected<void, CascError>
         extractFile(const std::string& cascPath,
                     const std::string& destPath,
-                    const ProgressCallback& progress = nullptr) = 0;
+                    const ProgressCallback& progress) = 0;
 
     virtual std::expected<std::vector<uint8_t>, CascError>
         readFile(const std::string& cascPath) = 0;

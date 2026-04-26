@@ -26,7 +26,6 @@ struct CascStorageInfo {
 };
 
 enum class CascError {
-    None,
     InvalidPath,
     StorageNotFound,
     StorageCorrupted,
