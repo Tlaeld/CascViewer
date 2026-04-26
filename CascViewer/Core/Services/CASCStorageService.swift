@@ -10,24 +10,24 @@ final class CASCStorageService: ObservableObject {
     @Published var isLoading = false
     @Published var error: CASCError?
 
-    private var storage: CascBridge.CascStorageHandle
+    var handle: CascBridge.CascStorageHandle
     private let queue = DispatchQueue(label: "casc.storage", qos: .userInitiated)
 
     init(storage: CascBridge.CascStorageHandle) {
-        self.storage = storage
+        self.handle = storage
     }
 
     deinit {
-        storage.close()
+        handle.close()
     }
 
     func openLocal(path: String) async {
         isLoading = true
         error = nil
-        var handle = storage
+        var localHandle = handle
         let result = await withCheckedContinuation { (continuation: CheckedContinuation<CascBridge.CascError, Never>) in
             queue.async {
-                let result = handle.open(std.string(path))
+                let result = localHandle.open(std.string(path))
                 continuation.resume(returning: result)
             }
         }
@@ -44,10 +44,10 @@ final class CASCStorageService: ObservableObject {
         isLoading = true
         error = nil
         let config = "\(product):\(region)"
-        var handle = storage
+        var localHandle = handle
         let result = await withCheckedContinuation { (continuation: CheckedContinuation<CascBridge.CascError, Never>) in
             queue.async {
-                let result = handle.open(std.string(config))
+                let result = localHandle.open(std.string(config))
                 continuation.resume(returning: result)
             }
         }
@@ -62,11 +62,11 @@ final class CASCStorageService: ObservableObject {
 
     func listDirectory(path: String) async {
         isLoading = true
-        var handle = storage
+        var localHandle = handle
         let (items, err) = await withCheckedContinuation { (continuation: CheckedContinuation<([CascBridge.CascFileEntry], CascBridge.CascError), Never>) in
             queue.async {
                 var error = CascBridge.CascError.None
-                let rawEntries = handle.listDirectory(std.string(path), &error)
+                let rawEntries = localHandle.listDirectory(std.string(path), &error)
                 let entries = (0..<rawEntries.size()).map { rawEntries[$0] }
                 continuation.resume(returning: (entries, error))
             }
@@ -89,18 +89,18 @@ final class CASCStorageService: ObservableObject {
     }
 
     func close() {
-        storage.close()
+        handle.close()
         entries = []
         currentPath = ""
         storageInfo = nil
     }
 
     private func refreshStorageInfo() async {
-        var handle = storage
+        var localHandle = handle
         let (info, err) = await withCheckedContinuation { (continuation: CheckedContinuation<(CascBridge.CascStorageInfo, CascBridge.CascError), Never>) in
             queue.async {
                 var error = CascBridge.CascError.None
-                let info = handle.getStorageInfo(&error)
+                let info = localHandle.getStorageInfo(&error)
                 continuation.resume(returning: (info, error))
             }
         }

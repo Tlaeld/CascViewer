@@ -14,7 +14,7 @@ struct FileListView: View {
             }
         }
         .sheet(isPresented: $showingExtractDialog) {
-            ExtractDialogView(entries: selectedEntries) { destination, preserveStructure in
+            ExtractDialogView(entries: selectedEntries) { destination, preserveStructure, overwriteExisting, openAfterExtract in
                 performExtract(to: destination, preserveStructure: preserveStructure)
             }
         }
@@ -59,8 +59,10 @@ struct FileListView: View {
             selection.removeAll()
         }
         .contextMenu(forSelectionType: CASCFileEntry.ID.self) { items in
-            Button("Extract to...") {
-                showingExtractDialog = true
+            if !items.isEmpty {
+                Button("Extract to...") {
+                    showingExtractDialog = true
+                }
             }
             Button("Copy Path") {
                 // Copy to clipboard
@@ -81,7 +83,14 @@ struct FileListView: View {
     }
 
     private func performExtract(to destination: URL, preserveStructure: Bool) {
-        guard let handle = appState.currentStorageHandle, !selectedEntries.isEmpty else { return }
+        guard let handle = appState.currentStorage?.handle else {
+            appState.errorMessage = "No storage is currently open."
+            return
+        }
+        guard !selectedEntries.isEmpty else {
+            appState.errorMessage = "No files selected for extraction."
+            return
+        }
         Task {
             let extractService = CASCExtractService(storage: handle)
             do {

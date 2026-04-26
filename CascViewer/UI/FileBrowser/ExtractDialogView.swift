@@ -2,10 +2,13 @@ import SwiftUI
 
 struct ExtractDialogView: View {
     let entries: [CASCFileEntry]
-    let onExtract: (URL, Bool) -> Void
+    let onExtract: (URL, Bool, Bool, Bool) -> Void
     @Environment(\.dismiss) private var dismiss
 
-    @State private var destination = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first!
+    @State private var destination: URL = {
+        FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first
+            ?? FileManager.default.temporaryDirectory
+    }()
     @State private var preserveStructure = true
     @State private var overwriteExisting = false
     @State private var openAfterExtract = false
@@ -34,7 +37,7 @@ struct ExtractDialogView: View {
                 Spacer()
                 Button("Cancel") { dismiss() }
                 Button("Extract") {
-                    onExtract(destination, preserveStructure)
+                    onExtract(destination, preserveStructure, overwriteExisting, openAfterExtract)
                     dismiss()
                 }
                 .buttonStyle(.borderedProminent)
