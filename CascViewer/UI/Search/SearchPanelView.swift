@@ -7,6 +7,7 @@ struct SearchPanelView: View {
     @State private var selectedTypes = Set<String>()
     @State private var results: [CASCFileEntry] = []
     @State private var isSearching = false
+    @State private var searchTask: Task<Void, Never>? = nil
 
     let fileTypes = ["BLP", "MDX", "MP3", "WAV", "TXT", "DBC"]
 
@@ -50,8 +51,15 @@ struct SearchPanelView: View {
             Divider()
 
             if isSearching {
-                ProgressView("Searching...")
-                    .padding()
+                ProgressOverlay(
+                    title: "Searching",
+                    message: "Looking for \"\(query)\"...",
+                    progress: results.isEmpty ? 0 : 0.5
+                ) {
+                    searchTask?.cancel()
+                    isSearching = false
+                }
+                .padding()
             }
 
             List(results) { entry in
@@ -69,27 +77,42 @@ struct SearchPanelView: View {
             Spacer()
         }
         .frame(minWidth: 400, minHeight: 500)
+        .onDisappear {
+            searchTask?.cancel()
+        }
     }
 
     private func performSearch() {
         guard let storage = appState.currentStorage else { return }
+        searchTask?.cancel()
         isSearching = true
         results = []
 
-        Task {
-            let searchService = CASCSearchService(storage: storage)
-            var searchResults = await searchService.search(query: query, in: storage.currentPath, useRegex: useRegex)
+        searchTask = Task {
+            do {
+                let searchService = CASCSearchService(storage: storage)
+                var searchResults = await searchService.search(query: query, in: storage.currentPath, useRegex: useRegex)
 
-            if !selectedTypes.isEmpty {
-                searchResults = searchResults.filter { entry in
-                    let ext = (entry.name as NSString).pathExtension.uppercased()
-                    return selectedTypes.contains(ext)
+                guard !Task.isCancelled else { return }
+
+                if !selectedTypes.isEmpty {
+                    searchResults = searchResults.filter { entry in
+                        let ext = (entry.name as NSString).pathExtension.uppercased()
+                        return selectedTypes.contains(ext)
+                    }
                 }
-            }
 
-            await MainActor.run {
-                results = searchResults
-                isSearching = false
+                guard !Task.isCancelled else { return }
+
+                await MainActor.run {
+                    results = searchResults
+                    isSearching = false
+                }
+            } catch {
+                await MainActor.run {
+                    isSearching = false
+                    appState.errorMessage = "Search failed: \(error.localizedDescription)"
+                }
             }
         }
     }
