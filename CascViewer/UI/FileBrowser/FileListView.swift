@@ -52,6 +52,9 @@ struct FileListView: View {
                 TableRow(entry)
             }
         }
+        .onAppear {
+            entryMap = Dictionary(uniqueKeysWithValues: storage.entries.map { ($0.id, $0) })
+        }
         .onChange(of: selection) { newSelection in
             if let id = newSelection.first,
                let entry = entryMap[id] {
