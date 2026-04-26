@@ -46,21 +46,25 @@ struct ToolbarView: View {
             switch result {
             case .success(let urls):
                 if let url = urls.first {
-                    let didStartAccessing = url.startAccessingSecurityScopedResource()
-                    defer {
-                        if didStartAccessing {
-                            url.stopAccessingSecurityScopedResource()
-                        }
-                    }
                     Task {
+                        let didStartAccessing = url.startAccessingSecurityScopedResource()
+                        defer {
+                            if didStartAccessing {
+                                url.stopAccessingSecurityScopedResource()
+                            }
+                        }
                         let storage = CascBridge.CascStorageHandle.createLocal()
                         let service = CASCStorageService(storage: storage)
                         await service.openLocal(path: url.path)
                         if service.error == nil {
-                            appState.currentStorage?.close()
-                            appState.currentStorage = service
+                            await MainActor.run {
+                                appState.currentStorage?.close()
+                                appState.currentStorage = service
+                            }
                         } else {
-                            appState.errorMessage = service.error?.localizedDescription
+                            await MainActor.run {
+                                appState.errorMessage = service.error?.localizedDescription
+                            }
                         }
                     }
                 }
