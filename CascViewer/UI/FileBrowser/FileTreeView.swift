@@ -22,15 +22,20 @@ struct FileTreeView: View {
         }
         .listStyle(.sidebar)
         .onChange(of: appState.currentStorage?.entries) { _ in
-            if let entries = appState.currentStorage?.entries {
-                directories = extractDirectories(from: entries).sorted()
-            } else {
+            guard let entries = appState.currentStorage?.entries else {
                 directories = []
+                return
+            }
+            Task.detached(priority: .userInitiated) {
+                let result = Self.extractDirectories(from: entries)
+                await MainActor.run {
+                    directories = result.sorted()
+                }
             }
         }
     }
 
-    private func extractDirectories(from entries: [CASCFileEntry]) -> Set<String> {
+    private nonisolated static func extractDirectories(from entries: [CASCFileEntry]) -> Set<String> {
         var dirs = Set<String>()
         for entry in entries {
             let path = entry.fullPath

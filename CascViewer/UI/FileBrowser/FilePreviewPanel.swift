@@ -2,6 +2,7 @@ import SwiftUI
 
 struct FilePreviewPanel: View {
     @EnvironmentObject var appState: AppState
+    @State private var selectedEntry: CASCFileEntry?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -11,8 +12,7 @@ struct FilePreviewPanel: View {
 
             Divider()
 
-            if let storage = appState.currentStorage,
-               let entry = storage.entries.first(where: { $0.fullPath == appState.selectedPath }) {
+            if let entry = selectedEntry {
                 VStack(alignment: .leading, spacing: 6) {
                     InfoRow(label: "Name", value: entry.name)
                     InfoRow(label: "Path", value: entry.fullPath)
@@ -37,6 +37,23 @@ struct FilePreviewPanel: View {
             Spacer()
         }
         .background(Color(NSColor.controlBackgroundColor))
+        .onChange(of: appState.selectedPath) { _ in
+            updateSelectedEntry()
+        }
+        .onChange(of: appState.currentStorage?.entries) { _ in
+            updateSelectedEntry()
+        }
+        .onAppear {
+            updateSelectedEntry()
+        }
+    }
+
+    private func updateSelectedEntry() {
+        guard let storage = appState.currentStorage else {
+            selectedEntry = nil
+            return
+        }
+        selectedEntry = storage.entries.first(where: { $0.fullPath == appState.selectedPath })
     }
 }
 

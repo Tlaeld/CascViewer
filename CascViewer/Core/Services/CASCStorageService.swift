@@ -22,6 +22,7 @@ final class CASCStorageService: ObservableObject {
     }
 
     func openLocal(path: String) async {
+        guard !isLoading else { return }
         isLoading = true
         error = nil
         var localHandle = handle
@@ -41,6 +42,7 @@ final class CASCStorageService: ObservableObject {
     }
 
     func openOnline(product: String, region: String) async {
+        guard !isLoading else { return }
         isLoading = true
         error = nil
         let config = "\(product):\(region)"
@@ -61,29 +63,31 @@ final class CASCStorageService: ObservableObject {
     }
 
     func listDirectory(path: String) async {
+        guard !isLoading else { return }
         isLoading = true
         var localHandle = handle
-        let (items, err) = await withCheckedContinuation { (continuation: CheckedContinuation<([CascBridge.CascFileEntry], CascBridge.CascError), Never>) in
+        let (newEntries, err) = await withCheckedContinuation { (continuation: CheckedContinuation<([CASCFileEntry], CascBridge.CascError), Never>) in
             queue.async {
                 var error = CascBridge.CascError.None
                 let rawEntries = localHandle.listDirectory(std.string(path), &error)
-                let entries = (0..<rawEntries.size()).map { rawEntries[$0] }
-                continuation.resume(returning: (entries, error))
+                let mapped = (0..<rawEntries.size()).map { i in
+                    let entry = rawEntries[i]
+                    return CASCFileEntry(
+                        name: String(entry.name),
+                        fullPath: String(entry.fullPath),
+                        type: entry.type == .File ? .file : .directory,
+                        size: entry.size,
+                        encodingKey: String(entry.encodingKey)
+                    )
+                }
+                continuation.resume(returning: (mapped, error))
             }
         }
         isLoading = false
         if err != .None {
             self.error = mapError(err)
         } else {
-            self.entries = items.map { entry in
-                CASCFileEntry(
-                    name: String(entry.name),
-                    fullPath: String(entry.fullPath),
-                    type: entry.type == .File ? .file : .directory,
-                    size: entry.size,
-                    encodingKey: String(entry.encodingKey)
-                )
-            }
+            self.entries = newEntries
             self.currentPath = path
         }
     }

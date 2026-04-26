@@ -6,6 +6,7 @@ struct FileListView: View {
     @EnvironmentObject var appState: AppState
     @State private var selection = Set<CASCFileEntry.ID>()
     @State private var showingExtractDialog = false
+    @State private var entryMap: [CASCFileEntry.ID: CASCFileEntry] = [:]
 
     var body: some View {
         Group {
@@ -53,12 +54,15 @@ struct FileListView: View {
         }
         .onChange(of: selection) { newSelection in
             if let id = newSelection.first,
-               let entry = storage.entries.first(where: { $0.id == id }) {
+               let entry = entryMap[id] {
                 appState.selectedPath = entry.fullPath
+            } else {
+                appState.selectedPath = ""
             }
         }
-        .onChange(of: storage.entries) { _ in
+        .onChange(of: storage.entries) { newEntries in
             selection.removeAll()
+            entryMap = Dictionary(uniqueKeysWithValues: newEntries.map { ($0.id, $0) })
         }
         .contextMenu(forSelectionType: CASCFileEntry.ID.self) { items in
             if !items.isEmpty {
@@ -71,7 +75,7 @@ struct FileListView: View {
             }
         } primaryAction: { items in
             if let id = items.first,
-               let entry = storage.entries.first(where: { $0.id == id }),
+               let entry = entryMap[id],
                !entry.isDirectory,
                entry.name.lowercased().hasSuffix(".blp") {
                 Task {
@@ -96,8 +100,7 @@ struct FileListView: View {
     }
 
     private var selectedEntries: [CASCFileEntry] {
-        guard let storage = appState.currentStorage else { return [] }
-        return storage.entries.filter { selection.contains($0.id) }
+        selection.compactMap { entryMap[$0] }
     }
 
     private func performExtract(to destination: URL, preserveStructure: Bool) {
