@@ -5,33 +5,65 @@ struct FilePreviewPanel: View {
     @State private var selectedEntry: CASCFileEntry?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Details")
-                .font(.headline)
-                .padding(.horizontal)
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Text("Details")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(.primary)
+                Spacer()
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(Color(NSColor.controlBackgroundColor))
 
             Divider()
 
             if let entry = selectedEntry {
-                VStack(alignment: .leading, spacing: 6) {
-                    InfoRow(label: "Name", value: entry.name)
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(spacing: 8) {
+                        Image(systemName: entry.isDirectory ? "folder.fill" : "doc")
+                            .font(.system(size: 28))
+                            .foregroundColor(entry.isDirectory ? .accentColor : .secondary)
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(entry.name)
+                                .font(.system(size: 13, weight: .semibold))
+                                .lineLimit(1)
+                            Text(entry.isDirectory ? "Folder" : "File")
+                                .font(.system(size: 11))
+                                .foregroundColor(.secondary)
+                        }
+
+                        Spacer()
+                    }
+
+                    Divider()
+
                     InfoRow(label: "Path", value: entry.fullPath)
                     InfoRow(label: "Size", value: entry.formattedSize)
-                    InfoRow(label: "Type", value: entry.isDirectory ? "Directory" : "File")
+                    InfoRow(label: "Encoding Key", value: entry.encodingKey)
 
                     if entry.name.lowercased().hasSuffix(".blp") {
                         Button("Open BLP Viewer") {
                             // Open BLP viewer window — Task 14
                         }
                         .buttonStyle(.borderedProminent)
-                        .padding(.top, 8)
+                        .controlSize(.small)
+                        .padding(.top, 4)
                     }
                 }
-                .padding(.horizontal)
+                .padding(12)
             } else {
-                Text("Select a file to see details")
-                    .foregroundColor(.secondary)
-                    .padding()
+                VStack(spacing: 8) {
+                    Image(systemName: "doc.text.magnifyingglass")
+                        .font(.system(size: 32))
+                        .foregroundColor(.secondary.opacity(0.5))
+                    Text("Select a file to see details")
+                        .font(.system(size: 12))
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding()
             }
 
             Spacer()
@@ -62,14 +94,15 @@ struct InfoRow: View {
     let value: String
 
     var body: some View {
-        HStack(alignment: .top) {
+        HStack(alignment: .top, spacing: 8) {
             Text(label + ":")
-                .font(.caption)
+                .font(.system(size: 11, weight: .medium))
                 .foregroundColor(.secondary)
-                .frame(width: 60, alignment: .leading)
+                .frame(width: 80, alignment: .leading)
             Text(value)
-                .font(.caption)
-                .lineLimit(2)
+                .font(.system(size: 11))
+                .lineLimit(3)
+                .textSelection(.enabled)
             Spacer()
         }
     }

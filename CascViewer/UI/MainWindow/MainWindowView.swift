@@ -16,7 +16,11 @@ struct MainWindowView: View {
                     .frame(minWidth: 150, idealWidth: sidebarWidth, maxWidth: 400)
 
                 VSplitView {
-                    FileListView()
+                    VStack(spacing: 0) {
+                        BreadcrumbView()
+                        Divider()
+                        FileListView()
+                    }
 
                     if inspectorVisible {
                         FilePreviewPanel()

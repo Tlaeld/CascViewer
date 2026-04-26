@@ -6,6 +6,7 @@ import CascBridge
 final class CASCStorageService: ObservableObject {
     @Published var currentPath: String = ""
     @Published var entries: [CASCFileEntry] = []
+    @Published var allEntries: [CASCFileEntry] = []
     @Published var storageInfo: CASCStorageInfo?
     @Published var isLoading = false
     @Published var error: CASCError?
@@ -87,6 +88,9 @@ final class CASCStorageService: ObservableObject {
         if err != .None {
             self.error = mapError(err)
         } else {
+            if path.isEmpty {
+                self.allEntries = newEntries
+            }
             self.entries = newEntries
             self.currentPath = path
         }
@@ -95,6 +99,7 @@ final class CASCStorageService: ObservableObject {
     func close() {
         handle.close()
         entries = []
+        allEntries = []
         currentPath = ""
         storageInfo = nil
     }

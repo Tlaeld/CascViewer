@@ -77,6 +77,7 @@
 		74EE42895653FED52D9F0337C6DAADEE /* FileTreeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09735D48B9B53C7CD4B0B5A385536583 /* FileTreeView.swift */; };
 		9353117A4C9C9675F7827DEA28AA0032 /* FileListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DE766F954D9B014A10A4A372929444F /* FileListView.swift */; };
 		462578381ED52C1C7CF09D6739A38542 /* FilePreviewPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CE0B9866ABEC28A52AD9DA460D84BA2 /* FilePreviewPanel.swift */; };
+		4B6F460FA75143308C4CD846F8B9C1D8 /* BreadcrumbView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 651C675C09DA4EC99F204D3911B97C70 /* BreadcrumbView.swift */; };
 		90A4C1DB5D644463A144BB3C132F7863 /* ExtractDialogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A8215F4B2E848028DCC8338D668EE63 /* ExtractDialogView.swift */; };
 /* End PBXBuildFile section */
 
@@ -195,6 +196,7 @@
 		09735D48B9B53C7CD4B0B5A385536583 /* FileTreeView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FileTreeView.swift; sourceTree = "<group>"; };
 		9DE766F954D9B014A10A4A372929444F /* FileListView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FileListView.swift; sourceTree = "<group>"; };
 		1CE0B9866ABEC28A52AD9DA460D84BA2 /* FilePreviewPanel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FilePreviewPanel.swift; sourceTree = "<group>"; };
+		651C675C09DA4EC99F204D3911B97C70 /* BreadcrumbView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BreadcrumbView.swift; sourceTree = "<group>"; };
 		1A8215F4B2E848028DCC8338D668EE63 /* ExtractDialogView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ExtractDialogView.swift; sourceTree = "<group>"; };
 		c1c7d93268ec4530b5e3690592b665bc /* SearchPanelView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SearchPanelView.swift; sourceTree = "<group>"; };
 		947a1fea18a94f38bc8292a69a7a5d90 /* ProgressOverlay.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ProgressOverlay.swift; sourceTree = "<group>"; };
@@ -394,6 +396,7 @@
 				09735D48B9B53C7CD4B0B5A385536583 /* FileTreeView.swift */,
 				9DE766F954D9B014A10A4A372929444F /* FileListView.swift */,
 				1CE0B9866ABEC28A52AD9DA460D84BA2 /* FilePreviewPanel.swift */,
+				651C675C09DA4EC99F204D3911B97C70 /* BreadcrumbView.swift */,
 				1A8215F4B2E848028DCC8338D668EE63 /* ExtractDialogView.swift */,
 			);
 			name = FileBrowser;
@@ -657,6 +660,7 @@
 			74EE42895653FED52D9F0337C6DAADEE /* FileTreeView.swift in Sources */,
 			9353117A4C9C9675F7827DEA28AA0032 /* FileListView.swift in Sources */,
 			462578381ED52C1C7CF09D6739A38542 /* FilePreviewPanel.swift in Sources */,
+			4B6F460FA75143308C4CD846F8B9C1D8 /* BreadcrumbView.swift in Sources */,
 			90A4C1DB5D644463A144BB3C132F7863 /* ExtractDialogView.swift in Sources */,
 			61cc49ff07334b63a1f9de517f83efda /* SearchPanelView.swift in Sources */,
 			3bf7e1d0aaed40008075e0142d66e6e4 /* ProgressOverlay.swift in Sources */,
