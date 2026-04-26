@@ -1,6 +1,8 @@
 #include "LocalCascStorage.h"
+#include <algorithm>
 #include <cstdio>
 #include <cstring>
+#include <limits>
 
 namespace CascBridge {
 
@@ -68,6 +70,11 @@ std::expected<std::vector<CascFileEntry>, CascError> LocalCascStorage::listDirec
         return std::unexpected(CascError::StorageNotFound);
     }
 
+    struct FindCloser {
+        HANDLE h;
+        ~FindCloser() { if (h != INVALID_HANDLE_VALUE) CascFindClose(h); }
+    };
+
     std::string mask = path.empty() ? "*" : path + "\\*";
     CASC_FIND_DATA findData = {};
     HANDLE hFind = CascFindFirstFile(hStorage, mask.c_str(), &findData, nullptr);
@@ -78,6 +85,8 @@ std::expected<std::vector<CascFileEntry>, CascError> LocalCascStorage::listDirec
         }
         return std::unexpected(mapCascError(error));
     }
+
+    FindCloser closer{hFind};
 
     std::vector<CascFileEntry> entries;
     do {
@@ -90,7 +99,6 @@ std::expected<std::vector<CascFileEntry>, CascError> LocalCascStorage::listDirec
         entries.push_back(std::move(entry));
     } while (CascFindNextFile(hFind, &findData));
 
-    CascFindClose(hFind);
     return entries;
 }
 
@@ -117,15 +125,24 @@ std::expected<std::vector<uint8_t>, CascError> LocalCascStorage::readFile(const 
     }
 
     size_t fileSize = static_cast<size_t>(fileSize64);
-    std::vector<uint8_t> buffer(fileSize);
+    std::vector<uint8_t> buffer;
+    try {
+        buffer.resize(fileSize);
+    } catch (const std::bad_alloc&) {
+        CascCloseFile(hFile);
+        return std::unexpected(CascError::ReadError);
+    }
 
-    if (fileSize > 0) {
+    constexpr size_t CHUNK_SIZE = static_cast<size_t>(std::numeric_limits<DWORD>::max());
+    size_t offset = 0;
+    while (offset < fileSize) {
+        DWORD toRead = static_cast<DWORD>(std::min(CHUNK_SIZE, fileSize - offset));
         DWORD bytesRead = 0;
-        if (!CascReadFile(hFile, buffer.data(), static_cast<DWORD>(fileSize), &bytesRead)) {
+        if (!CascReadFile(hFile, buffer.data() + offset, toRead, &bytesRead)) {
             CascCloseFile(hFile);
             return std::unexpected(CascError::ReadError);
         }
-        buffer.resize(bytesRead);
+        offset += bytesRead;
     }
 
     CascCloseFile(hFile);
@@ -136,30 +153,55 @@ std::expected<void, CascError> LocalCascStorage::extractFile(const std::string& 
                                                                const std::string& destPath,
                                                                const ProgressCallback& progress)
 {
-    auto data = readFile(cascPath);
-    if (!data) {
-        return std::unexpected(data.error());
+    if (hStorage == nullptr) {
+        return std::unexpected(CascError::StorageNotFound);
+    }
+
+    HANDLE hFile = nullptr;
+    if (!CascOpenFile(hStorage, cascPath.c_str(), CASC_LOCALE_ALL, CASC_OPEN_BY_NAME, &hFile)) {
+        return std::unexpected(mapCascError(GetCascError()));
     }
 
     FILE* fp = std::fopen(destPath.c_str(), "wb");
     if (fp == nullptr) {
+        CascCloseFile(hFile);
         return std::unexpected(CascError::InvalidPath);
     }
 
-    if (!data->empty()) {
-        size_t written = std::fwrite(data->data(), 1, data->size(), fp);
-        if (written != data->size()) {
+    ULONGLONG fileSize64 = 0;
+    if (!CascGetFileSize64(hFile, &fileSize64)) {
+        CascCloseFile(hFile);
+        std::fclose(fp);
+        return std::unexpected(CascError::ReadError);
+    }
+
+    constexpr size_t BUFFER_SIZE = 1024 * 1024;  // 1 MB chunks
+    std::vector<uint8_t> chunk(BUFFER_SIZE);
+    uint64_t totalRead = 0;
+
+    while (totalRead < fileSize64) {
+        DWORD toRead = static_cast<DWORD>(std::min(BUFFER_SIZE, static_cast<size_t>(fileSize64 - totalRead)));
+        DWORD bytesRead = 0;
+        if (!CascReadFile(hFile, chunk.data(), toRead, &bytesRead)) {
+            CascCloseFile(hFile);
             std::fclose(fp);
             return std::unexpected(CascError::ReadError);
         }
+        if (std::fwrite(chunk.data(), 1, bytesRead, fp) != bytesRead) {
+            CascCloseFile(hFile);
+            std::fclose(fp);
+            return std::unexpected(CascError::ReadError);
+        }
+        totalRead += bytesRead;
+        if (progress) {
+            progress(static_cast<int64_t>(totalRead), static_cast<int64_t>(fileSize64));
+        }
     }
 
-    std::fclose(fp);
-
-    if (progress) {
-        progress(static_cast<int64_t>(data->size()), static_cast<int64_t>(data->size()));
+    CascCloseFile(hFile);
+    if (std::fclose(fp) != 0) {
+        return std::unexpected(CascError::ReadError);
     }
-
     return {};
 }
 
