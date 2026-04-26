@@ -4,53 +4,55 @@ import CascBridge
 
 final class IntegrationTests: XCTestCase {
     @MainActor
-    func testAppLaunch() {
+    func testAppStateStorageBinding() {
         let appState = AppState()
-        XCTAssertNil(appState.currentStorage)
-        XCTAssertEqual(appState.selectedPath, "")
-        XCTAssertFalse(appState.isLoading)
-    }
-
-    @MainActor
-    func testServiceLifecycle() async {
         let storage = CascBridge.CascStorageHandle.createLocal()
         let service = CASCStorageService(storage: storage)
 
-        // Initial state
-        XCTAssertTrue(service.entries.isEmpty)
-        XCTAssertNil(service.storageInfo)
+        appState.currentStorage = service
+        XCTAssertNotNil(appState.currentStorage)
 
-        // Open invalid storage
-        await service.openLocal(path: "/nonexistent/path/that/does/not/exist")
-        XCTAssertNotNil(service.error)
-
-        // Close resets state
-        service.close()
-        XCTAssertTrue(service.entries.isEmpty)
-        XCTAssertNil(service.storageInfo)
-    }
-
-    func testBLPDecodeResultModel() {
-        let frame = BLPDecodeResult.BLPFrame(width: 256, height: 256, imageData: Data(repeating: 0, count: 256 * 256 * 4))
-        XCTAssertEqual(frame.width, 256)
-        XCTAssertEqual(frame.height, 256)
-        XCTAssertEqual(frame.imageData.count, 256 * 256 * 4)
+        service.entries = [
+            CASCFileEntry(name: "test.blp", fullPath: "test.blp", type: .file, size: 100, encodingKey: "abc")
+        ]
+        XCTAssertEqual(appState.currentStorage?.entries.count, 1)
     }
 
     @MainActor
-    func testSearchWithEmptyEntries() async {
+    func testStorageSearchIntegration() async {
         let storage = CascBridge.CascStorageHandle.createLocal()
         let storageService = CASCStorageService(storage: storage)
         let searchService = CASCSearchService(storage: storageService)
 
+        storageService.entries = [
+            CASCFileEntry(name: "tex1.blp", fullPath: "a/tex1.blp", type: .file, size: 100, encodingKey: ""),
+            CASCFileEntry(name: "tex2.blp", fullPath: "a/tex2.blp", type: .file, size: 100, encodingKey: ""),
+            CASCFileEntry(name: "model.mdx", fullPath: "a/model.mdx", type: .file, size: 100, encodingKey: "")
+        ]
+
         let results = await searchService.search(query: "*.blp", in: "", useRegex: false)
-        XCTAssertTrue(results.isEmpty)
+        XCTAssertEqual(results.count, 2)
     }
 
-    func testCASCFileEntryEquality() {
-        let entry1 = CASCFileEntry(name: "test.blp", fullPath: "a/test.blp", type: .file, size: 100, encodingKey: "abc")
-        let entry2 = CASCFileEntry(name: "test.blp", fullPath: "a/test.blp", type: .file, size: 100, encodingKey: "abc")
-        XCTAssertEqual(entry1, entry2)
-        XCTAssertEqual(entry1.hashValue, entry2.hashValue)
+    @MainActor
+    func testBLPDecodeIntegration() async {
+        let coordinator = BLPDecoderCoordinator()
+
+        // Empty data should throw
+        do {
+            _ = try await coordinator.decode(data: Data())
+            XCTFail("Expected decoding error for empty data")
+        } catch {
+            // Expected
+        }
+    }
+
+    @MainActor
+    func testExtractServiceLifecycle() {
+        let storage = CascBridge.CascStorageHandle.createLocal()
+        let extractService = CASCExtractService(storage: storage)
+
+        XCTAssertFalse(extractService.isExtracting)
+        XCTAssertEqual(extractService.progress, 0)
     }
 }
