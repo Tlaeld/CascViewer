@@ -2,35 +2,18 @@ import SwiftUI
 
 struct FileTreeView: View {
     @EnvironmentObject var appState: AppState
-    @State private var expandedItems = Set<String>()
 
     var body: some View {
         List {
-            if let storage = appState.currentStorage {
-                ForEach(storage.entries.filter { $0.isDirectory }) { entry in
-                    DisclosureGroup(
-                        isExpanded: Binding(
-                            get: { expandedItems.contains(entry.fullPath) },
-                            set: { isExpanded in
-                                if isExpanded {
-                                    expandedItems.insert(entry.fullPath)
-                                    Task {
-                                        await storage.listDirectory(path: entry.fullPath)
-                                    }
-                                } else {
-                                    expandedItems.remove(entry.fullPath)
-                                }
+            if let storage = appState.currentStorage, !storage.entries.isEmpty {
+                let directories = extractDirectories(from: storage.entries)
+                ForEach(directories.sorted(), id: \.self) { dir in
+                    Label(dir.isEmpty ? "(root)" : dir, systemImage: "folder")
+                        .onTapGesture {
+                            Task {
+                                await storage.listDirectory(path: dir)
                             }
-                        )
-                    ) {
-                        // Nested entries would be shown here in a full implementation
-                        // For now, show a placeholder indicating children load on expand
-                        Text("(children load on expand)")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    } label: {
-                        Label(entry.name, systemImage: "folder")
-                    }
+                        }
                 }
             } else {
                 Text("Open a storage to browse")
@@ -38,5 +21,19 @@ struct FileTreeView: View {
             }
         }
         .listStyle(.sidebar)
+    }
+
+    private func extractDirectories(from entries: [CASCFileEntry]) -> Set<String> {
+        var dirs = Set<String>()
+        for entry in entries {
+            let path = entry.fullPath
+            if let lastSlash = path.lastIndex(of: "/") {
+                let dir = String(path[..<lastSlash])
+                dirs.insert(dir)
+            } else {
+                dirs.insert("")  // root-level files
+            }
+        }
+        return dirs
     }
 }
