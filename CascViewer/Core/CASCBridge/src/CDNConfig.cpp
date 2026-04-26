@@ -30,9 +30,11 @@ std::string CDNConfig::downloadText(const std::string& url)
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
 
     CURLcode res = curl_easy_perform(curl);
+    long httpCode = 0;
+    curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
     curl_easy_cleanup(curl);
 
-    if (res != CURLE_OK) {
+    if (res != CURLE_OK || httpCode != 200) {
         return {};
     }
     return response;

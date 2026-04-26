@@ -5,8 +5,23 @@
 #include <fstream>
 #include <sstream>
 #include <cstdlib>
+#include <cerrno>
+#include <algorithm>
+#include <filesystem>
 
 namespace CascBridge {
+
+static bool isValidHex(const std::string& s) {
+    return std::all_of(s.begin(), s.end(), [](unsigned char c) {
+        return std::isxdigit(c);
+    });
+}
+
+static bool isValidProductOrRegion(const std::string& s) {
+    return std::all_of(s.begin(), s.end(), [](unsigned char c) {
+        return std::isalnum(c) || c == '-';
+    });
+}
 
 static size_t writeFileCallback(void* contents, size_t size, size_t nmemb, void* userp)
 {
@@ -47,14 +62,19 @@ static bool ensureDirectoryRecursive(const std::string& path)
 static std::string getHomeDirectory()
 {
     const char* home = std::getenv("HOME");
-    if (home) {
-        return std::string(home);
+    if (!home || std::strlen(home) == 0) {
+        home = "/tmp";
     }
-    return {};
+    return std::string(home);
 }
 
 CDNCacheManager::CDNCacheManager(const std::string& product, const std::string& region)
 {
+    if (!isValidProductOrRegion(product) || !isValidProductOrRegion(region)) {
+        cacheRoot = "/tmp/invalid_casc_cache";
+        ensureDirectoryRecursive(cacheRoot);
+        return;
+    }
     std::string home = getHomeDirectory();
     cacheRoot = home + "/Library/Caches/CascViewer/cdn/" + product + "_" + region;
     ensureDirectoryRecursive(cacheRoot);
@@ -62,6 +82,9 @@ CDNCacheManager::CDNCacheManager(const std::string& product, const std::string& 
 
 std::string CDNCacheManager::chunkPath(const std::string& encodingKey) const
 {
+    if (!isValidHex(encodingKey)) {
+        return cacheRoot + "/invalid";
+    }
     if (encodingKey.size() < 2) {
         return cacheRoot + "/" + encodingKey;
     }
@@ -78,7 +101,7 @@ std::expected<void, CascError> CDNCacheManager::downloadChunk(const std::string&
 {
     std::FILE* fp = std::fopen(destPath.c_str(), "wb");
     if (!fp) {
-        return std::unexpected(CascError::NetworkError);
+        return std::unexpected(CascError::ReadError);
     }
 
     CURL* curl = curl_easy_init();
@@ -144,11 +167,7 @@ std::expected<std::vector<uint8_t>, CascError> CDNCacheManager::getChunk(const s
 
 void CDNCacheManager::clearCache()
 {
-    // Simple implementation: remove all files under cacheRoot
-    // A full recursive removal would be more robust, but this is a skeleton
-    std::string cmd = "rm -rf \"" + cacheRoot + "\"";
-    std::system(cmd.c_str());
-    ensureDirectoryRecursive(cacheRoot);
+    std::filesystem::remove_all(cacheRoot);
 }
 
 } // namespace CascBridge
