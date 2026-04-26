@@ -157,6 +157,14 @@ std::expected<void, CascError> LocalCascStorage::extractFile(const std::string& 
         return std::unexpected(CascError::StorageNotFound);
     }
 
+    constexpr size_t BUFFER_SIZE = 1024 * 1024;  // 1 MB chunks
+    std::vector<uint8_t> chunk;
+    try {
+        chunk.resize(BUFFER_SIZE);
+    } catch (const std::bad_alloc&) {
+        return std::unexpected(CascError::ReadError);
+    }
+
     HANDLE hFile = nullptr;
     if (!CascOpenFile(hStorage, cascPath.c_str(), CASC_LOCALE_ALL, CASC_OPEN_BY_NAME, &hFile)) {
         return std::unexpected(mapCascError(GetCascError()));
@@ -174,9 +182,6 @@ std::expected<void, CascError> LocalCascStorage::extractFile(const std::string& 
         std::fclose(fp);
         return std::unexpected(CascError::ReadError);
     }
-
-    constexpr size_t BUFFER_SIZE = 1024 * 1024;  // 1 MB chunks
-    std::vector<uint8_t> chunk(BUFFER_SIZE);
     uint64_t totalRead = 0;
 
     while (totalRead < fileSize64) {
