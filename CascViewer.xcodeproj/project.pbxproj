@@ -7,6 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		E5F6789012345678ABCDEF0123456789 /* BLPViewerWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6789012345678ABCDEF01 /* BLPViewerWindow.swift */; };
+		F6789012345678ABCDEF0123456789AB /* BLPViewerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F6789012345678ABCDEF0123 /* BLPViewerView.swift */; };
+		6789012345678ABCDEF0123456789ABC /* BLPAnimationControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3D4E5F6789012345678ABCDEF012345 /* BLPAnimationControls.swift */; };
+		789012345678ABCDEF0123456789ABCD /* BLPMipMapSelector.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4E5F6789012345678ABCDEF01234567 /* BLPMipMapSelector.swift */; };
 		61cc49ff07334b63a1f9de517f83efda /* SearchPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = c1c7d93268ec4530b5e3690592b665bc /* SearchPanelView.swift */; };
 		3bf7e1d0aaed40008075e0142d66e6e4 /* ProgressOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 947a1fea18a94f38bc8292a69a7a5d90 /* ProgressOverlay.swift */; };
 		01556AE5F71A5D284F8B8DAD /* CascRootFile_Install.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E685D742F7529CDB954EF066 /* CascRootFile_Install.cpp */; };
@@ -86,6 +90,10 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		A1B2C3D4E5F6789012345678ABCDEF01 /* BLPViewerWindow.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BLPViewerWindow.swift; sourceTree = "<group>"; };
+		B2C3D4E5F6789012345678ABCDEF0123 /* BLPViewerView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BLPViewerView.swift; sourceTree = "<group>"; };
+		C3D4E5F6789012345678ABCDEF012345 /* BLPAnimationControls.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BLPAnimationControls.swift; sourceTree = "<group>"; };
+		D4E5F6789012345678ABCDEF01234567 /* BLPMipMapSelector.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BLPMipMapSelector.swift; sourceTree = "<group>"; };
 		0080CDFEC7BC5E29ED5C8AD0 /* BLPDecoderCoordinator.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BLPDecoderCoordinator.swift; sourceTree = "<group>"; };
 		0B0D2D299F11CC119072C346 /* CASCStorageInfo.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CASCStorageInfo.swift; sourceTree = "<group>"; };
 		0CC9B29BD5D0439390006776 /* ArraySparse.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = ArraySparse.h; path = CascLib/src/common/ArraySparse.h; sourceTree = "<group>"; };
@@ -277,6 +285,10 @@
 		4EC8D351CC474622DDF2A948 /* BLPViewer */ = {
 			isa = PBXGroup;
 			children = (
+				A1B2C3D4E5F6789012345678ABCDEF01 /* BLPViewerWindow.swift */,
+				B2C3D4E5F6789012345678ABCDEF0123 /* BLPViewerView.swift */,
+				C3D4E5F6789012345678ABCDEF012345 /* BLPAnimationControls.swift */,
+				D4E5F6789012345678ABCDEF01234567 /* BLPMipMapSelector.swift */,
 			);
 			name = BLPViewer;
 			path = BLPViewer;
@@ -645,6 +657,10 @@
 			90A4C1DB5D644463A144BB3C132F7863 /* ExtractDialogView.swift in Sources */,
 			61cc49ff07334b63a1f9de517f83efda /* SearchPanelView.swift in Sources */,
 			3bf7e1d0aaed40008075e0142d66e6e4 /* ProgressOverlay.swift in Sources */,
+			E5F6789012345678ABCDEF0123456789 /* BLPViewerWindow.swift in Sources */,
+			F6789012345678ABCDEF0123456789AB /* BLPViewerView.swift in Sources */,
+			6789012345678ABCDEF0123456789ABC /* BLPAnimationControls.swift in Sources */,
+			789012345678ABCDEF0123456789ABCD /* BLPMipMapSelector.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

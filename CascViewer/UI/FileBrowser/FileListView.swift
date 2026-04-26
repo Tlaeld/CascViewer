@@ -1,4 +1,6 @@
 import SwiftUI
+import AppKit
+import CascBridge
 
 struct FileListView: View {
     @EnvironmentObject var appState: AppState
@@ -72,7 +74,23 @@ struct FileListView: View {
                let entry = storage.entries.first(where: { $0.id == id }),
                !entry.isDirectory,
                entry.name.lowercased().hasSuffix(".blp") {
-                // Open BLP viewer — will be implemented in Task 14
+                Task {
+                    var error = CascBridge.CascError.None
+                    let data = storage.handle.readFile(std.string(entry.fullPath), &error)
+                    guard error == .None, !data.isEmpty else { return }
+                    let blpData = Data(data.map { $0 })
+                    await MainActor.run {
+                        let window = NSWindow(
+                            contentRect: NSRect(x: 0, y: 0, width: 800, height: 600),
+                            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+                            backing: .buffered,
+                            defer: false
+                        )
+                        window.title = entry.name
+                        window.contentView = NSHostingView(rootView: BLPViewerWindow(fileName: entry.name, imageData: blpData))
+                        window.makeKeyAndOrderFront(nil)
+                    }
+                }
             }
         }
     }
