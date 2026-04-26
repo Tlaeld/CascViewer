@@ -90,10 +90,18 @@ final class CASCStorageService: ObservableObject {
         } else {
             if path.isEmpty {
                 self.allEntries = newEntries
+                // Root: show only top-level items to avoid rendering tens of thousands of rows
+                self.entries = newEntries.filter { Self.isTopLevel($0.fullPath) }
+            } else {
+                self.entries = newEntries
             }
-            self.entries = newEntries
             self.currentPath = path
         }
+    }
+
+    private static func isTopLevel(_ path: String) -> Bool {
+        let trimmed = path.trimmingCharacters(in: .init(charactersIn: "/\\"))
+        return !trimmed.contains("/") && !trimmed.contains("\\")
     }
 
     func close() {
