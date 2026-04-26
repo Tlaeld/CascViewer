@@ -58,7 +58,11 @@ CascError LocalCascStorage::open(const std::string& localPath)
     }
 
     if (!CascOpenStorage(localPath.c_str(), CASC_LOCALE_ALL, &hStorage)) {
-        return mapCascError(GetCascError());
+        DWORD error = GetCascError();
+        if (error == ERROR_FILE_NOT_FOUND || error == ERROR_PATH_NOT_FOUND) {
+            return CascError::StorageNotFound;
+        }
+        return mapCascError(error);
     }
 
     return CascError::None;
