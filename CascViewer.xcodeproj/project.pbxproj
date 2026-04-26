@@ -1,0 +1,597 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		02FF2989C83AE287D1D90A5D /* CascViewerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDC871518AA0909451F89C72 /* CascViewerApp.swift */; };
+		172E6E146C2A14931A56F7FF /* MainWindowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B6BCE37A9280E35F34F1154 /* MainWindowView.swift */; };
+		27FE348AC978ACE4040B10F6 /* CascViewerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFE966467010291B97D25EFC /* CascViewerTests.swift */; };
+		55A1A7B2DFFE07299CACDE22 /* CASCStorageService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EAF6700599D831770C9F3C8 /* CASCStorageService.swift */; };
+		5E95E0D8C88BC7847CFE36E7 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 65A12BF1D648414026DAF157 /* Cocoa.framework */; };
+		B3CFC4C0A529025B4BC55DCB /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D10EBED085E4B4286FDD9D9 /* AppState.swift */; };
+		D5E1827D062484478F8E4332 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 0F1CC7D58B59DC3D8363D661 /* Assets.xcassets */; };
+		DA778C1081073CC588816768 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 65A12BF1D648414026DAF157 /* Cocoa.framework */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		6A6444D9DB7B7B9016A8E586 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 32D2DC30BA1B1A342192574A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 940BFD6D6B55C0AC224C88A7;
+			remoteInfo = CascViewer;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		0EAF6700599D831770C9F3C8 /* CASCStorageService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CASCStorageService.swift; sourceTree = "<group>"; };
+		0F1CC7D58B59DC3D8363D661 /* Assets.xcassets */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		3F0CE6201AD76D5461554E67 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		5B6BCE37A9280E35F34F1154 /* MainWindowView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MainWindowView.swift; sourceTree = "<group>"; };
+		65A12BF1D648414026DAF157 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.0.sdk/System/Library/Frameworks/Cocoa.framework; sourceTree = DEVELOPER_DIR; };
+		9D10EBED085E4B4286FDD9D9 /* AppState.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
+		9DAFFCFDEF255B1550EC271E /* CascViewerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CascViewerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		AFE966467010291B97D25EFC /* CascViewerTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CascViewerTests.swift; sourceTree = "<group>"; };
+		B1DB78AD7C1635C26329BCA1 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		DDC871518AA0909451F89C72 /* CascViewerApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CascViewerApp.swift; sourceTree = "<group>"; };
+		E02F76D597B6627F7D920DBE /* CascViewer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CascViewer.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		9D672D123A68986BDF7A9161 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5E95E0D8C88BC7847CFE36E7 /* Cocoa.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BF40ADDAA7123031E4FDF0C1 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DA778C1081073CC588816768 /* Cocoa.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		08400918A96D5A1C897B3FA8 /* src */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = src;
+			path = src;
+			sourceTree = "<group>";
+		};
+		0B9CF068F2FCB597BC499CC6 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Models;
+			path = Models;
+			sourceTree = "<group>";
+		};
+		1ACDB31B1FB8AE2968F3C393 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				0EAF6700599D831770C9F3C8 /* CASCStorageService.swift */,
+			);
+			name = Services;
+			path = Services;
+			sourceTree = "<group>";
+		};
+		26278EF14078FEDD38E78BB7 = {
+			isa = PBXGroup;
+			children = (
+				DCFCD7D5608529E715B0210C /* Products */,
+				6848B678D6B0DFE9C03C0649 /* Frameworks */,
+				4EEA17C9D9AE01DE53EEA192 /* CascViewer */,
+				77925DAAF85B93C1321224E8 /* CascViewerTests */,
+			);
+			sourceTree = "<group>";
+		};
+		28AFBA00D9B9E8A46552E5CE /* MainWindow */ = {
+			isa = PBXGroup;
+			children = (
+				5B6BCE37A9280E35F34F1154 /* MainWindowView.swift */,
+			);
+			name = MainWindow;
+			path = MainWindow;
+			sourceTree = "<group>";
+		};
+		4EC8D351CC474622DDF2A948 /* BLPViewer */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = BLPViewer;
+			path = BLPViewer;
+			sourceTree = "<group>";
+		};
+		4EEA17C9D9AE01DE53EEA192 /* CascViewer */ = {
+			isa = PBXGroup;
+			children = (
+				DA9CEB9624B9C31ED4DF04CD /* App */,
+				5633E8CE63E8D14749023205 /* Core */,
+				E4DD781E5701B94DE5A1B3A5 /* UI */,
+				BC73DA8C1D5E01FC7AC20574 /* Resources */,
+			);
+			name = CascViewer;
+			path = CascViewer;
+			sourceTree = "<group>";
+		};
+		52876911EFB6B64D630AE9C3 /* Search */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Search;
+			path = Search;
+			sourceTree = "<group>";
+		};
+		5633E8CE63E8D14749023205 /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				81EC0ECE6621CE70FBAA2E98 /* CASCBridge */,
+				1ACDB31B1FB8AE2968F3C393 /* Services */,
+				0B9CF068F2FCB597BC499CC6 /* Models */,
+			);
+			name = Core;
+			path = Core;
+			sourceTree = "<group>";
+		};
+		6848B678D6B0DFE9C03C0649 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				900AED00E1A39E66BC68C16B /* OS X */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		77925DAAF85B93C1321224E8 /* CascViewerTests */ = {
+			isa = PBXGroup;
+			children = (
+				AFE966467010291B97D25EFC /* CascViewerTests.swift */,
+				3F0CE6201AD76D5461554E67 /* Info.plist */,
+			);
+			name = CascViewerTests;
+			path = CascViewer/Tests;
+			sourceTree = "<group>";
+		};
+		81EC0ECE6621CE70FBAA2E98 /* CASCBridge */ = {
+			isa = PBXGroup;
+			children = (
+				D84338248434269F32594FAD /* include */,
+				08400918A96D5A1C897B3FA8 /* src */,
+			);
+			name = CASCBridge;
+			path = CASCBridge;
+			sourceTree = "<group>";
+		};
+		900AED00E1A39E66BC68C16B /* OS X */ = {
+			isa = PBXGroup;
+			children = (
+				65A12BF1D648414026DAF157 /* Cocoa.framework */,
+			);
+			name = "OS X";
+			sourceTree = "<group>";
+		};
+		952931FFD7A7D0C9C3E055E5 /* Common */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Common;
+			path = Common;
+			sourceTree = "<group>";
+		};
+		BC73DA8C1D5E01FC7AC20574 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				0F1CC7D58B59DC3D8363D661 /* Assets.xcassets */,
+				B1DB78AD7C1635C26329BCA1 /* Info.plist */,
+			);
+			name = Resources;
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		CF2002F63384C458183DDD5D /* FileBrowser */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = FileBrowser;
+			path = FileBrowser;
+			sourceTree = "<group>";
+		};
+		D84338248434269F32594FAD /* include */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = include;
+			path = include;
+			sourceTree = "<group>";
+		};
+		DA9CEB9624B9C31ED4DF04CD /* App */ = {
+			isa = PBXGroup;
+			children = (
+				DDC871518AA0909451F89C72 /* CascViewerApp.swift */,
+				9D10EBED085E4B4286FDD9D9 /* AppState.swift */,
+			);
+			name = App;
+			path = App;
+			sourceTree = "<group>";
+		};
+		DCFCD7D5608529E715B0210C /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				E02F76D597B6627F7D920DBE /* CascViewer.app */,
+				9DAFFCFDEF255B1550EC271E /* CascViewerTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		E4DD781E5701B94DE5A1B3A5 /* UI */ = {
+			isa = PBXGroup;
+			children = (
+				28AFBA00D9B9E8A46552E5CE /* MainWindow */,
+				CF2002F63384C458183DDD5D /* FileBrowser */,
+				52876911EFB6B64D630AE9C3 /* Search */,
+				4EC8D351CC474622DDF2A948 /* BLPViewer */,
+				952931FFD7A7D0C9C3E055E5 /* Common */,
+			);
+			name = UI;
+			path = UI;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		940BFD6D6B55C0AC224C88A7 /* CascViewer */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1AE9EB794236EB055B17ADE7 /* Build configuration list for PBXNativeTarget "CascViewer" */;
+			buildPhases = (
+				3DF31FFBBF1B949A36A3C8D2 /* Sources */,
+				9D672D123A68986BDF7A9161 /* Frameworks */,
+				9D603BC426F047F9084CE107 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = CascViewer;
+			productName = CascViewer;
+			productReference = E02F76D597B6627F7D920DBE /* CascViewer.app */;
+			productType = "com.apple.product-type.application";
+		};
+		BCE6647AB501BE16FE8A9895 /* CascViewerTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 5687AAE4575D4634E3E72808 /* Build configuration list for PBXNativeTarget "CascViewerTests" */;
+			buildPhases = (
+				8FEB75D5E6DCE17D4E7F8D83 /* Sources */,
+				BF40ADDAA7123031E4FDF0C1 /* Frameworks */,
+				35008782AF7D4438C2AB9EE3 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				7B12D67274063E8B8857E975 /* PBXTargetDependency */,
+			);
+			name = CascViewerTests;
+			productName = CascViewerTests;
+			productReference = 9DAFFCFDEF255B1550EC271E /* CascViewerTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		32D2DC30BA1B1A342192574A /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 1600;
+			};
+			buildConfigurationList = 7C81AB148F6E7D6C5C8B8712 /* Build configuration list for PBXProject "CascViewer" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 26278EF14078FEDD38E78BB7;
+			minimizedProjectReferenceProxies = 0;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = DCFCD7D5608529E715B0210C /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				940BFD6D6B55C0AC224C88A7 /* CascViewer */,
+				BCE6647AB501BE16FE8A9895 /* CascViewerTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		35008782AF7D4438C2AB9EE3 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9D603BC426F047F9084CE107 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D5E1827D062484478F8E4332 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		3DF31FFBBF1B949A36A3C8D2 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				02FF2989C83AE287D1D90A5D /* CascViewerApp.swift in Sources */,
+				B3CFC4C0A529025B4BC55DCB /* AppState.swift in Sources */,
+				172E6E146C2A14931A56F7FF /* MainWindowView.swift in Sources */,
+				55A1A7B2DFFE07299CACDE22 /* CASCStorageService.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8FEB75D5E6DCE17D4E7F8D83 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				27FE348AC978ACE4040B10F6 /* CascViewerTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		7B12D67274063E8B8857E975 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = CascViewer;
+			target = 940BFD6D6B55C0AC224C88A7 /* CascViewer */;
+			targetProxy = 6A6444D9DB7B7B9016A8E586 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		300C82D7B91B60B7C58FAD72 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = "$(ARCHS_STANDARD)";
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/CascLib/src",
+					"$(SRCROOT)/CascViewer/Core/CASCBridge/include",
+				);
+				INFOPLIST_FILE = CascViewer/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.cascviewer.CascViewer;
+				SDKROOT = macosx;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_INTEROP_MODE = objcxx;
+				SWIFT_VERSION = 5.9;
+			};
+			name = Debug;
+		};
+		50399C807CD4DD6372A2A4CF /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Debug;
+		};
+		5D56CFEC4DDA752783F309B6 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Release;
+		};
+		7EA7F094CCD521DD3142083E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = CascViewer/Tests/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.cascviewer.CascViewerTests;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.9;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/CascViewer.app/Contents/MacOS/CascViewer";
+			};
+			name = Debug;
+		};
+		9A40D9DC7509D8E3D4C72DDD /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = CascViewer/Tests/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.cascviewer.CascViewerTests;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.9;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/CascViewer.app/Contents/MacOS/CascViewer";
+			};
+			name = Release;
+		};
+		DC5A9B650354092CC2336788 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = "$(ARCHS_STANDARD)";
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_CXX_LANGUAGE_STANDARD = "c++17";
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/CascLib/src",
+					"$(SRCROOT)/CascViewer/Core/CASCBridge/include",
+				);
+				INFOPLIST_FILE = CascViewer/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.cascviewer.CascViewer;
+				SDKROOT = macosx;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OBJC_INTEROP_MODE = objcxx;
+				SWIFT_VERSION = 5.9;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1AE9EB794236EB055B17ADE7 /* Build configuration list for PBXNativeTarget "CascViewer" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DC5A9B650354092CC2336788 /* Release */,
+				300C82D7B91B60B7C58FAD72 /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		5687AAE4575D4634E3E72808 /* Build configuration list for PBXNativeTarget "CascViewerTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9A40D9DC7509D8E3D4C72DDD /* Release */,
+				7EA7F094CCD521DD3142083E /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		7C81AB148F6E7D6C5C8B8712 /* Build configuration list for PBXProject "CascViewer" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				50399C807CD4DD6372A2A4CF /* Debug */,
+				5D56CFEC4DDA752783F309B6 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 32D2DC30BA1B1A342192574A /* Project object */;
+}
