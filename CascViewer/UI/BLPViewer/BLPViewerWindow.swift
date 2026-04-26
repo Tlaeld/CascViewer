@@ -7,10 +7,6 @@ struct BLPViewerWindow: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Button("Close") {
-                    NSApplication.shared.keyWindow?.close()
-                }
-
                 Text(fileName)
                     .font(.headline)
 

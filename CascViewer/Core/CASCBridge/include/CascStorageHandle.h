@@ -5,7 +5,6 @@
 #include <cstdint>
 #include <memory>
 
-
 namespace CascBridge {
 
 class CascStorageHandle {

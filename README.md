@@ -51,6 +51,11 @@ SwiftUI Views ← Swift Services ← C++ Bridge ← CascLib
 - **Swift Service Layer**: `CASCStorageService`, `CASCSearchService`, `CASCExtractService`, `BLPDecoderCoordinator`
 - **SwiftUI Frontend**: Classic three-pane layout with modern macOS styling
 
+## Known Limitations
+
+- **Online CDN browsing**: The CDN configuration download and cache management are implemented, but full online storage browsing requires additional CASC root file parsing. This is planned for a future update.
+- **BLP DXTC textures**: BLP2 raw/uncompressed textures are supported. DXTC-compressed textures require an additional decoding library.
+
 ## Important Notes
 
 - **Read-only**: This tool does not modify CASC storage in any way
