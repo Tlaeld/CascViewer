@@ -1,5 +1,5 @@
 #pragma once
-#include "CascTypes.h"
+#include "CascStorage.h"
 #include <string>
 #include <vector>
 #include <cstdint>
@@ -16,6 +16,8 @@ public:
     static CascStorageHandle createLocal();
     static CascStorageHandle createOnline();
 
+    void setCdnDownloadEnabled(bool enabled);
+    void setOpenProgressCallback(COpenProgressCallback callback, void* context);
     CascError open(const std::string& pathOrConfig);
     void close();
     bool isOpen() const;

@@ -8,11 +8,14 @@
 namespace CascBridge {
 
 using ProgressCallback = std::function<void(int64_t current, int64_t total)>;
+using COpenProgressCallback = void(*)(void* context, const char* message, int current, int total);
 
 class ICascStorage {
 public:
     virtual ~ICascStorage() = default;
 
+    virtual void setCdnDownloadEnabled(bool enabled) {}
+    virtual void setOpenProgressCallback(COpenProgressCallback callback, void* context) {}
     virtual CascError open(const std::string& pathOrConfig) = 0;
     virtual void close() = 0;
     virtual bool isOpen() const = 0;

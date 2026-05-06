@@ -7,7 +7,7 @@ struct BreadcrumbView: View {
         HStack(spacing: 4) {
             if let storage = appState.currentStorage {
                 Button {
-                    Task { await storage.listDirectory(path: "") }
+                    storage.navigate(to: "")
                 } label: {
                     Image(systemName: "house")
                         .font(.system(size: 11, weight: .medium))
@@ -24,7 +24,7 @@ struct BreadcrumbView: View {
 
                     Button {
                         let path = components[0...index].joined(separator: "/")
-                        Task { await storage.listDirectory(path: path) }
+                        storage.navigate(to: path)
                     } label: {
                         Text(component)
                             .font(.system(size: 11, weight: .medium))

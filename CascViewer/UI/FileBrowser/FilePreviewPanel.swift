@@ -2,12 +2,16 @@ import SwiftUI
 
 struct FilePreviewPanel: View {
     @EnvironmentObject var appState: AppState
-    @State private var selectedEntry: CASCFileEntry?
+
+    private var selectedEntry: CASCFileEntry? {
+        guard let storage = appState.currentStorage, !appState.selectedPath.isEmpty else { return nil }
+        return storage.entry(forPath: appState.selectedPath)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text("Details")
+                Text(L("details_panel"))
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundColor(.primary)
                 Spacer()
@@ -69,23 +73,6 @@ struct FilePreviewPanel: View {
             Spacer()
         }
         .background(Color(NSColor.controlBackgroundColor))
-        .onChange(of: appState.selectedPath) { _ in
-            updateSelectedEntry()
-        }
-        .onChange(of: appState.currentStorage?.entries) { _ in
-            updateSelectedEntry()
-        }
-        .onAppear {
-            updateSelectedEntry()
-        }
-    }
-
-    private func updateSelectedEntry() {
-        guard let storage = appState.currentStorage else {
-            selectedEntry = nil
-            return
-        }
-        selectedEntry = storage.entries.first(where: { $0.fullPath == appState.selectedPath })
     }
 }
 

@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
+#include <filesystem>
 #include <limits>
 
 namespace CascBridge {
@@ -28,14 +29,38 @@ static CascError mapCascError(DWORD error)
 
 static std::string ekeyToHex(const BYTE* ekey)
 {
+    static const char hex[] = "0123456789abcdef";
     std::string result;
     result.reserve(MD5_HASH_SIZE * 2);
-    char buf[3];
     for (int i = 0; i < MD5_HASH_SIZE; ++i) {
-        std::snprintf(buf, sizeof(buf), "%02x", ekey[i]);
-        result.append(buf);
+        result.push_back(hex[ekey[i] >> 4]);
+        result.push_back(hex[ekey[i] & 0x0F]);
     }
     return result;
+}
+
+static bool cascProgressCallback(void* userParam, CASC_PROGRESS_MSG progressMsg, LPCSTR szObject, DWORD current, DWORD total)
+{
+    auto* storage = static_cast<LocalCascStorage*>(userParam);
+    const char* msg = "";
+    switch(progressMsg) {
+        case CascProgressLoadingFile: msg = "Loading file"; break;
+        case CascProgressLoadingManifest: msg = "Loading manifest"; break;
+        case CascProgressDownloadingFile: msg = "Downloading file"; break;
+        case CascProgressLoadingIndexes: msg = "Loading indexes"; break;
+        case CascProgressDownloadingArchiveIndexes: msg = "Downloading archive indexes"; break;
+    }
+    if(szObject && szObject[0]) {
+        fprintf(stderr, "[CASC-PROGRESS] %s: %s (%u/%u)\n", msg, szObject, current, total);
+    } else if(total) {
+        fprintf(stderr, "[CASC-PROGRESS] %s (%u/%u)\n", msg, current, total);
+    } else {
+        fprintf(stderr, "[CASC-PROGRESS] %s\n", msg);
+    }
+    if (storage) {
+        storage->invokeProgressCallback(msg, static_cast<int>(current), static_cast<int>(total));
+    }
+    return false; // don't cancel
 }
 
 LocalCascStorage::~LocalCascStorage()
@@ -51,14 +76,40 @@ void LocalCascStorage::close()
     }
 }
 
+void LocalCascStorage::setCdnDownloadEnabled(bool enabled)
+{
+    cdnDownloadEnabled = enabled;
+}
+
+void LocalCascStorage::setOpenProgressCallback(COpenProgressCallback callback, void* context)
+{
+    progressCallback = callback;
+    progressContext = context;
+}
+
+void LocalCascStorage::invokeProgressCallback(const char* message, int current, int total)
+{
+    if (progressCallback) {
+        progressCallback(progressContext, message, current, total);
+    }
+}
+
 CascError LocalCascStorage::open(const std::string& localPath)
 {
     if (hStorage != nullptr) {
         close();
     }
 
-    if (!CascOpenStorage(localPath.c_str(), CASC_LOCALE_ALL, &hStorage)) {
+    CASC_OPEN_STORAGE_ARGS args = {};
+    args.Size = sizeof(CASC_OPEN_STORAGE_ARGS);
+    args.dwLocaleMask = CASC_LOCALE_ALL;
+    args.PfnProgressCallback = cascProgressCallback;
+    args.PtrProgressParam = this;
+    args.dwFlags = cdnDownloadEnabled ? CASC_FEATURE_ALLOW_DOWNLOAD : 0;
+
+    if (!CascOpenStorageEx(localPath.c_str(), &args, false, &hStorage)) {
         DWORD error = GetCascError();
+        fprintf(stderr, "[CASC-CPP] open() failed: %s, error=%u\n", localPath.c_str(), error);
         if (error == ERROR_FILE_NOT_FOUND || error == ERROR_PATH_NOT_FOUND) {
             return CascError::StorageNotFound;
         }
@@ -79,37 +130,48 @@ std::vector<CascFileEntry> LocalCascStorage::listDirectory(const std::string& pa
 
     struct FindCloser {
         HANDLE h;
-        ~FindCloser() { if (h != INVALID_HANDLE_VALUE) CascFindClose(h); }
+        ~FindCloser() { if (h != INVALID_HANDLE_VALUE && h != nullptr) CascFindClose(h); }
     };
 
-    std::string mask = path.empty() ? "*" : path + "/*";
-    CASC_FIND_DATA findData = {};
-    HANDLE hFind = CascFindFirstFile(hStorage, mask.c_str(), &findData, nullptr);
-    if (hFind == INVALID_HANDLE_VALUE) {
-        DWORD cascError = GetCascError();
-        if (cascError == ERROR_NO_MORE_FILES || cascError == ERROR_FILE_NOT_FOUND) {
-            return {};
-        }
-        error = mapCascError(cascError);
-        return {};
+    // Build masks with both path separators — CascLib may use \ internally even on macOS
+    std::vector<std::string> masks;
+    if (path.empty()) {
+        masks.push_back("*");
+    } else {
+        masks.push_back(path + "/*");
+        masks.push_back(path + "\\*");
     }
 
-    FindCloser closer{hFind};
-
     std::vector<CascFileEntry> entries;
-    entries.reserve(256);
-    int count = 0;
-    const int MAX_ENTRIES = 2000;
-    do {
-        CascFileEntry entry;
-        entry.name = findData.szPlainName ? findData.szPlainName : findData.szFileName;
-        entry.fullPath = findData.szFileName;
-        entry.type = FileType::File;
-        entry.size = findData.FileSize;
-        entry.encodingKey = ekeyToHex(findData.EKey);
-        entries.push_back(std::move(entry));
-        count++;
-    } while (count < MAX_ENTRIES && CascFindNextFile(hFind, &findData));
+    entries.reserve(8192);
+
+    for (const auto& mask : masks) {
+        CASC_FIND_DATA findData = {};
+        HANDLE hFind = CascFindFirstFile(hStorage, mask.c_str(), &findData, nullptr);
+        if (hFind == INVALID_HANDLE_VALUE || hFind == nullptr) {
+            continue;
+        }
+
+        FindCloser closer{hFind};
+
+        do {
+            if (findData.szFileName[0] == '\0') {
+                continue;
+            }
+            CascFileEntry entry;
+            entry.fullPath = findData.szFileName;
+            entry.name = findData.szPlainName ? findData.szPlainName : entry.fullPath;
+            entry.type = FileType::File;
+            entry.size = findData.FileSize;
+            entry.encodingKey = ekeyToHex(findData.EKey);
+            entry.isLocal = findData.bFileAvailable != 0;
+            entries.push_back(std::move(entry));
+        } while (CascFindNextFile(hFind, &findData));
+
+        if (!entries.empty()) {
+            break;
+        }
+    }
 
     return entries;
 }
@@ -132,7 +194,7 @@ std::vector<uint8_t> LocalCascStorage::readFile(const std::string& cascPath, Cas
     ULONGLONG fileSize64 = 0;
     if (!CascGetFileSize64(hFile, &fileSize64)) {
         CascCloseFile(hFile);
-        error = CascError::ReadError;
+        error = mapCascError(GetCascError());
         return {};
     }
 
@@ -159,7 +221,7 @@ std::vector<uint8_t> LocalCascStorage::readFile(const std::string& cascPath, Cas
         DWORD bytesRead = 0;
         if (!CascReadFile(hFile, buffer.data() + offset, toRead, &bytesRead)) {
             CascCloseFile(hFile);
-            error = CascError::ReadError;
+            error = mapCascError(GetCascError());
             return {};
         }
         offset += bytesRead;
@@ -190,6 +252,19 @@ CascError LocalCascStorage::extractFile(const std::string& cascPath,
         return mapCascError(GetCascError());
     }
 
+    // Create parent directories if needed
+    {
+        size_t lastSep = destPath.find_last_of("/\\");
+        if (lastSep != std::string::npos) {
+            std::string dir = destPath.substr(0, lastSep);
+            static thread_local std::string lastCreatedDir;
+            if (dir != lastCreatedDir) {
+                std::filesystem::create_directories(dir);
+                lastCreatedDir = dir;
+            }
+        }
+    }
+
     FILE* fp = std::fopen(destPath.c_str(), "wb");
     if (fp == nullptr) {
         CascCloseFile(hFile);
@@ -200,7 +275,7 @@ CascError LocalCascStorage::extractFile(const std::string& cascPath,
     if (!CascGetFileSize64(hFile, &fileSize64)) {
         CascCloseFile(hFile);
         std::fclose(fp);
-        return CascError::ReadError;
+        return mapCascError(GetCascError());
     }
     uint64_t totalRead = 0;
 
@@ -210,7 +285,7 @@ CascError LocalCascStorage::extractFile(const std::string& cascPath,
         if (!CascReadFile(hFile, chunk.data(), toRead, &bytesRead)) {
             CascCloseFile(hFile);
             std::fclose(fp);
-            return CascError::ReadError;
+            return mapCascError(GetCascError());
         }
         if (std::fwrite(chunk.data(), 1, bytesRead, fp) != bytesRead) {
             CascCloseFile(hFile);

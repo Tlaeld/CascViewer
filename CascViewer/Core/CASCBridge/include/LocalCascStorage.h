@@ -6,8 +6,14 @@ namespace CascBridge {
 
 class LocalCascStorage : public ICascStorage {
     HANDLE hStorage = nullptr;
+    bool cdnDownloadEnabled = true;
+    COpenProgressCallback progressCallback = nullptr;
+    void* progressContext = nullptr;
 public:
     ~LocalCascStorage() override;
+    void setCdnDownloadEnabled(bool enabled) override;
+    void setOpenProgressCallback(COpenProgressCallback callback, void* context) override;
+    void invokeProgressCallback(const char* message, int current, int total);
     CascError open(const std::string& localPath) override;
     void close() override;
     bool isOpen() const override { return hStorage != nullptr; }

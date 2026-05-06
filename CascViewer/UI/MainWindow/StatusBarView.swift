@@ -6,17 +6,17 @@ struct StatusBarView: View {
     var body: some View {
         HStack {
             if let storage = appState.currentStorage {
-                Text("Files: \(storage.entries.count)")
+                Text(L("status_files", storage.allEntriesCount))
                     .font(.caption)
                 Text("|")
                     .font(.caption)
                     .foregroundColor(.secondary)
                 if let info = storage.storageInfo {
-                    Text("Storage: \(info.productName) \(info.buildVersion)")
+                    Text(L("status_storage", info.productName, info.buildVersion))
                         .font(.caption)
                 }
             } else {
-                Text("Ready")
+                Text(L("status_ready"))
                     .font(.caption)
             }
             Spacer()

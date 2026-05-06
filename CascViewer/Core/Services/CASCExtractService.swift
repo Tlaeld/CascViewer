@@ -15,16 +15,28 @@ final class CASCExtractService: ObservableObject {
         self.storage = storage
     }
 
-    func extract(entries: [CASCFileEntry], to destination: URL, preserveStructure: Bool) async throws {
+    struct ExtractResult {
+        let successCount: Int
+        let failedFiles: [(path: String, error: CASCError)]
+    }
+
+    func extract(entries: [CASCFileEntry], to destination: URL, preserveStructure: Bool) async -> ExtractResult {
         isExtracting = true
         progress = 0
         defer { isExtracting = false }
 
         var handle = storage
         let total = entries.count
+        var successCount = 0
+        var failedFiles = [(path: String, error: CASCError)]()
+        var createdDirs = Set<String>()
+
         for (index, entry) in entries.enumerated() {
-            currentFile = entry.name
-            let sanitizedPath = entry.fullPath
+            if index % 10 == 0 || index == total - 1 {
+                currentFile = entry.name
+            }
+
+            let sanitizedPath = entry.normalizedPath
                 .components(separatedBy: "/")
                 .filter { $0 != ".." && !$0.isEmpty }
                 .joined(separator: "/")
@@ -35,6 +47,13 @@ final class CASCExtractService: ObservableObject {
             } else {
                 destPath = destination.appendingPathComponent(entry.name).path
             }
+            
+            // Ensure parent directories exist before extraction
+            let destURL = URL(fileURLWithPath: destPath)
+            let parentDir = destURL.deletingLastPathComponent().path
+            if createdDirs.insert(parentDir).inserted {
+                try? FileManager.default.createDirectory(at: destURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+            }
 
             let result: CascBridge.CascError = await withCheckedContinuation { (continuation: CheckedContinuation<CascBridge.CascError, Never>) in
                 queue.async {
@@ -43,12 +62,19 @@ final class CASCExtractService: ObservableObject {
                 }
             }
 
-            if result != .None {
-                throw mapError(result)
+            if result == .None {
+                successCount += 1
+            } else {
+                failedFiles.append((path: entry.fullPath, error: mapError(result)))
             }
 
-            progress = Double(index + 1) / Double(total)
+            let newProgress = Double(index + 1) / Double(total)
+            if newProgress - progress > 0.01 || index == total - 1 {
+                progress = newProgress
+            }
         }
+
+        return ExtractResult(successCount: successCount, failedFiles: failedFiles)
     }
 
     private func mapError(_ error: CascBridge.CascError) -> CASCError {

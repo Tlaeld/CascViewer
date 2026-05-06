@@ -16,6 +16,7 @@ struct CascFileEntry {
     FileType type;
     uint64_t size;
     std::string encodingKey;  // empty for directories
+    bool isLocal = true;
 };
 
 struct CascStorageInfo {

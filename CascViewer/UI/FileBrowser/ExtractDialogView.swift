@@ -5,38 +5,45 @@ struct ExtractDialogView: View {
     let onExtract: (URL, Bool, Bool, Bool) -> Void
     @Environment(\.dismiss) private var dismiss
 
-    @State private var destination: URL = {
-        FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first
-            ?? FileManager.default.temporaryDirectory
-    }()
-    @State private var preserveStructure = true
-    @State private var overwriteExisting = false
-    @State private var openAfterExtract = false
+    @State private var destination: URL
+    @State private var preserveStructure: Bool
+    @State private var overwriteExisting: Bool
+    @State private var openAfterExtract: Bool
     @State private var showingPicker = false
+
+    init(entries: [CASCFileEntry], onExtract: @escaping (URL, Bool, Bool, Bool) -> Void) {
+        self.entries = entries
+        self.onExtract = onExtract
+        let defaultURL = AppSettings.shared.defaultExtractURL
+        _destination = State(initialValue: defaultURL)
+        _preserveStructure = State(initialValue: AppSettings.shared.preserveStructure)
+        _overwriteExisting = State(initialValue: AppSettings.shared.overwriteExisting)
+        _openAfterExtract = State(initialValue: AppSettings.shared.openAfterExtract)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Extract \(entries.count) item(s)")
+            Text(L("extract_title", entries.count))
                 .font(.headline)
 
             HStack {
-                Text("Destination:")
+                Text(L("destination") + ":")
                 Text(destination.path)
                     .lineLimit(1)
                     .truncationMode(.middle)
-                Button("Browse...") {
+                Button(L("browse")) {
                     showingPicker = true
                 }
             }
 
-            Toggle("Keep directory structure", isOn: $preserveStructure)
-            Toggle("Overwrite existing files", isOn: $overwriteExisting)
-            Toggle("Open destination after extraction", isOn: $openAfterExtract)
+            Toggle(L("keep_structure"), isOn: $preserveStructure)
+            Toggle(L("overwrite_existing"), isOn: $overwriteExisting)
+            Toggle(L("open_after_extract"), isOn: $openAfterExtract)
 
             HStack {
                 Spacer()
-                Button("Cancel") { dismiss() }
-                Button("Extract") {
+                Button(L("cancel")) { dismiss() }
+                Button(L("extract")) {
                     onExtract(destination, preserveStructure, overwriteExisting, openAfterExtract)
                     dismiss()
                 }

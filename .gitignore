@@ -25,3 +25,7 @@ Carthage/Build/
 
 # Archives
 *.xcarchive
+
+# Local debug tools
+tools/
+
