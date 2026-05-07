@@ -70,13 +70,13 @@ struct ToolbarView: View {
             }) {
                 Image(systemName: "gear")
             }
-            .sheet(isPresented: $showingSettings) {
-                SettingsView()
-                    .frame(minWidth: 480, minHeight: 520)
-            }
         }
         .padding(.horizontal)
         .padding(.vertical, 8)
+        .sheet(isPresented: $showingSettings) {
+            SettingsView()
+                .frame(minWidth: 640, minHeight: 800)
+        }
         .fileImporter(
             isPresented: $showingOpenPanel,
             allowedContentTypes: [.folder],
@@ -120,7 +120,19 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        NavigationView {
+        VStack(spacing: 0) {
+            // Title bar
+            HStack {
+                Text(L("settings_title"))
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                Spacer()
+            }
+            .padding(.horizontal)
+            .padding(.top, 16)
+            .padding(.bottom, 8)
+
+            // Content
             Form {
                 Section(header: Text(L("settings_storage")).font(.headline)) {
                     Toggle(L("cdn_download"), isOn: $settings.cdnDownloadEnabled)
@@ -195,23 +207,26 @@ struct SettingsView: View {
                 }
             }
             .formStyle(.grouped)
-            .frame(width: 480, height: 560)
-            .navigationTitle(L("settings_title"))
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button(L("done")) { dismiss() }
+
+            Divider()
+
+            // Bottom buttons
+            HStack {
+                Button(L("reset_defaults")) {
+                    settings.resetToDefaults()
                 }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(L("reset_defaults")) {
-                        settings.resetToDefaults()
-                    }
-                }
+                Spacer()
+                Button(L("done")) { dismiss() }
+                    .keyboardShortcut(.defaultAction)
             }
-            .alert(L("cache_cleared_title"), isPresented: $showingClearCacheAlert) {
-                Button(L("ok"), role: .cancel) {}
-            } message: {
-                Text(cacheClearedSize)
-            }
+            .padding()
+            .background(Color(NSColor.controlBackgroundColor))
+        }
+        .frame(width: 640, height: 800)
+        .alert(L("cache_cleared_title"), isPresented: $showingClearCacheAlert) {
+            Button(L("ok"), role: .cancel) {}
+        } message: {
+            Text(cacheClearedSize)
         }
     }
 
