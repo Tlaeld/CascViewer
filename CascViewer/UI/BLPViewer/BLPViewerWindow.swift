@@ -33,7 +33,14 @@ struct BLPViewerWindow: View {
 
             HStack {
                 if let info = viewModel.imageInfo {
-                    Text("Format: \(info.format == .blp2 ? "BLP2" : "BLP1")")
+                    let formatText: String = {
+                        switch info.format {
+                        case .blp2: return "BLP2"
+                        case .dds: return "DDS"
+                        default: return "BLP1"
+                        }
+                    }()
+                    Text("Format: \(formatText)")
                     Text("Size: \(info.width)×\(info.height)")
                     if info.frameCount > 1 {
                         Text("Frames: \(info.frameCount)")
@@ -66,7 +73,7 @@ class BLPViewerViewModel: ObservableObject {
     @Published var showingExportPanel = false
     @Published var errorMessage: String?
 
-    private var decodedResult: BLPDecodeResult?
+    private var decodedResult: ImageDecodeResult?
     private var playbackTimer: Timer?
 
     deinit {

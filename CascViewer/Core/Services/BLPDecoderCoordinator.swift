@@ -3,9 +3,9 @@ import CoreImage
 import CascBridge
 
 actor BLPDecoderCoordinator {
-    private var decoder = CascBridge.BLPDecoderBridge()
+    private var decoder = CascBridge.ImageDecoderBridge()
 
-    func decode(data: Data) async throws -> BLPDecodeResult {
+    func decode(data: Data) async throws -> ImageDecodeResult {
         guard !data.isEmpty else { throw CASCError.decodingError }
         var error = CascBridge.CascError.None
         let result = data.withUnsafeBytes { rawBuffer in
@@ -15,21 +15,21 @@ actor BLPDecoderCoordinator {
         if error != .None {
             throw CASCError.decodingError
         }
-        return BLPDecodeResult(cppResult: result)
+        return ImageDecodeResult(cppResult: result)
     }
 }
 
-struct BLPDecodeResult {
-    let format: BLPImageInfo.BLPFormat
+struct ImageDecodeResult {
+    let format: BLPImageInfo.ImageFormat
     let width: UInt32
     let height: UInt32
     let mipLevels: UInt32
     let frameCount: UInt32
     let hasAlpha: Bool
-    let frames: [BLPFrame]
-    let mipMaps: [[BLPFrame]]
+    let frames: [ImageFrame]
+    let mipMaps: [[ImageFrame]]
 
-    struct BLPFrame {
+    struct ImageFrame {
         let width: UInt32
         let height: UInt32
         let imageData: Data  // RGBA8888
@@ -46,7 +46,7 @@ struct BLPDecodeResult {
                 bitsPerComponent: 8,
                 bitsPerPixel: 32,
                 bytesPerRow: bytesPerRow,
-                space: BLPFrame.sharedColorSpace,
+                space: ImageFrame.sharedColorSpace,
                 bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
                 provider: provider,
                 decode: nil,
@@ -56,8 +56,12 @@ struct BLPDecodeResult {
         }
     }
 
-    init(cppResult: CascBridge.BLPDecodeResult) {
-        format = cppResult.format == .BLP2 ? .blp2 : .blp1
+    init(cppResult: CascBridge.ImageDecodeResult) {
+        switch cppResult.format {
+        case .BLP2: format = .blp2
+        case .DDS: format = .dds
+        default: format = .blp1
+        }
         width = cppResult.width
         height = cppResult.height
         mipLevels = cppResult.mipLevels
@@ -66,7 +70,7 @@ struct BLPDecodeResult {
 
         frames = (0..<cppResult.frames.size()).map { i in
             let frame = cppResult.frames[i]
-            return BLPFrame(
+            return ImageFrame(
                 width: frame.width,
                 height: frame.height,
                 imageData: Data(frame.rgbaData)
@@ -77,7 +81,7 @@ struct BLPDecodeResult {
             let level = cppResult.mipMaps[i]
             return (0..<level.size()).map { j in
                 let frame = level[j]
-                return BLPFrame(
+                return ImageFrame(
                     width: frame.width,
                     height: frame.height,
                     imageData: Data(frame.rgbaData)

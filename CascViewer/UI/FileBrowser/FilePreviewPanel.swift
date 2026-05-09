@@ -47,9 +47,9 @@ struct FilePreviewPanel: View {
                     InfoRow(label: "Size", value: entry.formattedSize)
                     InfoRow(label: "Encoding Key", value: entry.encodingKey)
 
-                    if entry.name.lowercased().hasSuffix(".blp") {
-                        Button("Open BLP Viewer") {
-                            // Open BLP viewer window — Task 14
+                    if entry.name.lowercased().hasSuffix(".blp") || entry.name.lowercased().hasSuffix(".dds") {
+                        Button("Open Image Viewer") {
+                            // Open image viewer window
                         }
                         .buttonStyle(.borderedProminent)
                         .controlSize(.small)

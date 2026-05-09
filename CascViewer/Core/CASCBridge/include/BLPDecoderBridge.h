@@ -5,13 +5,14 @@
 
 namespace CascBridge {
 
-enum class BLPFormat : uint8_t {
-    BLP0,  // Unknown/invalid
+enum class ImageFormat : uint8_t {
+    Unknown,
     BLP1,
-    BLP2
+    BLP2,
+    DDS
 };
 
-enum class BLPCompression : uint8_t {
+enum class ImageCompression : uint8_t {
     Raw,
     DXTC1,
     DXTC3,
@@ -25,9 +26,9 @@ struct BLPFrame {
     std::vector<uint8_t> rgbaData;  // Always RGBA8888
 };
 
-struct BLPDecodeResult {
-    BLPFormat format;
-    BLPCompression compression;
+struct ImageDecodeResult {
+    ImageFormat format;
+    ImageCompression compression;
     uint32_t width;
     uint32_t height;
     uint32_t mipLevels;
@@ -37,9 +38,9 @@ struct BLPDecodeResult {
     std::vector<std::vector<BLPFrame>> mipMaps;  // mipMaps[level][frame]
 };
 
-class BLPDecoderBridge {
+class ImageDecoderBridge {
 public:
-    BLPDecodeResult decode(const uint8_t* data, size_t length, CascError& error);
+    ImageDecodeResult decode(const uint8_t* data, size_t length, CascError& error);
 };
 
 } // namespace CascBridge
