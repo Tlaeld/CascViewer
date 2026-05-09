@@ -2,6 +2,8 @@
 
 A native macOS application for browsing Blizzard CASC (Content Addressable Storage Container) file systems.
 
+English | [简体中文](README.zh.md)
+
 ## Features
 
 - **Browse local CASC storage** from installed Blizzard games
