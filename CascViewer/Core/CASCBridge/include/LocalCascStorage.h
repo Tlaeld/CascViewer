@@ -1,17 +1,21 @@
 #pragma once
 #include "CascStorage.h"
 #include "CascLib.h"
+#include <mutex>
 
 namespace CascBridge {
 
 class LocalCascStorage : public ICascStorage {
     HANDLE hStorage = nullptr;
     bool cdnDownloadEnabled = true;
+    std::string cachePath;
     COpenProgressCallback progressCallback = nullptr;
     void* progressContext = nullptr;
+    mutable std::mutex progressMutex;
 public:
     ~LocalCascStorage() override;
     void setCdnDownloadEnabled(bool enabled) override;
+    void setCachePath(const std::string& path) override;
     void setOpenProgressCallback(COpenProgressCallback callback, void* context) override;
     void invokeProgressCallback(const char* message, int current, int total);
     CascError open(const std::string& localPath) override;

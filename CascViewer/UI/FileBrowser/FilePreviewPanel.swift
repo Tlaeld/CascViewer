@@ -43,7 +43,7 @@ struct FilePreviewPanel: View {
 
                     Divider()
 
-                    InfoRow(label: "Path", value: entry.fullPath)
+                    InfoRow(label: "Path", value: entry.normalizedPath)
                     InfoRow(label: "Size", value: entry.formattedSize)
                     InfoRow(label: "Encoding Key", value: entry.encodingKey)
 
@@ -56,22 +56,24 @@ struct FilePreviewPanel: View {
                         .padding(.top, 4)
                     }
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(12)
             } else {
                 VStack(spacing: 8) {
+                    Spacer()
                     Image(systemName: "doc.text.magnifyingglass")
                         .font(.system(size: 32))
                         .foregroundColor(.secondary.opacity(0.5))
                     Text("Select a file to see details")
                         .font(.system(size: 12))
                         .foregroundColor(.secondary)
+                    Spacer()
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .frame(maxWidth: .infinity)
                 .padding()
             }
-
-            Spacer()
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(Color(NSColor.controlBackgroundColor))
     }
 }

@@ -34,6 +34,8 @@ struct BLPDecodeResult {
         let height: UInt32
         let imageData: Data  // RGBA8888
 
+        private static let sharedColorSpace = CGColorSpaceCreateDeviceRGB()
+
         var cgImage: CGImage? {
             let bytesPerPixel = 4
             let bytesPerRow = Int(width) * bytesPerPixel
@@ -44,7 +46,7 @@ struct BLPDecodeResult {
                 bitsPerComponent: 8,
                 bitsPerPixel: 32,
                 bytesPerRow: bytesPerRow,
-                space: CGColorSpaceCreateDeviceRGB(),
+                space: BLPFrame.sharedColorSpace,
                 bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
                 provider: provider,
                 decode: nil,
@@ -67,7 +69,7 @@ struct BLPDecodeResult {
             return BLPFrame(
                 width: frame.width,
                 height: frame.height,
-                imageData: Data(frame.rgbaData.map { $0 })
+                imageData: Data(frame.rgbaData)
             )
         }
 
@@ -78,7 +80,7 @@ struct BLPDecodeResult {
                 return BLPFrame(
                     width: frame.width,
                     height: frame.height,
-                    imageData: Data(frame.rgbaData.map { $0 })
+                    imageData: Data(frame.rgbaData)
                 )
             }
         }

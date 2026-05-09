@@ -5,6 +5,7 @@ enum CASCError: Error, LocalizedError, Sendable {
     case storageNotFound
     case storageCorrupted
     case fileNotFound
+    case fileNotAvailable
     case readError
     case networkError
     case cdnConfigError
@@ -18,6 +19,7 @@ enum CASCError: Error, LocalizedError, Sendable {
         case .storageNotFound: return "Storage not found at the specified path."
         case .storageCorrupted: return "Storage appears to be corrupted."
         case .fileNotFound: return "File not found in storage."
+        case .fileNotAvailable: return "File data is not available locally or on CDN."
         case .readError: return "Failed to read file data."
         case .networkError: return "Network error. Please check your connection."
         case .cdnConfigError: return "Failed to fetch CDN configuration."

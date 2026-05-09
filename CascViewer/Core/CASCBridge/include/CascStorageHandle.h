@@ -17,6 +17,7 @@ public:
     static CascStorageHandle createOnline();
 
     void setCdnDownloadEnabled(bool enabled);
+    void setCachePath(const std::string& path);
     void setOpenProgressCallback(COpenProgressCallback callback, void* context);
     CascError open(const std::string& pathOrConfig);
     void close();

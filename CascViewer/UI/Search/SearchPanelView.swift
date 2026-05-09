@@ -304,7 +304,14 @@ struct SearchPanelView: View {
     }
 
     private func navigateToEntry(_ entry: CASCFileEntry) {
-        let parentPath = (entry.fullPath as NSString).deletingLastPathComponent
+        let parentPath: String
+        if entry.nameType == .ckey {
+            parentPath = "CONTENT_KEY"
+        } else if entry.nameType == .ekey {
+            parentPath = "ENCODED_KEY"
+        } else {
+            parentPath = (entry.fullPath as NSString).deletingLastPathComponent
+        }
         appState.currentStorage?.navigate(to: parentPath)
         appState.selectedPath = entry.fullPath
     }

@@ -139,11 +139,15 @@ struct SettingsView: View {
                         .help(L("cdn_download_help"))
 
                     HStack {
-                        Text(L("cdn_host_url"))
+                        Text(L("cdn_cache_path"))
                         Spacer()
-                        TextField(L("cdn_host_help"), text: $settings.cdnHostUrl)
-                            .frame(width: 250)
-                            .textFieldStyle(.roundedBorder)
+                        Text(settings.cdnCachePath)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                            .foregroundColor(.secondary)
+                        Button(L("browse")) {
+                            chooseCachePath()
+                        }
                     }
                     .disabled(!settings.cdnDownloadEnabled)
                 }
@@ -239,6 +243,18 @@ struct SettingsView: View {
 
         if panel.runModal() == .OK, let url = panel.url {
             settings.defaultExtractPath = url.path
+        }
+    }
+
+    private func chooseCachePath() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.prompt = L("choose")
+
+        if panel.runModal() == .OK, let url = panel.url {
+            settings.cdnCachePath = url.path
         }
     }
 

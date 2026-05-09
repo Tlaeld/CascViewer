@@ -1,39 +1,45 @@
 import Foundation
 
-struct CASCFileEntry: Identifiable, Hashable, Sendable {
-    let name: String
-    let fullPath: String
-    let normalizedPath: String
-    let type: FileType
-    let size: UInt64
-    let encodingKey: String
-    let formattedSize: String
-    let isLocal: Bool
+public enum CascNameType: UInt8, Sendable {
+    case full = 0
+    case dataId = 1
+    case ckey = 2
+    case ekey = 3
+}
 
-    init(name: String, fullPath: String, type: FileType, size: UInt64, encodingKey: String, isLocal: Bool = true) {
+public struct CASCFileEntry: Identifiable, Hashable, Sendable {
+    public let name: String
+    public let fullPath: String
+    public let type: FileType
+    public let size: UInt64
+    public let encodingKey: String
+    public let isLocal: Bool
+    public let nameType: CascNameType
+
+    public var normalizedPath: String { fullPath.replacingOccurrences(of: "\\", with: "/") }
+    public var formattedSize: String {
+        if type == .directory { return "--" }
+        let formatter = ByteCountFormatter()
+        formatter.countStyle = .file
+        return formatter.string(fromByteCount: Int64(size))
+    }
+
+    public init(name: String, fullPath: String, type: FileType, size: UInt64, encodingKey: String, isLocal: Bool = true, nameType: CascNameType = .full) {
         self.name = name
         self.fullPath = fullPath
-        self.normalizedPath = fullPath.replacingOccurrences(of: "\\", with: "/")
         self.type = type
         self.size = size
         self.encodingKey = encodingKey
         self.isLocal = isLocal
-
-        if type == .directory {
-            self.formattedSize = "--"
-        } else {
-            let formatter = ByteCountFormatter()
-            formatter.countStyle = .file
-            self.formattedSize = formatter.string(fromByteCount: Int64(size))
-        }
+        self.nameType = nameType
     }
 
-    var id: String { normalizedPath }
+    public var id: String { fullPath.replacingOccurrences(of: "\\", with: "/") }
 
-    enum FileType: Sendable {
+    public enum FileType: Sendable {
         case file
         case directory
     }
 
-    var isDirectory: Bool { type == .directory }
+    public var isDirectory: Bool { type == .directory }
 }

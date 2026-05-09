@@ -6,6 +6,12 @@
 
 namespace CascBridge {
 
+static bool isValidProductOrRegion(const std::string& s) {
+    return std::all_of(s.begin(), s.end(), [](unsigned char c) {
+        return std::isalnum(c) || c == '-';
+    });
+}
+
 static size_t writeStringCallback(void* contents, size_t size, size_t nmemb, void* userp)
 {
     size_t totalSize = size * nmemb;
@@ -62,6 +68,11 @@ static std::string trim(const std::string& s)
 CDNBuildConfig CDNConfig::fetchConfig(const std::string& product, const std::string& region, CascError& error)
 {
     error = CascError::None;
+
+    if (!isValidProductOrRegion(product) || !isValidProductOrRegion(region)) {
+        error = CascError::CDNConfigError;
+        return {};
+    }
 
     std::string versionsUrl = "http://us.patch.battle.net:1119/" + product + "/versions";
     std::string cdnsUrl = "http://us.patch.battle.net:1119/" + product + "/cdns";

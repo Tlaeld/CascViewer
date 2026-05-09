@@ -157,6 +157,13 @@ std::vector<uint8_t> CDNCacheManager::getChunk(const std::string& encodingKey,
     std::streamsize size = file.tellg();
     file.seekg(0, std::ios::beg);
 
+    // Cap chunk size to prevent unbounded memory allocation
+    constexpr std::streamsize MAX_CHUNK_SIZE = 256 * 1024 * 1024; // 256 MB
+    if (size < 0 || size > MAX_CHUNK_SIZE) {
+        error = CascError::ReadError;
+        return {};
+    }
+
     std::vector<uint8_t> buffer;
     if (size > 0) {
         buffer.resize(static_cast<size_t>(size));
@@ -171,6 +178,10 @@ std::vector<uint8_t> CDNCacheManager::getChunk(const std::string& encodingKey,
 
 void CDNCacheManager::clearCache()
 {
+    // Safety check: never delete if cacheRoot is empty or doesn't contain CascViewer
+    if (cacheRoot.empty() || cacheRoot.find("CascViewer") == std::string::npos) {
+        return;
+    }
     std::filesystem::remove_all(cacheRoot);
 }
 

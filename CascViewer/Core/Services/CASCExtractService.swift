@@ -10,6 +10,8 @@ final class CASCExtractService: ObservableObject {
 
     private var storage: CascBridge.CascStorageHandle
     private let queue = DispatchQueue(label: "casc.extract", qos: .userInitiated)
+    private let cancelLock = NSLock()
+    private var _isCancelled = false
 
     init(storage: CascBridge.CascStorageHandle) {
         self.storage = storage
@@ -20,9 +22,29 @@ final class CASCExtractService: ObservableObject {
         let failedFiles: [(path: String, error: CASCError)]
     }
 
-    func extract(entries: [CASCFileEntry], to destination: URL, preserveStructure: Bool) async -> ExtractResult {
+    private var isCancelled: Bool {
+        get {
+            cancelLock.lock()
+            defer { cancelLock.unlock() }
+            return _isCancelled
+        }
+        set {
+            cancelLock.lock()
+            defer { cancelLock.unlock() }
+            _isCancelled = newValue
+        }
+    }
+
+    func cancel() {
+        cancelLock.lock()
+        defer { cancelLock.unlock() }
+        _isCancelled = true
+    }
+
+    func extract(entries: [CASCFileEntry], to destination: URL, preserveStructure: Bool, overwriteExisting: Bool = true) async -> ExtractResult {
         isExtracting = true
         progress = 0
+        isCancelled = false
         defer { isExtracting = false }
 
         var handle = storage
@@ -32,20 +54,49 @@ final class CASCExtractService: ObservableObject {
         var createdDirs = Set<String>()
 
         for (index, entry) in entries.enumerated() {
+            if isCancelled {
+                break
+            }
+
             if index % 10 == 0 || index == total - 1 {
                 currentFile = entry.name
             }
 
             let sanitizedPath = entry.normalizedPath
                 .components(separatedBy: "/")
-                .filter { $0 != ".." && !$0.isEmpty }
+                .filter { $0 != ".." && $0 != "." && !$0.isEmpty }
                 .joined(separator: "/")
+
+            let sanitizedName = entry.name
+                .components(separatedBy: "/")
+                .filter { $0 != ".." && $0 != "." && !$0.isEmpty }
+                .joined(separator: "_")
+
+            // Skip entries whose path sanitizes to nothing (e.g. only dots/slashes)
+            if sanitizedPath.isEmpty || sanitizedName.isEmpty {
+                failedFiles.append((path: entry.fullPath, error: .invalidPath))
+                let newProgress = Double(index + 1) / Double(total)
+                if newProgress - progress > 0.01 || index == total - 1 {
+                    progress = newProgress
+                }
+                continue
+            }
 
             let destPath: String
             if preserveStructure {
                 destPath = destination.appendingPathComponent(sanitizedPath).path
             } else {
-                destPath = destination.appendingPathComponent(entry.name).path
+                destPath = destination.appendingPathComponent(sanitizedName).path
+            }
+            
+            // Skip if file exists and overwrite is disabled
+            if !overwriteExisting && FileManager.default.fileExists(atPath: destPath) {
+                successCount += 1
+                let newProgress = Double(index + 1) / Double(total)
+                if newProgress - progress > 0.01 || index == total - 1 {
+                    progress = newProgress
+                }
+                continue
             }
             
             // Ensure parent directories exist before extraction
@@ -62,10 +113,19 @@ final class CASCExtractService: ObservableObject {
                 }
             }
 
+            if isCancelled {
+                break
+            }
+
             if result == .None {
                 successCount += 1
             } else {
-                failedFiles.append((path: entry.fullPath, error: mapError(result)))
+                var cascError = mapError(result)
+                // Distinguish remote files that are not available on CDN
+                if cascError == .fileNotFound && !entry.isLocal {
+                    cascError = .fileNotAvailable
+                }
+                failedFiles.append((path: entry.fullPath, error: cascError))
             }
 
             let newProgress = Double(index + 1) / Double(total)

@@ -120,7 +120,9 @@ class BLPViewerViewModel: ObservableObject {
     private func startAnimation() {
         playbackTimer?.invalidate()
         playbackTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
-            self?.stepFrame(delta: 1)
+            Task { @MainActor in
+                self?.stepFrame(delta: 1)
+            }
         }
     }
 

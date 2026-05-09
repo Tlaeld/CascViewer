@@ -19,7 +19,9 @@ struct FileTreeView: View {
                 Text(L("directories"))
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundColor(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
                 Divider()
@@ -29,7 +31,7 @@ struct FileTreeView: View {
                     .padding(.top, 20)
                 Spacer()
             }
-            .frame(minWidth: 220)
+            .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
             .background(Color(NSColor.controlBackgroundColor))
         }
     }
@@ -64,7 +66,9 @@ struct FileTreeContent: View {
             Text(L("directories"))
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundColor(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 12)
                 .padding(.vertical, 6)
 
@@ -91,7 +95,7 @@ struct FileTreeContent: View {
 
             Spacer()
         }
-        .frame(minWidth: 220)
+        .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
         .background(Color(NSColor.controlBackgroundColor))
         .sheet(isPresented: $showingExtractSheet) {
             ExtractDialogView(entries: extractEntries) { destination, preserveStructure, _, _ in
@@ -250,8 +254,10 @@ extension TreeTableViewController: NSTableViewDelegate {
             cell?.textField = text
             cell?.addSubview(text)
 
+            let expandLeading = expandButton.leadingAnchor.constraint(equalTo: cell!.leadingAnchor, constant: baseX)
+            expandLeading.identifier = "expandLeading"
             NSLayoutConstraint.activate([
-                expandButton.leadingAnchor.constraint(equalTo: cell!.leadingAnchor, constant: baseX),
+                expandLeading,
                 expandButton.centerYAnchor.constraint(equalTo: cell!.centerYAnchor),
                 expandButton.widthAnchor.constraint(equalToConstant: 16),
                 expandButton.heightAnchor.constraint(equalToConstant: 16),
@@ -267,11 +273,14 @@ extension TreeTableViewController: NSTableViewDelegate {
             ])
         }
 
-        // Update expand button
+        // Update expand button position and state
         if let expandButton = cell?.subviews.first(where: { $0.identifier?.rawValue == "expandButton" }) as? NSButton {
             expandButton.tag = row
             expandButton.isHidden = !rowItem.hasChildren
             expandButton.title = rowItem.isExpanded ? "▼" : "▶"
+            if let constraint = cell?.constraints.first(where: { $0.identifier == "expandLeading" }) {
+                constraint.constant = baseX
+            }
         }
 
         // Update icon

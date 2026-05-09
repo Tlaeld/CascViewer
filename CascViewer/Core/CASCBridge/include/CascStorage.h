@@ -15,6 +15,7 @@ public:
     virtual ~ICascStorage() = default;
 
     virtual void setCdnDownloadEnabled(bool enabled) {}
+    virtual void setCachePath(const std::string& path) {}
     virtual void setOpenProgressCallback(COpenProgressCallback callback, void* context) {}
     virtual CascError open(const std::string& pathOrConfig) = 0;
     virtual void close() = 0;

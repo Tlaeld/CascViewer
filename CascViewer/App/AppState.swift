@@ -27,8 +27,8 @@ final class AppSettings: ObservableObject {
     @Published var cdnDownloadEnabled: Bool {
         didSet { defaults.set(cdnDownloadEnabled, forKey: "cdnDownloadEnabled") }
     }
-    @Published var cdnHostUrl: String {
-        didSet { defaults.set(cdnHostUrl, forKey: "cdnHostUrl") }
+    @Published var cdnCachePath: String {
+        didSet { defaults.set(cdnCachePath, forKey: "cdnCachePath") }
     }
     @Published var defaultExtractPath: String {
         didSet { defaults.set(defaultExtractPath, forKey: "defaultExtractPath") }
@@ -58,7 +58,8 @@ final class AppSettings: ObservableObject {
 
     private init() {
         self.cdnDownloadEnabled = defaults.object(forKey: "cdnDownloadEnabled") as? Bool ?? true
-        self.cdnHostUrl = defaults.string(forKey: "cdnHostUrl") ?? ""
+        let cachePath = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first?.appendingPathComponent("CascViewer").path
+        self.cdnCachePath = defaults.string(forKey: "cdnCachePath") ?? (cachePath ?? "")
         let desktopPath = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first?.path
             ?? FileManager.default.temporaryDirectory.path
         self.defaultExtractPath = defaults.string(forKey: "defaultExtractPath") ?? desktopPath
@@ -81,7 +82,7 @@ final class AppSettings: ObservableObject {
         let desktopPath = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first?.path
             ?? FileManager.default.temporaryDirectory.path
         cdnDownloadEnabled = true
-        cdnHostUrl = ""
+        cdnCachePath = ""
         defaultExtractPath = desktopPath
         preserveStructure = true
         overwriteExisting = false
@@ -95,14 +96,11 @@ final class AppSettings: ObservableObject {
 
     func clearCache() {
         let fileManager = FileManager.default
-        let cachePaths = [
-            fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first,
-        ].compactMap { $0 }
-        for cacheURL in cachePaths {
-            if let enumerator = fileManager.enumerator(at: cacheURL, includingPropertiesForKeys: [.fileSizeKey]) {
-                for case let fileURL as URL in enumerator {
-                    try? fileManager.removeItem(at: fileURL)
-                }
+        // Only remove CascViewer's own cache directories, not the entire system cache
+        if let cachesDir = fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first {
+            let cascCache = cachesDir.appendingPathComponent("CascViewer")
+            if fileManager.fileExists(atPath: cascCache.path) {
+                try? fileManager.removeItem(at: cascCache)
             }
         }
         if let appSupport = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
@@ -172,8 +170,7 @@ final class LocalizationManager: ObservableObject {
             "language": "Language",
             "cdn_download": "Allow CDN Download",
             "cdn_download_help": "Download missing files from CDN when browsing incomplete storages",
-            "cdn_host_url": "CDN Host URL",
-            "cdn_host_help": "Leave empty to use the CDN from the storage's build info",
+            "cdn_cache_path": "CDN Cache Path",
             "default_path": "Default Path",
             "keep_structure": "Keep directory structure",
             "overwrite_existing": "Overwrite existing files",
@@ -206,9 +203,17 @@ final class LocalizationManager: ObservableObject {
             "path_column": "Path",
             "size_column": "Size",
             "type_column": "Type",
+            "local_column": "Local",
+            "local_yes": "Yes",
+            "local_no": "No",
             "folder": "Folder",
             "file": "File",
             "open": "Open",
+            "download_required_title": "Download Required",
+            "download_required_message": "%@ (%@) is not available locally. Download from CDN to open it?",
+            "download_and_open": "Download & Open",
+            "downloading_file": "Downloading %@...",
+            "open_failed": "Failed to open %@: %@",
             "extract_all": "Extract All...",
             "extract_success": "Extracted %d file(s) successfully",
             "extract_partial": "Extracted %d file(s), %d failed",
@@ -269,8 +274,7 @@ final class LocalizationManager: ObservableObject {
             "language": "语言",
             "cdn_download": "允许 CDN 下载",
             "cdn_download_help": "浏览不完整的存储时从 CDN 下载缺失的文件",
-            "cdn_host_url": "CDN 服务器地址",
-            "cdn_host_help": "留空以使用存储自带的 CDN 配置",
+            "cdn_cache_path": "CDN 缓存目录",
             "default_path": "默认路径",
             "keep_structure": "保留目录结构",
             "overwrite_existing": "覆盖已存在的文件",
@@ -303,9 +307,17 @@ final class LocalizationManager: ObservableObject {
             "path_column": "路径",
             "size_column": "大小",
             "type_column": "类型",
+            "local_column": "本地",
+            "local_yes": "是",
+            "local_no": "否",
             "folder": "文件夹",
             "file": "文件",
             "open": "打开",
+            "download_required_title": "需要下载",
+            "download_required_message": "%@（%@）不在本地。从 CDN 下载并打开？",
+            "download_and_open": "下载并打开",
+            "downloading_file": "正在下载 %@...",
+            "open_failed": "无法打开 %@：%@",
             "extract_all": "提取全部...",
             "extract_success": "成功提取 %d 个文件",
             "extract_partial": "提取了 %d 个文件，%d 个失败",
@@ -377,8 +389,16 @@ final class LocalizationManager: ObservableObject {
         let fm = FileManager.default
         guard let support = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else { return nil }
         let path = support.appendingPathComponent("CascViewer/Lang/\(code).json").path
-        guard fm.fileExists(atPath: path),
-              let data = fm.contents(atPath: path),
+        guard fm.fileExists(atPath: path) else { return nil }
+
+        // Limit file size to prevent OOM from malicious large JSON files (max 1 MB)
+        guard let attrs = try? fm.attributesOfItem(atPath: path),
+              let fileSize = attrs[.size] as? NSNumber,
+              fileSize.intValue > 0 && fileSize.intValue <= 1_048_576 else {
+            return nil
+        }
+
+        guard let data = fm.contents(atPath: path),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: String] else {
             return nil
         }
