@@ -10,7 +10,7 @@ English | [简体中文](README.zh.md)
 - **Browse online CDN storage** without local installation
 - **File search** with wildcard and regex support
 - **Extract files** with directory structure preservation
-- **Advanced BLP image viewer** with MIP map switching and animation playback
+- **Advanced image viewer** for BLP (War3/WoW) textures with MIP map switching and animation playback
 
 ## Requirements
 
@@ -56,13 +56,13 @@ SwiftUI Views ← Swift Services ← C++ Bridge ← CascLib
 ## Known Limitations
 
 - **Online CDN browsing**: The CDN configuration download and cache management are implemented, but full online storage browsing requires additional CASC root file parsing. This is planned for a future update.
-- **BLP DXTC textures**: BLP2 raw/uncompressed textures are supported. DXTC-compressed textures require an additional decoding library.
+- **Image formats**: BLP2 uncompressed textures are supported. DXTC-compressed BLP and DDS textures (common in SC2) require an additional decoding library.
 
 ## Important Notes
 
 - **Read-only**: This tool does not modify CASC storage in any way
 - **Online CDN**: Downloads and caches game data chunks on-demand
-- **BLP Viewer**: Supports BLP2 uncompressed textures; DXTC compressed textures require additional decoder library
+- **Image Viewer**: Supports BLP2 uncompressed textures (War3/WoW). DXTC-compressed BLP and DDS textures (SC2) require additional decoder library
 
 ## License
 
