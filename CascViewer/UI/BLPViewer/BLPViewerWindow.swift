@@ -138,3 +138,19 @@ class BLPViewerViewModel: ObservableObject {
         playbackTimer = nil
     }
 }
+
+// MARK: - Window opener helper
+
+func openImageViewerWindow(fileName: String, imageData: Data) {
+    let window = NSWindow(
+        contentRect: NSRect(x: 0, y: 0, width: 800, height: 600),
+        styleMask: [.titled, .closable, .miniaturizable, .resizable],
+        backing: .buffered,
+        defer: false
+    )
+    window.title = fileName
+    window.setContentSize(NSSize(width: 800, height: 600))
+    window.center()
+    window.contentView = NSHostingView(rootView: BLPViewerWindow(fileName: fileName, imageData: imageData))
+    window.makeKeyAndOrderFront(nil)
+}

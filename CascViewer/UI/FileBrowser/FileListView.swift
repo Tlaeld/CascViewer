@@ -181,8 +181,15 @@ struct FileListContent: View {
         }
 
         if result.failedFiles.isEmpty {
-            await MainActor.run {
-                NSWorkspace.shared.open(destURL)
+            let isImage = safeName.lowercased().hasSuffix(".blp") || safeName.lowercased().hasSuffix(".dds")
+            if isImage, let data = try? Data(contentsOf: destURL) {
+                await MainActor.run {
+                    openImageViewerWindow(fileName: safeName, imageData: data)
+                }
+            } else {
+                await MainActor.run {
+                    NSWorkspace.shared.open(destURL)
+                }
             }
         } else if !service.isExtracting {
             // Cancelled by user

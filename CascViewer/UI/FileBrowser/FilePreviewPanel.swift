@@ -1,4 +1,5 @@
 import SwiftUI
+import CascBridge
 
 struct FilePreviewPanel: View {
     @EnvironmentObject var appState: AppState
@@ -47,9 +48,11 @@ struct FilePreviewPanel: View {
                     InfoRow(label: "Size", value: entry.formattedSize)
                     InfoRow(label: "Encoding Key", value: entry.encodingKey)
 
-                    if entry.name.lowercased().hasSuffix(".blp") || entry.name.lowercased().hasSuffix(".dds") {
+                    if isImageFile(entry.name) {
                         Button("Open Image Viewer") {
-                            // Open image viewer window
+                            Task {
+                                await openImageFile(entry: entry)
+                            }
                         }
                         .buttonStyle(.borderedProminent)
                         .controlSize(.small)
@@ -75,6 +78,33 @@ struct FilePreviewPanel: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(Color(NSColor.controlBackgroundColor))
+    }
+
+    private func isImageFile(_ name: String) -> Bool {
+        let ext = name.lowercased()
+        return ext.hasSuffix(".blp") || ext.hasSuffix(".dds")
+    }
+
+    private func openImageFile(entry: CASCFileEntry) async {
+        guard let storageService = appState.currentStorage else { return }
+
+        let sessionDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("CascViewer/Open", isDirectory: true)
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try? FileManager.default.createDirectory(at: sessionDir, withIntermediateDirectories: true)
+
+        let safeName = entry.name
+            .components(separatedBy: "/")
+            .filter { $0 != ".." && $0 != "." && !$0.isEmpty }
+            .joined(separator: "_")
+        let destURL = sessionDir.appendingPathComponent(safeName)
+
+        let extractService = CASCExtractService(storage: storageService.handle)
+        let result = await extractService.extract(entries: [entry], to: sessionDir, preserveStructure: false)
+
+        if result.failedFiles.isEmpty, let data = try? Data(contentsOf: destURL) {
+            openImageViewerWindow(fileName: safeName, imageData: data)
+        }
     }
 }
 
