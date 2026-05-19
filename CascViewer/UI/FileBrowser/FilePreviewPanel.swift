@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 import CascBridge
 
 struct FilePreviewPanel: View {
@@ -34,7 +35,7 @@ struct FilePreviewPanel: View {
                             Text(entry.name)
                                 .font(.system(size: 13, weight: .semibold))
                                 .lineLimit(1)
-                            Text(entry.isDirectory ? "Folder" : "File")
+                            Text(entry.isDirectory ? L("folder") : L("file"))
                                 .font(.system(size: 11))
                                 .foregroundColor(.secondary)
                         }
@@ -44,12 +45,12 @@ struct FilePreviewPanel: View {
 
                     Divider()
 
-                    InfoRow(label: "Path", value: entry.normalizedPath)
-                    InfoRow(label: "Size", value: entry.formattedSize)
-                    InfoRow(label: "Encoding Key", value: entry.encodingKey)
+                    InfoRow(label: L("path_label"), value: entry.normalizedPath)
+                    InfoRow(label: L("size_label"), value: entry.formattedSize)
+                    InfoRow(label: L("encoding_key_label"), value: entry.encodingKey)
 
                     if isImageFile(entry.name) {
-                        Button("Open Image Viewer") {
+                        Button(L("open_image_viewer")) {
                             Task {
                                 await openImageFile(entry: entry)
                             }
@@ -67,7 +68,7 @@ struct FilePreviewPanel: View {
                     Image(systemName: "doc.text.magnifyingglass")
                         .font(.system(size: 32))
                         .foregroundColor(.secondary.opacity(0.5))
-                    Text("Select a file to see details")
+                    Text(L("select_file_for_details"))
                         .font(.system(size: 12))
                         .foregroundColor(.secondary)
                     Spacer()
@@ -88,6 +89,13 @@ struct FilePreviewPanel: View {
     private func openImageFile(entry: CASCFileEntry) async {
         guard let storageService = appState.currentStorage else { return }
 
+        if AppSettings.shared.useBuiltInImageViewer,
+           let data = storageService.readFileData(forPath: entry.normalizedPath) {
+            openImageViewerWindow(fileName: entry.name, imageData: data)
+            return
+        }
+
+        // Fallback to extraction for external viewer
         let sessionDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("CascViewer/Open", isDirectory: true)
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
@@ -102,8 +110,14 @@ struct FilePreviewPanel: View {
         let extractService = CASCExtractService(storage: storageService.handle)
         let result = await extractService.extract(entries: [entry], to: sessionDir, preserveStructure: false)
 
-        if result.failedFiles.isEmpty, let data = try? Data(contentsOf: destURL) {
-            openImageViewerWindow(fileName: safeName, imageData: data)
+        if result.wasCancelled {
+            try? FileManager.default.removeItem(at: sessionDir)
+        } else if result.failedFiles.isEmpty {
+            NSWorkspace.shared.open(destURL)
+        } else {
+            try? FileManager.default.removeItem(at: sessionDir)
+            let reason = result.failedFiles.first?.error.localizedDescription ?? L("unknown_error")
+            appState.errorMessage = L("open_failed", safeName, reason)
         }
     }
 }

@@ -47,7 +47,7 @@ struct ImageDecodeResult {
                 bitsPerPixel: 32,
                 bytesPerRow: bytesPerRow,
                 space: ImageFrame.sharedColorSpace,
-                bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
+                bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.last.rawValue),
                 provider: provider,
                 decode: nil,
                 shouldInterpolate: false,

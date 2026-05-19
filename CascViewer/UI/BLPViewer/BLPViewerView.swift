@@ -21,8 +21,10 @@ struct BLPViewerView: View {
                     Image(decorative: image, scale: 1.0)
                         .resizable()
                         .scaledToFit()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .scaleEffect(scale)
                         .offset(offset)
+                        .clipped()
                         .gesture(
                             MagnificationGesture()
                                 .onChanged { value in

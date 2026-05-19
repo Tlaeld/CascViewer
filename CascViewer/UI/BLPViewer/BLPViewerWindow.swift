@@ -18,8 +18,8 @@ struct BLPViewerWindow: View {
 
                 BLPMipMapSelector(viewModel: viewModel)
 
-                Button("Export") {
-                    viewModel.showingExportPanel = true
+                Button(L("export")) {
+                    exportCurrentFrame()
                 }
             }
             .padding()
@@ -40,10 +40,10 @@ struct BLPViewerWindow: View {
                         default: return "BLP1"
                         }
                     }()
-                    Text("Format: \(formatText)")
-                    Text("Size: \(info.width)×\(info.height)")
+                    Text("\(L("format_label")): \(formatText)")
+                    Text("\(L("size_label")): \(info.width)×\(info.height)")
                     if info.frameCount > 1 {
-                        Text("Frames: \(info.frameCount)")
+                        Text("\(L("frames_label")): \(info.frameCount)")
                     }
                 }
                 Spacer()
@@ -55,6 +55,25 @@ struct BLPViewerWindow: View {
         .frame(minWidth: 600, minHeight: 500)
         .task {
             await viewModel.loadFile(data: imageData)
+        }
+    }
+
+    private func exportCurrentFrame() {
+        guard let cgImage = viewModel.currentFrame else { return }
+
+        let panel = NSSavePanel()
+        let defaultName = (fileName as NSString).deletingPathExtension + ".png"
+        panel.nameFieldStringValue = defaultName
+
+        panel.beginSheetModal(for: NSApp.keyWindow ?? NSWindow()) { [weak viewModel] result in
+            guard result == .OK, let url = panel.url else { return }
+            guard let destination = CGImageDestinationCreateWithURL(url as CFURL, "public.png" as CFString, 1, nil) else {
+                return
+            }
+            CGImageDestinationAddImage(destination, cgImage, nil)
+            if !CGImageDestinationFinalize(destination) {
+                viewModel?.errorMessage = "Export failed"
+            }
         }
     }
 }
@@ -70,7 +89,6 @@ class BLPViewerViewModel: ObservableObject {
     }
     @Published var isPlaying = false
     @Published var currentFrameIndex = 0
-    @Published var showingExportPanel = false
     @Published var errorMessage: String?
 
     private var decodedResult: ImageDecodeResult?
@@ -95,7 +113,7 @@ class BLPViewerViewModel: ObservableObject {
             )
             self.updateCurrentFrame()
         } catch {
-            self.errorMessage = "Failed to decode BLP: \(error.localizedDescription)"
+            self.errorMessage = L("decode_failed", error.localizedDescription)
         }
     }
 
@@ -141,16 +159,40 @@ class BLPViewerViewModel: ObservableObject {
 
 // MARK: - Window opener helper
 
+final class ImageViewerWindowController: NSWindowController, NSWindowDelegate {
+    private static var controllers: [ImageViewerWindowController] = []
+
+    init(fileName: String, imageData: Data) {
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 800, height: 600),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = fileName
+        window.setContentSize(NSSize(width: 800, height: 600))
+        window.center()
+        super.init(window: window)
+        window.delegate = self
+        window.contentView = NSHostingView(rootView: BLPViewerWindow(fileName: fileName, imageData: imageData))
+        Self.controllers.append(self)
+        window.makeKeyAndOrderFront(nil)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        // Break the NSHostingView <-> NSWindow retain cycle and allow SwiftUI state to tear down cleanly
+        window?.contentView = nil
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            Self.controllers.removeAll { $0 === self }
+        }
+    }
+}
+
 func openImageViewerWindow(fileName: String, imageData: Data) {
-    let window = NSWindow(
-        contentRect: NSRect(x: 0, y: 0, width: 800, height: 600),
-        styleMask: [.titled, .closable, .miniaturizable, .resizable],
-        backing: .buffered,
-        defer: false
-    )
-    window.title = fileName
-    window.setContentSize(NSSize(width: 800, height: 600))
-    window.center()
-    window.contentView = NSHostingView(rootView: BLPViewerWindow(fileName: fileName, imageData: imageData))
-    window.makeKeyAndOrderFront(nil)
+    _ = ImageViewerWindowController(fileName: fileName, imageData: imageData)
 }

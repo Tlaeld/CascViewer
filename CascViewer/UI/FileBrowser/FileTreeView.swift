@@ -98,18 +98,27 @@ struct FileTreeContent: View {
         .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
         .background(Color(NSColor.controlBackgroundColor))
         .sheet(isPresented: $showingExtractSheet) {
-            ExtractDialogView(entries: extractEntries) { destination, preserveStructure, _, _ in
+            ExtractDialogView(entries: extractEntries) { destination, preserveStructure, overwriteExisting, openAfterExtract in
                 Task {
-                    await performExtraction(to: destination, preserveStructure: preserveStructure)
+                    await performExtraction(to: destination, preserveStructure: preserveStructure, overwriteExisting: overwriteExisting, openAfterExtract: openAfterExtract)
                 }
             }
         }
+        .onChange(of: storage.allEntriesCount) { _ in
+            expandedPaths.removeAll()
+        }
     }
 
-    private func performExtraction(to destination: URL, preserveStructure: Bool) async {
+    private func performExtraction(to destination: URL, preserveStructure: Bool, overwriteExisting: Bool, openAfterExtract: Bool) async {
         let extractService = CASCExtractService(storage: storage.handle)
-        let result = await extractService.extract(entries: extractEntries, to: destination, preserveStructure: preserveStructure)
-        if !result.failedFiles.isEmpty {
+        let result = await extractService.extract(entries: extractEntries, to: destination, preserveStructure: preserveStructure, overwriteExisting: overwriteExisting)
+        if result.wasCancelled {
+            // Silently ignore cancelled extractions
+        } else if result.failedFiles.isEmpty {
+            if openAfterExtract {
+                NSWorkspace.shared.open(destination)
+            }
+        } else {
             print("[Extract] \(result.successCount) succeeded, \(result.failedFiles.count) failed")
             for f in result.failedFiles.prefix(5) {
                 print("  FAILED: \(f.path) - \(f.error.localizedDescription)")
@@ -154,7 +163,7 @@ final class TreeTableViewController: NSViewController {
         tableView.backgroundColor = .clear
 
         let col = NSTableColumn(identifier: .init("name"))
-        col.title = "Name"
+        col.title = L("name_column")
         col.width = 180
         col.minWidth = 100
         tableView.addTableColumn(col)
@@ -323,7 +332,8 @@ extension TreeTableViewController: NSMenuDelegate {
 
         menu.addItem(NSMenuItem.separator())
 
-        let extractItem = NSMenuItem(title: L("extract_all"), action: #selector(handleMenuExtract(_:)), keyEquivalent: "")
+        let extractTitle = items[row].node.children != nil ? L("extract_all") : L("extract")
+        let extractItem = NSMenuItem(title: extractTitle, action: #selector(handleMenuExtract(_:)), keyEquivalent: "")
         extractItem.target = self
         extractItem.representedObject = path
         menu.addItem(extractItem)

@@ -61,10 +61,15 @@ final class AppSettings: ObservableObject {
         didSet { defaults.set(theme.rawValue, forKey: "appTheme") }
     }
 
+    @Published var useBuiltInImageViewer: Bool {
+        didSet { defaults.set(useBuiltInImageViewer, forKey: "useBuiltInImageViewer") }
+    }
+
     @Published var language: String {
         didSet {
-            defaults.set(language, forKey: "appLanguage")
-            LocalizationManager.shared.loadLanguage(language)
+            let code = (language == "zh") ? "zh-Hans" : language
+            defaults.set(code, forKey: "appLanguage")
+            LocalizationManager.shared.languageCode = code
         }
     }
 
@@ -102,10 +107,11 @@ final class AppSettings: ObservableObject {
         overwriteExisting = false
         openAfterExtract = false
         showRemoteMarkers = true
+        useBuiltInImageViewer = true
         theme = .system
         let lang = Locale.current.languageCode ?? "en"
         language = lang
-        LocalizationManager.shared.loadLanguage(lang)
+        LocalizationManager.shared.languageCode = lang
     }
 
     func clearCache() {

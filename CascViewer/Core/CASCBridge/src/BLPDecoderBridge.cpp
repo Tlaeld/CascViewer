@@ -1,6 +1,7 @@
 #include "BLPDecoderBridge.h"
 #include <cstring>
 #include <algorithm>
+#include <thread>
 
 namespace CascBridge {
 
@@ -188,34 +189,60 @@ static bool decompressDXT(uint32_t width, uint32_t height, const uint8_t* data, 
     if (dataLen < expectedDataSize) return false;
 
     rgba.resize(static_cast<size_t>(width) * height * 4);
-    DXTColor block[4 * 4];
 
-    for (size_t by = 0; by < blockCountY; by++) {
-        for (size_t bx = 0; bx < blockCountX; bx++) {
-            const uint8_t* src = data + (by * blockCountX + bx) * blockSize;
-            if (compression == ImageCompression::DXTC1) {
-                decompressDXT1Color(src, block, 4, false);
-            } else if (compression == ImageCompression::DXTC3) {
-                decompressDXT3Block(src, block, 4);
-            } else {
-                decompressDXT5Block(src, block, 4);
-            }
+    auto decompressRows = [&](size_t startRow, size_t endRow) {
+        DXTColor block[4 * 4];
+        for (size_t by = startRow; by < endRow; ++by) {
+            for (size_t bx = 0; bx < blockCountX; ++bx) {
+                const uint8_t* src = data + (by * blockCountX + bx) * blockSize;
+                if (compression == ImageCompression::DXTC1) {
+                    decompressDXT1Color(src, block, 4, false);
+                } else if (compression == ImageCompression::DXTC3) {
+                    decompressDXT3Block(src, block, 4);
+                } else {
+                    decompressDXT5Block(src, block, 4);
+                }
 
-            for (int y = 0; y < 4; y++) {
-                for (int x = 0; x < 4; x++) {
-                    uint32_t px = static_cast<uint32_t>(bx * 4 + x);
-                    uint32_t py = static_cast<uint32_t>(by * 4 + y);
-                    if (px < width && py < height) {
-                        size_t dstOff = (py * width + px) * 4;
-                        DXTColor& c = block[y * 4 + x];
-                        rgba[dstOff + 0] = c.r;
-                        rgba[dstOff + 1] = c.g;
-                        rgba[dstOff + 2] = c.b;
-                        rgba[dstOff + 3] = c.a;
+                for (int y = 0; y < 4; y++) {
+                    for (int x = 0; x < 4; x++) {
+                        uint32_t px = static_cast<uint32_t>(bx * 4 + x);
+                        uint32_t py = static_cast<uint32_t>(by * 4 + y);
+                        if (px < width && py < height) {
+                            size_t dstOff = (py * width + px) * 4;
+                            DXTColor& c = block[y * 4 + x];
+                            rgba[dstOff + 0] = c.r;
+                            rgba[dstOff + 1] = c.g;
+                            rgba[dstOff + 2] = c.b;
+                            rgba[dstOff + 3] = c.a;
+                        }
                     }
                 }
             }
         }
+    };
+
+    // Small images: single-thread to avoid thread overhead
+    const size_t minRowsPerThread = 8;
+    size_t numThreads = std::thread::hardware_concurrency();
+    if (numThreads == 0) numThreads = 4;
+    if (blockCountY < minRowsPerThread * numThreads) {
+        decompressRows(0, blockCountY);
+        return true;
+    }
+
+    size_t rowsPerThread = (blockCountY + numThreads - 1) / numThreads;
+    std::vector<std::thread> threads;
+    threads.reserve(numThreads);
+
+    for (size_t t = 0; t < numThreads; ++t) {
+        size_t startRow = t * rowsPerThread;
+        size_t endRow = std::min(startRow + rowsPerThread, blockCountY);
+        if (startRow >= endRow) break;
+        threads.emplace_back(decompressRows, startRow, endRow);
+    }
+
+    for (auto& t : threads) {
+        t.join();
     }
     return true;
 }
@@ -464,6 +491,7 @@ static ImageDecodeResult decodeBLP(const uint8_t* data, size_t length, CascError
                     uint32_t size = header.mipmapSizes[mip];
                     uint32_t mipW = std::max(1U, header.width >> mip);
                     uint32_t mipH = std::max(1U, header.height >> mip);
+                    size_t mipExpected = static_cast<size_t>(mipW) * mipH * 4;
 
                     if (offset == 0 || size == 0 ||
                         static_cast<size_t>(offset) + static_cast<size_t>(size) > length) {
@@ -473,9 +501,10 @@ static ImageDecodeResult decodeBLP(const uint8_t* data, size_t length, CascError
                     BLPFrame mipFrame;
                     mipFrame.width = mipW;
                     mipFrame.height = mipH;
-                    if (decompressDXT(mipW, mipH, data + offset, size, comp, mipFrame.rgbaData)) {
-                        result.mipMaps[mip].push_back(mipFrame);
-                    }
+                    mipFrame.rgbaData.resize(mipExpected);
+                    std::memcpy(mipFrame.rgbaData.data(), data + offset,
+                                std::min(static_cast<size_t>(size), mipExpected));
+                    result.mipMaps[mip].push_back(mipFrame);
                 }
             }
         } else {
@@ -484,9 +513,127 @@ static ImageDecodeResult decodeBLP(const uint8_t* data, size_t length, CascError
             return result;
         }
     } else {
-        // BLP1 - not yet supported
-        error = CascError::DecodingError;
-        return result;
+        // BLP1
+        result.format = ImageFormat::BLP1;
+
+        if (length < sizeof(BLP1Header)) {
+            error = CascError::DecodingError;
+            return result;
+        }
+
+        BLP1Header header;
+        std::memcpy(&header, data, sizeof(BLP1Header));
+
+        result.width = header.width;
+        result.height = header.height;
+        result.hasAlpha = header.alphaDepth > 0;
+
+        if (header.width > 16384 || header.height > 16384 || header.width == 0 || header.height == 0) {
+            error = CascError::DecodingError;
+            return result;
+        }
+
+        result.mipLevels = 0;
+        for (int i = 0; i < 16; ++i) {
+            if (header.mipmapOffsets[i] > 0) {
+                result.mipLevels++;
+            } else {
+                break;
+            }
+        }
+
+        if (header.compression == 1) {
+            // Raw/paletted BLP1
+            result.compression = ImageCompression::Raw;
+
+            size_t paletteOffset = sizeof(BLP1Header);
+            if (paletteOffset + 1024 > length) {
+                error = CascError::DecodingError;
+                return result;
+            }
+
+            struct PaletteColor { uint8_t b, g, r, a; };
+            const PaletteColor* palette = reinterpret_cast<const PaletteColor*>(data + paletteOffset);
+
+            // Helper to decode a single mipmap
+            auto decodeBLP1Mip = [&](uint32_t w, uint32_t h, uint32_t offset, uint32_t size, BLPFrame& outFrame) -> bool {
+                size_t pixelCount = static_cast<size_t>(w) * h;
+                size_t indexDataSize = pixelCount;
+                if (size < indexDataSize ||
+                    static_cast<size_t>(offset) + static_cast<size_t>(size) > length) {
+                    return false;
+                }
+
+                outFrame.width = w;
+                outFrame.height = h;
+                outFrame.rgbaData.resize(pixelCount * 4);
+
+                const uint8_t* indices = data + offset;
+                const uint8_t* alphaData = indices + indexDataSize;
+                size_t alphaDataSize = size - indexDataSize;
+
+                for (size_t i = 0; i < pixelCount; ++i) {
+                    uint8_t idx = indices[i];
+                    const PaletteColor& c = palette[idx];
+                    outFrame.rgbaData[i * 4 + 0] = c.r;
+                    outFrame.rgbaData[i * 4 + 1] = c.g;
+                    outFrame.rgbaData[i * 4 + 2] = c.b;
+
+                    if (header.alphaDepth == 0) {
+                        outFrame.rgbaData[i * 4 + 3] = 255;
+                    } else if (header.alphaDepth == 8) {
+                        outFrame.rgbaData[i * 4 + 3] = (i < alphaDataSize) ? alphaData[i] : 255;
+                    } else if (header.alphaDepth == 1) {
+                        size_t byteIdx = i / 8;
+                        size_t bitIdx = i % 8;
+                        outFrame.rgbaData[i * 4 + 3] = (byteIdx < alphaDataSize && ((alphaData[byteIdx] >> bitIdx) & 1)) ? 255 : 0;
+                    } else {
+                        outFrame.rgbaData[i * 4 + 3] = 255;
+                    }
+                }
+                return true;
+            };
+
+            BLPFrame frame;
+            if (!decodeBLP1Mip(header.width, header.height, header.mipmapOffsets[0], header.mipmapSizes[0], frame)) {
+                error = CascError::DecodingError;
+                return result;
+            }
+            result.frames.push_back(frame);
+
+            if (result.mipLevels > 1) {
+                result.mipMaps.resize(result.mipLevels);
+                for (uint32_t mip = 0; mip < result.mipLevels; ++mip) {
+                    uint32_t offset = header.mipmapOffsets[mip];
+                    uint32_t size = header.mipmapSizes[mip];
+                    uint32_t mipW = std::max(1U, header.width >> mip);
+                    uint32_t mipH = std::max(1U, header.height >> mip);
+                    size_t mipExpected = static_cast<size_t>(mipW) * mipH * 4;
+
+                    if (offset == 0 || size == 0 ||
+                        static_cast<size_t>(offset) + static_cast<size_t>(size) > length) {
+                        continue;
+                    }
+
+                    BLPFrame mipFrame;
+                    mipFrame.width = mipW;
+                    mipFrame.height = mipH;
+                    mipFrame.rgbaData.resize(mipExpected);
+                    std::memcpy(mipFrame.rgbaData.data(), data + offset,
+                                std::min(static_cast<size_t>(size), mipExpected));
+                    result.mipMaps[mip].push_back(mipFrame);
+                }
+            }
+        } else if (header.compression == 0) {
+            // BLP1 JPEG - not yet supported
+            result.compression = ImageCompression::Unknown;
+            error = CascError::DecodingError;
+            return result;
+        } else {
+            result.compression = ImageCompression::Unknown;
+            error = CascError::DecodingError;
+            return result;
+        }
     }
 
     return result;
