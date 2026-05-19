@@ -47,7 +47,7 @@ struct FileListContent: View {
 
     private var displayedItems: [DirectoryNode] {
         if appState.isSearchMode {
-            return appState.searchResults.map { DirectoryNode(from: $0) }
+            return appState.searchResults.map { DirectoryNode(from: $0.entry) }
         }
         return storage.currentChildren
     }
@@ -118,7 +118,7 @@ struct FileListContent: View {
             } else {
                 searchTask?.cancel()
                 appState.searchResults = []
-                appState.isSearching = false
+                appState.searchIsSearching = false
             }
         }
         .sheet(isPresented: $showingExtractSheet) {
@@ -204,19 +204,20 @@ struct FileListContent: View {
     private func performSearch() {
         guard let storageService = appState.currentStorage else { return }
         searchTask?.cancel()
-        appState.isSearching = true
+        appState.searchIsSearching = true
         appState.searchResults = []
 
         let query = appState.searchQuery
         searchTask = Task {
-            let searchService = CASCSearchService(storage: storageService)
-            let results = await searchService.search(query: query, in: "", useRegex: false)
+            let searchService = CASCSearchService(handle: storageService.handle)
+            let request = SearchRequest(mode: .filename, query: query, scope: .entireStorage, caseSensitive: false, useRegex: false, includePath: false, fileTypes: [], selectedTags: [], availableTags: [])
+            let results = await searchService.search(request, allEntries: storageService.allEntries, entries: storageService.entries, currentPath: storageService.currentPath)
 
             guard !Task.isCancelled else { return }
 
             await MainActor.run {
                 appState.searchResults = results
-                appState.isSearching = false
+                appState.searchIsSearching = false
             }
         }
     }
@@ -294,7 +295,7 @@ struct FileListContent: View {
                 .font(.system(size: 11))
                 .lineLimit(1)
 
-            if appState.isSearching {
+            if appState.searchIsSearching {
                 ProgressView()
                     .scaleEffect(0.6)
                     .frame(width: 14, height: 14)
@@ -302,7 +303,7 @@ struct FileListContent: View {
 
             Spacer()
 
-            if !appState.isSearching {
+            if !appState.searchIsSearching {
                 Text("\(appState.searchResults.count) \(L("search_status_results"))")
                     .font(.caption)
                     .foregroundColor(.secondary)
@@ -448,8 +449,20 @@ final class FileTableViewController: NSViewController {
 
     private func reloadTable() {
         DispatchQueue.main.async { [weak self] in
-            self?.tableView.reloadData()
+            guard let self = self else { return }
+            self.tableView.reloadData()
+            self.view.needsLayout = true
         }
+    }
+
+    override func viewDidLayout() {
+        super.viewDidLayout()
+        let visibleBounds = scrollView.contentView.bounds
+        guard visibleBounds.width > 0 else { return }
+        let contentHeight = CGFloat(items.count) * tableView.rowHeight + tableView.intercellSpacing.height * CGFloat(max(items.count - 1, 0))
+        let targetHeight = visibleBounds.height > 0 ? max(contentHeight, visibleBounds.height) : contentHeight
+        tableView.setFrameSize(NSSize(width: visibleBounds.width, height: targetHeight))
+        scrollView.reflectScrolledClipView(scrollView.contentView)
     }
 
     private func fileIconName(for item: DirectoryNode) -> String {

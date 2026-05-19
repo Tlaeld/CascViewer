@@ -1,56 +1,52 @@
 import SwiftUI
 
 struct SearchPanelView: View {
-    @EnvironmentObject var appState: AppState
-    var initialQuery: String = ""
+    @ObservedObject var appState: AppState
+    @StateObject private var settings = AppSettings.shared
 
-    @State private var query = ""
-    @State private var searchScope: SearchScope = .entireStorage
-    @State private var useRegex = false
-    @State private var caseSensitive = false
-    @State private var selectedTypes = Set<String>()
-    @State private var customExtension = ""
-    @State private var results: [CASCFileEntry] = []
-    @State private var isSearching = false
     @State private var searchTask: Task<Void, Never>? = nil
-    @State private var hasAutoSearched = false
-    @State private var sortBy: SortBy = .name
-    @State private var sortAscending = true
+    @State private var selectedMatchId: String? = nil
+    @State private var sortedMatches: [SearchMatch] = []
 
-    let builtInTypes = ["BLP", "MDX", "MP3", "WAV", "TXT", "DBC", "M2", "OGG", "TGA", "PNG", "JPG"]
-
-    enum SearchScope: CaseIterable {
-        case entireStorage
-        case currentDirectory
-    }
-
-    enum SortBy: CaseIterable {
-        case name
-        case size
-        case path
-    }
+    let builtInTypes = ["BLP", "DDS", "MDX", "MP3", "WAV", "TXT", "DBC", "M2", "OGG", "TGA", "PNG", "JPG", "JSON", "XML", "LUA"]
 
     var body: some View {
         VStack(spacing: 0) {
             // Top search bar
             HStack(spacing: 8) {
+                // Mode picker: only filename/content/hex
+                Picker("", selection: $appState.searchMode) {
+                    Text(SearchMode.filename.displayName).tag(SearchMode.filename)
+                    Text(SearchMode.content.displayName).tag(SearchMode.content)
+                    Text(SearchMode.hex.displayName).tag(SearchMode.hex)
+                    Text(SearchMode.tag.displayName).tag(SearchMode.tag)
+                }
+                .pickerStyle(.segmented)
+                .frame(width: 220)
+                .onChange(of: appState.searchMode) { _ in
+                    searchTask?.cancel()
+                    appState.searchIsSearching = false
+                    appState.searchResults = []
+                    sortedMatches = []
+                }
+
                 HStack(spacing: 4) {
                     Image(systemName: "magnifyingglass")
                         .foregroundColor(.secondary)
                         .font(.system(size: 12))
 
-                    TextField(L("search_query_placeholder"), text: $query)
+                    TextField(appState.searchMode.placeholder, text: $appState.searchQuery)
                         .textFieldStyle(.plain)
                         .onSubmit { performSearch() }
 
-                    if isSearching {
+                    if appState.searchIsSearching {
                         ProgressView()
                             .scaleEffect(0.6)
                             .frame(width: 16, height: 16)
                     }
 
-                    if !query.isEmpty && !isSearching {
-                        Button(action: { query = "" }) {
+                    if !appState.searchQuery.isEmpty && !appState.searchIsSearching {
+                        Button(action: { appState.searchQuery = "" }) {
                             Image(systemName: "xmark.circle.fill")
                                 .foregroundColor(.secondary)
                                 .font(.system(size: 12))
@@ -67,25 +63,25 @@ struct SearchPanelView: View {
                         .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
                 )
 
-                Picker("", selection: $searchScope) {
+                Picker("", selection: $appState.searchScope) {
                     Text(L("search_scope_entire")).tag(SearchScope.entireStorage)
                     Text(L("search_scope_current")).tag(SearchScope.currentDirectory)
                 }
                 .pickerStyle(.segmented)
-                .frame(width: 220)
+                .frame(width: 180)
 
                 Spacer()
 
-                Button(isSearching ? L("cancel") : L("search")) {
-                    if isSearching {
+                Button(appState.searchIsSearching ? L("cancel") : L("search")) {
+                    if appState.searchIsSearching {
                         searchTask?.cancel()
-                        isSearching = false
+                        appState.searchIsSearching = false
                     } else {
                         performSearch()
                     }
                 }
                 .buttonStyle(.borderedProminent)
-                .disabled(!isSearching && query.isEmpty)
+                .disabled(!appState.searchIsSearching && !canSearch)
                 .keyboardShortcut(.defaultAction)
             }
             .padding()
@@ -101,12 +97,14 @@ struct SearchPanelView: View {
                             .font(.caption)
                             .foregroundColor(.secondary)
 
-                        Toggle(L("search_use_regex"), isOn: $useRegex)
-                        Toggle(L("search_case_sensitive"), isOn: $caseSensitive)
+                        Toggle(L("search_use_regex"), isOn: $appState.searchUseRegex)
+                        Toggle(L("search_case_sensitive"), isOn: $appState.searchCaseSensitive)
+                        Toggle(L("search_include_path"), isOn: $appState.searchIncludePath)
                     }
 
                     Divider()
 
+                    // File types
                     Group {
                         Text(L("search_file_type"))
                             .font(.caption)
@@ -116,7 +114,7 @@ struct SearchPanelView: View {
                             ForEach(builtInTypes, id: \.self) { type in
                                 TypeChip(
                                     type: type,
-                                    isSelected: selectedTypes.contains(type)
+                                    isSelected: appState.searchSelectedTypes.contains(type)
                                 ) {
                                     toggleType(type)
                                 }
@@ -126,10 +124,42 @@ struct SearchPanelView: View {
                         HStack {
                             Text(L("search_custom_ext"))
                                 .font(.caption)
-                            TextField(L("search_custom_ext_placeholder"), text: $customExtension)
+                            TextField(L("search_custom_ext_placeholder"), text: $appState.searchCustomExtension)
                                 .textFieldStyle(.roundedBorder)
                                 .font(.system(size: 11))
                                 .onSubmit { performSearch() }
+                        }
+                    }
+
+                    Divider()
+
+                    // Tags (always visible, independent of search mode)
+                    Group {
+                        Text(L("search_tags"))
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+
+                        let tags = appState.currentStorage?.tags ?? []
+                        if tags.isEmpty {
+                            Text(L("search_no_tags"))
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        } else {
+                            let columns = Array(repeating: GridItem(.flexible(), spacing: 8), count: 4)
+                            LazyVGrid(columns: columns, spacing: 6) {
+                                ForEach(tags, id: \.name) { tag in
+                                    TagCheckbox(
+                                        label: tag.name,
+                                        isSelected: appState.searchSelectedTags.contains(tag.name)
+                                    ) {
+                                        if appState.searchSelectedTags.contains(tag.name) {
+                                            appState.searchSelectedTags.remove(tag.name)
+                                        } else {
+                                            appState.searchSelectedTags.insert(tag.name)
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
 
@@ -144,29 +174,29 @@ struct SearchPanelView: View {
                 VStack(spacing: 0) {
                     // Results header
                     HStack {
-                        if isSearching {
+                        if appState.searchIsSearching {
                             Text(L("search_searching"))
                                 .font(.caption)
                                 .foregroundColor(.secondary)
-                        } else if !query.isEmpty {
-                            Text(L("search_result_count", results.count))
+                        } else if !appState.searchQuery.isEmpty {
+                            Text(L("search_result_count", appState.searchResults.count))
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
 
                         Spacer()
 
-                        if !results.isEmpty {
-                            Picker(L("search_sort_by"), selection: $sortBy) {
-                                Text(L("search_sort_name")).tag(SortBy.name)
-                                Text(L("search_sort_size")).tag(SortBy.size)
-                                Text(L("search_sort_path")).tag(SortBy.path)
+                        if !appState.searchResults.isEmpty {
+                            Picker(L("search_sort_by"), selection: $appState.searchSortBy) {
+                                Text(L("search_sort_name")).tag(SearchSortBy.name)
+                                Text(L("search_sort_size")).tag(SearchSortBy.size)
+                                Text(L("search_sort_path")).tag(SearchSortBy.path)
                             }
                             .pickerStyle(.segmented)
                             .frame(width: 180)
 
-                            Button(action: { sortAscending.toggle() }) {
-                                Image(systemName: sortAscending ? "arrow.up" : "arrow.down")
+                            Button(action: { appState.searchSortAscending.toggle() }) {
+                                Image(systemName: appState.searchSortAscending ? "arrow.up" : "arrow.down")
                                     .font(.system(size: 10))
                             }
                             .buttonStyle(.plain)
@@ -179,7 +209,7 @@ struct SearchPanelView: View {
                     Divider()
 
                     // Results list
-                    if results.isEmpty && !isSearching && !query.isEmpty {
+                    if appState.searchResults.isEmpty && !appState.searchIsSearching && !appState.searchQuery.isEmpty {
                         VStack(spacing: 12) {
                             Image(systemName: "magnifyingglass.circle")
                                 .font(.system(size: 36))
@@ -188,7 +218,7 @@ struct SearchPanelView: View {
                                 .foregroundColor(.secondary)
                         }
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    } else if query.isEmpty && !isSearching {
+                    } else if appState.searchQuery.isEmpty && !appState.searchIsSearching {
                         VStack(spacing: 12) {
                             Image(systemName: "magnifyingglass")
                                 .font(.system(size: 36))
@@ -198,60 +228,72 @@ struct SearchPanelView: View {
                         }
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                     } else {
-                        List(sortedResults) { entry in
-                            SearchResultRow(entry: entry)
-                                .contentShape(Rectangle())
-                                .onTapGesture(count: 2) {
-                                    navigateToEntry(entry)
-                                }
-                                .contextMenu {
-                                    Button(L("search_go_to_location")) {
-                                        navigateToEntry(entry)
-                                    }
-                                    Button(L("copy_path")) {
-                                        NSPasteboard.general.clearContents()
-                                        NSPasteboard.general.setString(entry.fullPath.replacingOccurrences(of: "\\", with: "/"), forType: .string)
-                                    }
-                                }
-                        }
-                        .listStyle(.plain)
+                        SearchResultTableView(
+                            matches: sortedMatches,
+                            searchMode: appState.searchMode,
+                            selectedMatchId: selectedMatchId,
+                            onSelect: { match in
+                                selectedMatchId = match.id
+                            },
+                            onDoubleClick: { match in
+                                navigateToEntry(match.entry)
+                            },
+                            onCopyPath: { path in
+                                NSPasteboard.general.clearContents()
+                                NSPasteboard.general.setString(path, forType: .string)
+                            }
+                        )
                     }
                 }
             }
             .frame(maxHeight: .infinity)
         }
-        .frame(minWidth: 700, minHeight: 420)
+        .onChange(of: appState.searchResults) { _ in applySorting() }
+        .onChange(of: appState.searchSortBy) { _ in applySorting() }
+        .onChange(of: appState.searchSortAscending) { _ in applySorting() }
         .onAppear {
-            if !hasAutoSearched {
-                query = initialQuery
-                hasAutoSearched = true
-            }
+            applySorting()
         }
         .onDisappear {
             searchTask?.cancel()
+            appState.searchIsSearching = false
         }
+        .onChange(of: appState.currentStorage?.allEntriesCount) { _ in
+            searchTask?.cancel()
+            appState.searchIsSearching = false
+            appState.searchResults = []
+            sortedMatches = []
+        }
+        .id(settings.language)
     }
 
-    private var sortedResults: [CASCFileEntry] {
-        let sorted: [CASCFileEntry]
-        switch sortBy {
-        case .name:
-            sorted = results.sorted { sortAscending ? $0.name < $1.name : $0.name > $1.name }
-        case .size:
-            sorted = results.sorted { sortAscending ? $0.size < $1.size : $0.size > $1.size }
-        case .path:
-            sorted = results.sorted { sortAscending ? $0.fullPath < $1.fullPath : $0.fullPath > $1.fullPath }
+    private var canSearch: Bool {
+        if appState.searchMode == .tag {
+            return !appState.searchSelectedTags.isEmpty
         }
-        return sorted
+        return !appState.searchQuery.isEmpty
+    }
+
+    private func applySorting() {
+        let sorted: [SearchMatch]
+        switch appState.searchSortBy {
+        case .name:
+            sorted = appState.searchResults.sorted { appState.searchSortAscending ? $0.entry.name < $1.entry.name : $0.entry.name > $1.entry.name }
+        case .size:
+            sorted = appState.searchResults.sorted { appState.searchSortAscending ? $0.entry.size < $1.entry.size : $0.entry.size > $1.entry.size }
+        case .path:
+            sorted = appState.searchResults.sorted { appState.searchSortAscending ? $0.entry.fullPath < $1.entry.fullPath : $0.entry.fullPath > $1.entry.fullPath }
+        }
+        sortedMatches = sorted
     }
 
     private func toggleType(_ type: String) {
-        if selectedTypes.contains(type) {
-            selectedTypes.remove(type)
+        if appState.searchSelectedTypes.contains(type) {
+            appState.searchSelectedTypes.remove(type)
         } else {
-            selectedTypes.insert(type)
+            appState.searchSelectedTypes.insert(type)
         }
-        if !results.isEmpty && !query.isEmpty {
+        if !appState.searchResults.isEmpty && !appState.searchQuery.isEmpty {
             performSearch()
         }
     }
@@ -259,44 +301,42 @@ struct SearchPanelView: View {
     private func performSearch() {
         guard let storage = appState.currentStorage else { return }
         searchTask?.cancel()
-        isSearching = true
-        results = []
+        appState.searchIsSearching = true
+        appState.searchResults = []
 
-        let path = searchScope == .currentDirectory ? storage.currentPath : ""
+        let request = SearchRequest(
+            mode: appState.searchMode,
+            query: appState.searchQuery,
+            scope: appState.searchScope,
+            caseSensitive: appState.searchCaseSensitive,
+            useRegex: appState.searchUseRegex,
+            includePath: appState.searchIncludePath,
+            fileTypes: appState.searchSelectedTypes.union(parseCustomExtensions()),
+            selectedTags: appState.searchSelectedTags,
+            availableTags: storage.tags
+        )
 
         searchTask = Task {
-            do {
-                let searchService = CASCSearchService(storage: storage)
-                var searchResults = await searchService.search(query: query, in: path, useRegex: useRegex)
+            let searchService = CASCSearchService(handle: storage.handle)
+            let searchResults = await searchService.search(
+                request,
+                allEntries: storage.allEntries,
+                entries: storage.entries,
+                currentPath: storage.currentPath
+            )
 
-                guard !Task.isCancelled else { return }
+            guard !Task.isCancelled else { return }
 
-                // Apply type filters
-                let allTypes = selectedTypes.union(parseCustomExtensions())
-                if !allTypes.isEmpty {
-                    searchResults = searchResults.filter { entry in
-                        let ext = (entry.name as NSString).pathExtension.uppercased()
-                        return allTypes.contains(ext)
-                    }
-                }
-
-                guard !Task.isCancelled else { return }
-
-                await MainActor.run {
-                    results = searchResults
-                    isSearching = false
-                }
-            } catch {
-                await MainActor.run {
-                    isSearching = false
-                    appState.errorMessage = L("search_failed", error.localizedDescription)
-                }
+            await MainActor.run {
+                appState.searchResults = searchResults
+                appState.searchIsSearching = false
+                applySorting()
             }
         }
     }
 
     private func parseCustomExtensions() -> Set<String> {
-        customExtension
+        appState.searchCustomExtension
             .split(separator: ",")
             .map { $0.trimmingCharacters(in: .whitespaces).uppercased() }
             .filter { !$0.isEmpty }
@@ -310,10 +350,16 @@ struct SearchPanelView: View {
         } else if entry.nameType == .ekey {
             parentPath = "ENCODED_KEY"
         } else {
-            parentPath = (entry.fullPath as NSString).deletingLastPathComponent
+            let normalized = entry.normalizedPath
+            parentPath = (normalized as NSString).deletingLastPathComponent
         }
         appState.currentStorage?.navigate(to: parentPath)
         appState.selectedPath = entry.fullPath
+
+        // Bring main window to front while keeping search window open
+        if let mainWindow = NSApp.windows.first(where: { $0 != SearchWindowController.shared?.window && $0.isVisible }) {
+            mainWindow.makeKeyAndOrderFront(nil)
+        }
     }
 }
 
@@ -339,39 +385,30 @@ struct TypeChip: View {
     }
 }
 
-// MARK: - Search Result Row
+// MARK: - Tag Checkbox
 
-struct SearchResultRow: View {
-    let entry: CASCFileEntry
-
-    var displayPath: String {
-        entry.fullPath.replacingOccurrences(of: "\\", with: "/")
-    }
+struct TagCheckbox: View {
+    let label: String
+    let isSelected: Bool
+    let action: () -> Void
 
     var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: entry.isDirectory ? "folder" : "doc")
-                .foregroundColor(entry.isDirectory ? .accentColor : .secondary)
-                .frame(width: 16)
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text(entry.name)
-                    .lineLimit(1)
-                Text(displayPath)
+        Button(action: action) {
+            HStack(spacing: 4) {
+                Image(systemName: isSelected ? "checkmark.square.fill" : "square")
+                    .foregroundColor(isSelected ? .accentColor : .secondary)
+                    .font(.system(size: 12))
+                    .frame(width: 16, alignment: .leading)
+                Text(label)
                     .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(isSelected ? .primary : .secondary)
                     .lineLimit(1)
+                Spacer()
             }
-
-            Spacer()
-
-            if !entry.isDirectory {
-                Text(ByteCountFormatter.string(fromByteCount: Int64(entry.size), countStyle: .file))
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
-                    .monospacedDigit()
-            }
+            .padding(.vertical, 2)
         }
-        .padding(.vertical, 2)
+        .buttonStyle(.plain)
     }
 }
+
+

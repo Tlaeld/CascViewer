@@ -11,11 +11,23 @@ final class AppState: ObservableObject {
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
 
-    // Search mode (integrated into main UI, no sheet)
+    // Search mode (integrated into main UI, persistent state)
     @Published var isSearchMode: Bool = false
     @Published var searchQuery: String = ""
-    @Published var searchResults: [CASCFileEntry] = []
-    @Published var isSearching: Bool = false
+    @Published var searchMode: SearchMode = .filename
+    @Published var searchScope: SearchScope = .entireStorage
+    @Published var searchUseRegex: Bool = false
+    @Published var searchCaseSensitive: Bool = false
+    @Published var searchIncludePath: Bool = false
+    @Published var searchSelectedTypes: Set<String> = []
+    @Published var searchCustomExtension: String = ""
+    @Published var searchSelectedTags: Set<String> = []
+    @Published var searchResults: [SearchMatch] = []
+    @Published var searchIsSearching: Bool = false
+    @Published var searchSortBy: SearchSortBy = .name
+    @Published var searchSortAscending: Bool = true
+
+
 }
 
 @MainActor
