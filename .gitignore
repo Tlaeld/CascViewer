@@ -28,4 +28,7 @@ Carthage/Build/
 
 # Local debug tools
 tools/
+*.profraw
 
+# Screenshots
+screenshot_*.png

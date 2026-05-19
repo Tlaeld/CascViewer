@@ -7,46 +7,58 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		E5F6789012345678ABCDEF0123456789 /* BLPViewerWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6789012345678ABCDEF01 /* BLPViewerWindow.swift */; };
-		F6789012345678ABCDEF0123456789AB /* BLPViewerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F6789012345678ABCDEF0123 /* BLPViewerView.swift */; };
-		6789012345678ABCDEF0123456789ABC /* BLPAnimationControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3D4E5F6789012345678ABCDEF012345 /* BLPAnimationControls.swift */; };
-		789012345678ABCDEF0123456789ABCD /* BLPMipMapSelector.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4E5F6789012345678ABCDEF01234567 /* BLPMipMapSelector.swift */; };
-		61cc49ff07334b63a1f9de517f83efda /* SearchPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = c1c7d93268ec4530b5e3690592b665bc /* SearchPanelView.swift */; };
-		3bf7e1d0aaed40008075e0142d66e6e4 /* ProgressOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 947a1fea18a94f38bc8292a69a7a5d90 /* ProgressOverlay.swift */; };
 		01556AE5F71A5D284F8B8DAD /* CascRootFile_Install.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E685D742F7529CDB954EF066 /* CascRootFile_Install.cpp */; };
 		02FF2989C83AE287D1D90A5D /* CascViewerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDC871518AA0909451F89C72 /* CascViewerApp.swift */; };
+		037A470504DB30EFFCACF80F45F52C0B /* ToolbarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E998AAA1637F02BDB222B4F26B286AF /* ToolbarView.swift */; };
 		06A83327074E651AD8980A84 /* BLPDecoderCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0080CDFEC7BC5E29ED5C8AD0 /* BLPDecoderCoordinator.swift */; };
+		0BADAAEC3C84D033D5264282 /* CDNProduct.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5028BB24E307C519C0130E0E /* CDNProduct.swift */; };
 		172E6E146C2A14931A56F7FF /* MainWindowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B6BCE37A9280E35F34F1154 /* MainWindowView.swift */; };
 		197B1B4D2CA41F96379ABBC4 /* CascRootFile_WoW.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 573143E92267442F4D7B6A98 /* CascRootFile_WoW.cpp */; };
 		25B9B34C3912FEEF2E00BD28 /* CascFiles.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DFC33452ACA17436061E5626 /* CascFiles.cpp */; };
 		27FE348AC978ACE4040B10F6 /* CascViewerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFE966467010291B97D25EFC /* CascViewerTests.swift */; };
-		308B59ECC23544008EF5FA04 /* BridgeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30CF441EFCAA4921BCA96139 /* BridgeTests.swift */; };
-		3FC64AAADCAC494DBC9CD0BB /* ServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7ACAD71F179479399D317B5 /* ServiceTests.swift */; };
-		A4362CE38EE34B8B9FDACA56261F029F /* IntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B49513BF7A5406AAAD097452DF39E98 /* IntegrationTests.swift */; };
+		2A3A8BBC5F5C013D873E2828 /* AppSettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B3884ED075B3207805D9031 /* AppSettingsTests.swift */; };
+		2D93B78694FC7A98E3F63545 /* InstallManifestWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 203BA01A02EBC8DEC2462D73 /* InstallManifestWindowController.swift */; };
 		2EC0D95E05EE9CCA0BE47901 /* libcurl.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 1AA2D4B030A2E2A07F7D82C4 /* libcurl.tbd */; };
+		308B59ECC23544008EF5FA04 /* BridgeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30CF441EFCAA4921BCA96139 /* BridgeTests.swift */; };
 		35FD3BB8F88FC22459CA8A23 /* CascBridge+Sendable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2458F6C63AF9557BC2D751E0 /* CascBridge+Sendable.swift */; };
 		39D9B3484F0602C4D0C0AD0B /* BLPImageInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECAC951BA9367B1B54A50B52 /* BLPImageInfo.swift */; };
+		3B9267AB2BDDE21301D7B864 /* ChildrenMapTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1A3D15ECB52A3E866FA5B62 /* ChildrenMapTests.swift */; };
+		3FC64AAADCAC494DBC9CD0BB /* ServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A7ACAD71F179479399D317B5 /* ServiceTests.swift */; };
 		424ABEEC87C920DAAC4B4E5A /* Directory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F3407A3868639BD7C2EA268B /* Directory.cpp */; };
+		462578381ED52C1C7CF09D6739A38542 /* FilePreviewPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CE0B9866ABEC28A52AD9DA460D84BA2 /* FilePreviewPanel.swift */; };
+		4831170CF5118AC5F7332C7D /* SearchParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05E59819253EFC49AE0D6ECD /* SearchParserTests.swift */; };
 		4AA258605695FB01E746E1B3 /* Sockets.cpp in Sources */ = {isa = PBXBuildFile; fileRef = B7EB086980673D41B0CBF8AB /* Sockets.cpp */; };
 		4D15C10CC39F79093455C089 /* CASCStorageInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B0D2D299F11CC119072C346 /* CASCStorageInfo.swift */; };
+		4D51AB860D38CFB17FD78A82 /* SearchPreviewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C53A74B49F92CA270158001F /* SearchPreviewTests.swift */; };
 		51FF2C4CA3B4BD63979EFAEE /* libz.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = DE915E0C8899B4E0AC257F43 /* libz.tbd */; };
 		529BF5E678F2BD950A440D88 /* CascRootFile_Diablo3.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 821951C36FC08A869EADC182 /* CascRootFile_Diablo3.cpp */; };
 		53402D15180DB908F43C3BE9 /* BLPDecoderBridge.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 34B2877B55EEFB6DD1DF5284 /* BLPDecoderBridge.cpp */; };
 		53B3774597432B71EAF87108 /* RootHandler.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 3C5DC5E6A96CAE5935AABAF4 /* RootHandler.cpp */; };
 		55A1A7B2DFFE07299CACDE22 /* CASCStorageService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EAF6700599D831770C9F3C8 /* CASCStorageService.swift */; };
+		5797E3E1AB3A7D429B5C04CF /* OnlineStorageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BE656CB5D129E14AC64E4BE /* OnlineStorageView.swift */; };
 		5E95E0D8C88BC7847CFE36E7 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 65A12BF1D648414026DAF157 /* Cocoa.framework */; };
 		5EC3A512D07F6354CF6B6F69 /* CASCFileEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = D64CBA4CA5E2320E67611535 /* CASCFileEntry.swift */; };
 		5F9295D1028D4284A77CCD04 /* LocalCascStorage.cpp in Sources */ = {isa = PBXBuildFile; fileRef = D0BEF00136D44B61844D5F8E /* LocalCascStorage.cpp */; };
+		61cc49ff07334b63a1f9de517f83efda /* SearchPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = c1c7d93268ec4530b5e3690592b665bc /* SearchPanelView.swift */; };
 		6684747161DAFF1508B89607 /* CascDecrypt.cpp in Sources */ = {isa = PBXBuildFile; fileRef = C7B3993B5DD2B9BAB97089B8 /* CascDecrypt.cpp */; };
+		6789012345678ABCDEF0123456789ABC /* BLPAnimationControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3D4E5F6789012345678ABCDEF012345 /* BLPAnimationControls.swift */; };
+		6F8F6D1395942D273BE9A9ED /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = B9578B46AAD3571DDD3649BD /* Localizable.strings */; };
 		745F71D8BA82A40EBC6D2B0C /* CASCSearchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2761450A441A10DA77FEBF86 /* CASCSearchService.swift */; };
+		74EE42895653FED52D9F0337C6DAADEE /* FileTreeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09735D48B9B53C7CD4B0B5A385536583 /* FileTreeView.swift */; };
+		789012345678ABCDEF0123456789ABCD /* BLPMipMapSelector.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4E5F6789012345678ABCDEF01234567 /* BLPMipMapSelector.swift */; };
 		7DF6A5C45692C2B8C08D2969 /* ListFile.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A71329496ECA91E09CBC2223 /* ListFile.cpp */; };
 		83D4FDD835ED3EC9ABFC68A6 /* CascIndexFiles.cpp in Sources */ = {isa = PBXBuildFile; fileRef = C76566A5C1EFA2D1F14473CD /* CascIndexFiles.cpp */; };
+		8593A63AE5F820BFD2C16B1E /* OnlineStorageWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D87F00A234D8CE030EBEB88 /* OnlineStorageWindowController.swift */; };
 		8733DAC65D4C0E31DE3E2B77 /* CascOpenFile.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 6456A97D7F3B22F851619C83 /* CascOpenFile.cpp */; };
 		8B9FFD4DA9F78665A98B9987 /* CascStorageHandle.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7E6F0F92DB2DF0F0B8A3032F /* CascStorageHandle.cpp */; };
 		8D8E1147AE582A1F71956949 /* Common.cpp in Sources */ = {isa = PBXBuildFile; fileRef = C407F73545CE66D9E086A335 /* Common.cpp */; };
+		8e3acd0a4d954c76b0cc3eba7fbd7119 /* SearchWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5a48b6ac88544c778ba18d917fa129ef /* SearchWindowController.swift */; };
+		90A4C1DB5D644463A144BB3C132F7863 /* ExtractDialogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A8215F4B2E848028DCC8338D668EE63 /* ExtractDialogView.swift */; };
 		9221E9AB5DB11F08CA124134 /* CascDumpData.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 91A4C1B8FCD866FBF6F8A446 /* CascDumpData.cpp */; };
+		9353117A4C9C9675F7827DEA28AA0032 /* FileListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DE766F954D9B014A10A4A372929444F /* FileListView.swift */; };
 		9D7760B822B15675792546BB /* CascRootFile_MNDX.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F48A957337D0DA302C31BF54 /* CascRootFile_MNDX.cpp */; };
 		A1711B9E4C58F33355DE0A89 /* cmf.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FF97E7A9848A040719B153D1 /* cmf.cpp */; };
+		A4362CE38EE34B8B9FDACA56261F029F /* IntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B49513BF7A5406AAAD097452DF39E98 /* IntegrationTests.swift */; };
 		A523C08217354268DEEC09C5 /* CascFindFile.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4947D00BC8F1B6A93F86FD8F /* CascFindFile.cpp */; };
 		A5AA332C62E60E36005607F6 /* CascReadFile.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 343D3D1253E74997181CF840 /* CascReadFile.cpp */; };
 		AFFE10EAE618391FADB5F697 /* CASCError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44051960FF9179CDDB79AA39 /* CASCError.swift */; };
@@ -56,7 +68,9 @@
 		B6A2628E1AB1979CD0118AB5 /* Csv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 903A6074953CCD3D24F4EB65 /* Csv.cpp */; };
 		B6CBA3311C5A32B894703F94 /* sha1.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 552F10D7E0DF7836BBDB395D /* sha1.cpp */; };
 		BC39F5663F558DC4888266E1 /* FileTree.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 13EE8E2EAF607AFE5380A534 /* FileTree.cpp */; };
+		BC667D0E6B33C558ABE3ECBEA2E0C8C5 /* StatusBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78FB51A989637293953B7DA528A8544D /* StatusBarView.swift */; };
 		BDD431DF64EF2F8D373EA6B8 /* CascRootFile_TVFS.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 20D05AD073882AA3AE97A8F7 /* CascRootFile_TVFS.cpp */; };
+		BE5C2E1686F1FD23E21B24C2 /* InstallManifestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1292BF0F06C253DC91DA157E /* InstallManifestView.swift */; };
 		C1A0EBD11DE92127659B3300 /* CDNConfig.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4E39B4D1CD21D0464CAA3CE0 /* CDNConfig.cpp */; };
 		CB7D493FFB970DB98CDCF788 /* md5.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 514472C8EC4C506706F46690 /* md5.cpp */; };
 		CC27540714E29CA130EE9D2F /* CascDecompress.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 6C289CDBB7ED62A067619C29 /* CascDecompress.cpp */; };
@@ -67,18 +81,16 @@
 		DA778C1081073CC588816768 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 65A12BF1D648414026DAF157 /* Cocoa.framework */; };
 		DF57FEABB555D9FCC555C5CD /* apm.cpp in Sources */ = {isa = PBXBuildFile; fileRef = BCAA1FA5080793E0EB87FF18 /* apm.cpp */; };
 		E382BD244FF12FB87B867307 /* CDNConfigService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F805F4E1E7783D486B22281C /* CDNConfigService.swift */; };
+		E5F6789012345678ABCDEF0123456789 /* BLPViewerWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6789012345678ABCDEF01 /* BLPViewerWindow.swift */; };
+		EA4867FD974BCE4332E163AD /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 001E70D407C4FABF23E7468A /* Localizable.strings */; };
 		EF24B13E19DDCF616FE63FF6 /* lookup3.c in Sources */ = {isa = PBXBuildFile; fileRef = 2B321136423FAF8FC571698A /* lookup3.c */; };
+		F30AA302032A81ABA1CA7ED2 /* CDNProductService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8DA7A45CD285A674BDEFCCF /* CDNProductService.swift */; };
 		F36C9645ACD6ABC997C3A2B3 /* CascRootFile_OW.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 99179986A1B6D057F25FDE88 /* CascRootFile_OW.cpp */; };
 		F5F10E6FDD4971F4513ECB3D /* Mime.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 23607A5F1D7C0F155E14B24B /* Mime.cpp */; };
 		F6767672290F47B5453CD517 /* CascOpenStorage.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 67562BD9B2A0706D6DF74178 /* CascOpenStorage.cpp */; };
+		F6789012345678ABCDEF0123456789AB /* BLPViewerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F6789012345678ABCDEF0123 /* BLPViewerView.swift */; };
 		F82B9B63F9F175BB716E67A1 /* aes.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DA4F4F44C601D45F8DCDC6DC /* aes.cpp */; };
-		037A470504DB30EFFCACF80F45F52C0B /* ToolbarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E998AAA1637F02BDB222B4F26B286AF /* ToolbarView.swift */; };
-		BC667D0E6B33C558ABE3ECBEA2E0C8C5 /* StatusBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78FB51A989637293953B7DA528A8544D /* StatusBarView.swift */; };
-		74EE42895653FED52D9F0337C6DAADEE /* FileTreeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09735D48B9B53C7CD4B0B5A385536583 /* FileTreeView.swift */; };
-		9353117A4C9C9675F7827DEA28AA0032 /* FileListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DE766F954D9B014A10A4A372929444F /* FileListView.swift */; };
-		462578381ED52C1C7CF09D6739A38542 /* FilePreviewPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CE0B9866ABEC28A52AD9DA460D84BA2 /* FilePreviewPanel.swift */; };
-		4B6F460FA75143308C4CD846F8B9C1D8 /* BreadcrumbView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 651C675C09DA4EC99F204D3911B97C70 /* BreadcrumbView.swift */; };
-		90A4C1DB5D644463A144BB3C132F7863 /* ExtractDialogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A8215F4B2E848028DCC8338D668EE63 /* ExtractDialogView.swift */; };
+		bded554361194cb1820bb7a599abbaaf /* SearchResultTableView.swift in Sources */ = {isa = PBXBuildFile; fileRef = c84b018fbc4d43d8b692b2903f929b2d /* SearchResultTableView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -92,11 +104,10 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		A1B2C3D4E5F6789012345678ABCDEF01 /* BLPViewerWindow.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BLPViewerWindow.swift; sourceTree = "<group>"; };
-		B2C3D4E5F6789012345678ABCDEF0123 /* BLPViewerView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BLPViewerView.swift; sourceTree = "<group>"; };
-		C3D4E5F6789012345678ABCDEF012345 /* BLPAnimationControls.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BLPAnimationControls.swift; sourceTree = "<group>"; };
-		D4E5F6789012345678ABCDEF01234567 /* BLPMipMapSelector.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BLPMipMapSelector.swift; sourceTree = "<group>"; };
+		001E70D407C4FABF23E7468A /* Localizable.strings */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.strings; name = Localizable.strings; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		0080CDFEC7BC5E29ED5C8AD0 /* BLPDecoderCoordinator.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BLPDecoderCoordinator.swift; sourceTree = "<group>"; };
+		05E59819253EFC49AE0D6ECD /* SearchParserTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SearchParserTests.swift; sourceTree = "<group>"; };
+		09735D48B9B53C7CD4B0B5A385536583 /* FileTreeView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FileTreeView.swift; sourceTree = "<group>"; };
 		0B0D2D299F11CC119072C346 /* CASCStorageInfo.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CASCStorageInfo.swift; sourceTree = "<group>"; };
 		0CC9B29BD5D0439390006776 /* ArraySparse.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = ArraySparse.h; path = CascLib/src/common/ArraySparse.h; sourceTree = "<group>"; };
 		0D92554856EB259EF384EE77 /* md5.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = md5.h; path = CascLib/src/hashes/md5.h; sourceTree = "<group>"; };
@@ -105,16 +116,22 @@
 		0F1CC7D58B59DC3D8363D661 /* Assets.xcassets */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		0F540B1A5FC8CBA58ED0AC72 /* CDNCacheManager.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = CDNCacheManager.cpp; path = CDNCacheManager.cpp; sourceTree = "<group>"; };
 		1167740686BF24CB9E179A46 /* Csv.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = Csv.h; path = CascLib/src/common/Csv.h; sourceTree = "<group>"; };
+		1292BF0F06C253DC91DA157E /* InstallManifestView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = InstallManifestView.swift; path = InstallManifestView.swift; sourceTree = "<group>"; };
 		13EE8E2EAF607AFE5380A534 /* FileTree.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = FileTree.cpp; path = CascLib/src/common/FileTree.cpp; sourceTree = "<group>"; };
 		163D27D9001ABE92A4C87117 /* FileStream.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = FileStream.cpp; path = CascLib/src/common/FileStream.cpp; sourceTree = "<group>"; };
+		1A8215F4B2E848028DCC8338D668EE63 /* ExtractDialogView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ExtractDialogView.swift; sourceTree = "<group>"; };
 		1AA2D4B030A2E2A07F7D82C4 /* libcurl.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libcurl.tbd; path = usr/lib/libcurl.tbd; sourceTree = SDKROOT; };
+		1CE0B9866ABEC28A52AD9DA460D84BA2 /* FilePreviewPanel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FilePreviewPanel.swift; sourceTree = "<group>"; };
+		1D87F00A234D8CE030EBEB88 /* OnlineStorageWindowController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OnlineStorageWindowController.swift; sourceTree = "<group>"; };
 		1E6BDD2FE92B775AD3157BD4 /* Path.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = Path.h; path = CascLib/src/common/Path.h; sourceTree = "<group>"; };
+		203BA01A02EBC8DEC2462D73 /* InstallManifestWindowController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = InstallManifestWindowController.swift; sourceTree = "<group>"; };
 		20D05AD073882AA3AE97A8F7 /* CascRootFile_TVFS.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = CascRootFile_TVFS.cpp; path = CascLib/src/CascRootFile_TVFS.cpp; sourceTree = "<group>"; };
 		23607A5F1D7C0F155E14B24B /* Mime.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = Mime.cpp; path = CascLib/src/common/Mime.cpp; sourceTree = "<group>"; };
 		2458F6C63AF9557BC2D751E0 /* CascBridge+Sendable.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = "CascBridge+Sendable.swift"; path = "CascBridge+Sendable.swift"; sourceTree = "<group>"; };
 		2761450A441A10DA77FEBF86 /* CASCSearchService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CASCSearchService.swift; sourceTree = "<group>"; };
 		278A09974B745D208E54D7D8 /* Common.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = Common.h; path = CascLib/src/common/Common.h; sourceTree = "<group>"; };
 		2B321136423FAF8FC571698A /* lookup3.c */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.c; name = lookup3.c; path = CascLib/src/jenkins/lookup3.c; sourceTree = "<group>"; };
+		30CF441EFCAA4921BCA96139 /* BridgeTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BridgeTests.swift; sourceTree = "<group>"; };
 		343D3D1253E74997181CF840 /* CascReadFile.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = CascReadFile.cpp; path = CascLib/src/CascReadFile.cpp; sourceTree = "<group>"; };
 		34B2877B55EEFB6DD1DF5284 /* BLPDecoderBridge.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; path = BLPDecoderBridge.cpp; sourceTree = "<group>"; };
 		3C5DC5E6A96CAE5935AABAF4 /* RootHandler.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = RootHandler.cpp; path = CascLib/src/common/RootHandler.cpp; sourceTree = "<group>"; };
@@ -123,6 +140,7 @@
 		44051960FF9179CDDB79AA39 /* CASCError.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CASCError.swift; sourceTree = "<group>"; };
 		4947D00BC8F1B6A93F86FD8F /* CascFindFile.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = CascFindFile.cpp; path = CascLib/src/CascFindFile.cpp; sourceTree = "<group>"; };
 		4E39B4D1CD21D0464CAA3CE0 /* CDNConfig.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = CDNConfig.cpp; path = CDNConfig.cpp; sourceTree = "<group>"; };
+		5028BB24E307C519C0130E0E /* CDNProduct.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CDNProduct.swift; sourceTree = "<group>"; };
 		50C1780ED047054296A0784E /* Mime.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = Mime.h; path = CascLib/src/common/Mime.h; sourceTree = "<group>"; };
 		514472C8EC4C506706F46690 /* md5.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = md5.cpp; path = CascLib/src/hashes/md5.cpp; sourceTree = "<group>"; };
 		552F10D7E0DF7836BBDB395D /* sha1.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = sha1.cpp; path = CascLib/src/hashes/sha1.cpp; sourceTree = "<group>"; };
@@ -131,17 +149,22 @@
 		5B6BCE37A9280E35F34F1154 /* MainWindowView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MainWindowView.swift; sourceTree = "<group>"; };
 		5D8E54A9B51444C8E39402BA /* CascRootFile_Text.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = CascRootFile_Text.cpp; path = CascLib/src/CascRootFile_Text.cpp; sourceTree = "<group>"; };
 		5E278F1A5538DC74DE9FB809 /* CDNConfig.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = CDNConfig.h; path = CDNConfig.h; sourceTree = "<group>"; };
+		5a48b6ac88544c778ba18d917fa129ef /* SearchWindowController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SearchWindowController.swift; sourceTree = "<group>"; };
 		6456A97D7F3B22F851619C83 /* CascOpenFile.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = CascOpenFile.cpp; path = CascLib/src/CascOpenFile.cpp; sourceTree = "<group>"; };
 		64FC4685DB07B929A3E1077A /* CascStructs.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = CascStructs.h; path = CascLib/src/CascStructs.h; sourceTree = "<group>"; };
 		65026C1A98250F8A0A5275C9 /* cmf-key.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = "cmf-key.cpp"; path = "CascLib/src/overwatch/cmf-key.cpp"; sourceTree = "<group>"; };
 		65A12BF1D648414026DAF157 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.0.sdk/System/Library/Frameworks/Cocoa.framework; sourceTree = DEVELOPER_DIR; };
 		67562BD9B2A0706D6DF74178 /* CascOpenStorage.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = CascOpenStorage.cpp; path = CascLib/src/CascOpenStorage.cpp; sourceTree = "<group>"; };
 		6A519DB0E3B1C17EC913A721 /* OnlineCascStorage.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = OnlineCascStorage.cpp; path = OnlineCascStorage.cpp; sourceTree = "<group>"; };
+		6B3884ED075B3207805D9031 /* AppSettingsTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppSettingsTests.swift; sourceTree = "<group>"; };
 		6C289CDBB7ED62A067619C29 /* CascDecompress.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = CascDecompress.cpp; path = CascLib/src/CascDecompress.cpp; sourceTree = "<group>"; };
 		75500683DAEB073431CF1602 /* RootHandler.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = RootHandler.h; path = CascLib/src/common/RootHandler.h; sourceTree = "<group>"; };
+		78FB51A989637293953B7DA528A8544D /* StatusBarView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StatusBarView.swift; sourceTree = "<group>"; };
 		790C1485CDB6765BA5B123FE /* aes_local.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = aes_local.h; path = CascLib/src/overwatch/aes_local.h; sourceTree = "<group>"; };
 		7919BC70D0C30EC250BB9F0A /* CascBridgeUmbrella.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = CascBridgeUmbrella.h; sourceTree = "<group>"; };
+		7B49513BF7A5406AAAD097452DF39E98 /* IntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = IntegrationTests.swift; sourceTree = "<group>"; };
 		7E6F0F92DB2DF0F0B8A3032F /* CascStorageHandle.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; path = CascStorageHandle.cpp; sourceTree = "<group>"; };
+		7E998AAA1637F02BDB222B4F26B286AF /* ToolbarView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ToolbarView.swift; sourceTree = "<group>"; };
 		821951C36FC08A869EADC182 /* CascRootFile_Diablo3.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = CascRootFile_Diablo3.cpp; path = CascLib/src/CascRootFile_Diablo3.cpp; sourceTree = "<group>"; };
 		83CB9F9F03DDE013788A95F7 /* ListFile.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = ListFile.h; path = CascLib/src/common/ListFile.h; sourceTree = "<group>"; };
 		903A6074953CCD3D24F4EB65 /* Csv.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = Csv.cpp; path = CascLib/src/common/Csv.cpp; sourceTree = "<group>"; };
@@ -152,20 +175,26 @@
 		99179986A1B6D057F25FDE88 /* CascRootFile_OW.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = CascRootFile_OW.cpp; path = CascLib/src/CascRootFile_OW.cpp; sourceTree = "<group>"; };
 		99785A2F89F06F30CDA7CE89 /* OnlineCascStorage.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = OnlineCascStorage.h; path = OnlineCascStorage.h; sourceTree = "<group>"; };
 		9A54EC3617391F1161024B73 /* CascPort.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = CascPort.h; path = CascLib/src/CascPort.h; sourceTree = "<group>"; };
+		9BE656CB5D129E14AC64E4BE /* OnlineStorageView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OnlineStorageView.swift; sourceTree = "<group>"; };
 		9D10EBED085E4B4286FDD9D9 /* AppState.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
 		9DAFFCFDEF255B1550EC271E /* CascViewerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CascViewerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		9DE766F954D9B014A10A4A372929444F /* FileListView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FileListView.swift; sourceTree = "<group>"; };
 		9EAA813064588827985FFDA2 /* Map.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = Map.h; path = CascLib/src/common/Map.h; sourceTree = "<group>"; };
+		A1B2C3D4E5F6789012345678ABCDEF01 /* BLPViewerWindow.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BLPViewerWindow.swift; sourceTree = "<group>"; };
 		A71329496ECA91E09CBC2223 /* ListFile.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = ListFile.cpp; path = CascLib/src/common/ListFile.cpp; sourceTree = "<group>"; };
+		A7ACAD71F179479399D317B5 /* ServiceTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ServiceTests.swift; sourceTree = "<group>"; };
 		A7D133EEFE591AC22BE06B4C /* overwatch.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = overwatch.h; path = CascLib/src/overwatch/overwatch.h; sourceTree = "<group>"; };
 		A8FEB22D1DEEB4FF00E64B06 /* lookup.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = lookup.h; path = CascLib/src/jenkins/lookup.h; sourceTree = "<group>"; };
 		AFE966467010291B97D25EFC /* CascViewerTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CascViewerTests.swift; sourceTree = "<group>"; };
-		30CF441EFCAA4921BCA96139 /* BridgeTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BridgeTests.swift; sourceTree = "<group>"; };
-		A7ACAD71F179479399D317B5 /* ServiceTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ServiceTests.swift; sourceTree = "<group>"; };
-		7B49513BF7A5406AAAD097452DF39E98 /* IntegrationTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = IntegrationTests.swift; sourceTree = "<group>"; };
 		B1DB78AD7C1635C26329BCA1 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		B2C3D4E5F6789012345678ABCDEF0123 /* BLPViewerView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BLPViewerView.swift; sourceTree = "<group>"; };
 		B7EB086980673D41B0CBF8AB /* Sockets.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = Sockets.cpp; path = CascLib/src/common/Sockets.cpp; sourceTree = "<group>"; };
+		B8DA7A45CD285A674BDEFCCF /* CDNProductService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CDNProductService.swift; sourceTree = "<group>"; };
+		B9578B46AAD3571DDD3649BD /* Localizable.strings */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.strings; name = Localizable.strings; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
 		BCAA1FA5080793E0EB87FF18 /* apm.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = apm.cpp; path = CascLib/src/overwatch/apm.cpp; sourceTree = "<group>"; };
+		C3D4E5F6789012345678ABCDEF012345 /* BLPAnimationControls.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BLPAnimationControls.swift; sourceTree = "<group>"; };
 		C407F73545CE66D9E086A335 /* Common.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = Common.cpp; path = CascLib/src/common/Common.cpp; sourceTree = "<group>"; };
+		C53A74B49F92CA270158001F /* SearchPreviewTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SearchPreviewTests.swift; sourceTree = "<group>"; };
 		C6D8D142ED589A28C7CB49F2 /* Array.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = Array.h; path = CascLib/src/common/Array.h; sourceTree = "<group>"; };
 		C76566A5C1EFA2D1F14473CD /* CascIndexFiles.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = CascIndexFiles.cpp; path = CascLib/src/CascIndexFiles.cpp; sourceTree = "<group>"; };
 		C7B3993B5DD2B9BAB97089B8 /* CascDecrypt.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = CascDecrypt.cpp; path = CascLib/src/CascDecrypt.cpp; sourceTree = "<group>"; };
@@ -174,6 +203,7 @@
 		D0BEF00136D44B61844D5F8E /* LocalCascStorage.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = LocalCascStorage.cpp; path = LocalCascStorage.cpp; sourceTree = "<group>"; };
 		D201A7934AC3A3D661C6CB4C /* CASCExtractService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CASCExtractService.swift; sourceTree = "<group>"; };
 		D33DFA9266FEAD8F207D433F /* Directory.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = Directory.h; path = CascLib/src/common/Directory.h; sourceTree = "<group>"; };
+		D4E5F6789012345678ABCDEF01234567 /* BLPMipMapSelector.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BLPMipMapSelector.swift; sourceTree = "<group>"; };
 		D64CBA4CA5E2320E67611535 /* CASCFileEntry.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CASCFileEntry.swift; sourceTree = "<group>"; };
 		D95150A0D489A1CB1DA54B9E /* FileStream.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = FileStream.h; path = CascLib/src/common/FileStream.h; sourceTree = "<group>"; };
 		DA4F4F44C601D45F8DCDC6DC /* aes.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = aes.cpp; path = CascLib/src/overwatch/aes.cpp; sourceTree = "<group>"; };
@@ -183,6 +213,7 @@
 		DE915E0C8899B4E0AC257F43 /* libz.tbd */ = {isa = PBXFileReference; includeInIndex = 1; name = libz.tbd; path = usr/lib/libz.tbd; sourceTree = SDKROOT; };
 		DFC33452ACA17436061E5626 /* CascFiles.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = CascFiles.cpp; path = CascLib/src/CascFiles.cpp; sourceTree = "<group>"; };
 		E02F76D597B6627F7D920DBE /* CascViewer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CascViewer.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		E1A3D15ECB52A3E866FA5B62 /* ChildrenMapTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ChildrenMapTests.swift; sourceTree = "<group>"; };
 		E685D742F7529CDB954EF066 /* CascRootFile_Install.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = CascRootFile_Install.cpp; path = CascLib/src/CascRootFile_Install.cpp; sourceTree = "<group>"; };
 		EAB5FF31E29C5475FA8FC4BC /* FileTree.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = FileTree.h; path = CascLib/src/common/FileTree.h; sourceTree = "<group>"; };
 		ECAC951BA9367B1B54A50B52 /* BLPImageInfo.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BLPImageInfo.swift; sourceTree = "<group>"; };
@@ -191,15 +222,8 @@
 		F805F4E1E7783D486B22281C /* CDNConfigService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CDNConfigService.swift; sourceTree = "<group>"; };
 		FC5C84A9F2AD07503B530655 /* CascLib.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = CascLib.h; path = CascLib/src/CascLib.h; sourceTree = "<group>"; };
 		FF97E7A9848A040719B153D1 /* cmf.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = cmf.cpp; path = CascLib/src/overwatch/cmf.cpp; sourceTree = "<group>"; };
-		7E998AAA1637F02BDB222B4F26B286AF /* ToolbarView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ToolbarView.swift; sourceTree = "<group>"; };
-		78FB51A989637293953B7DA528A8544D /* StatusBarView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = StatusBarView.swift; sourceTree = "<group>"; };
-		09735D48B9B53C7CD4B0B5A385536583 /* FileTreeView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FileTreeView.swift; sourceTree = "<group>"; };
-		9DE766F954D9B014A10A4A372929444F /* FileListView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FileListView.swift; sourceTree = "<group>"; };
-		1CE0B9866ABEC28A52AD9DA460D84BA2 /* FilePreviewPanel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FilePreviewPanel.swift; sourceTree = "<group>"; };
-		651C675C09DA4EC99F204D3911B97C70 /* BreadcrumbView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BreadcrumbView.swift; sourceTree = "<group>"; };
-		1A8215F4B2E848028DCC8338D668EE63 /* ExtractDialogView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ExtractDialogView.swift; sourceTree = "<group>"; };
 		c1c7d93268ec4530b5e3690592b665bc /* SearchPanelView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SearchPanelView.swift; sourceTree = "<group>"; };
-		947a1fea18a94f38bc8292a69a7a5d90 /* ProgressOverlay.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ProgressOverlay.swift; sourceTree = "<group>"; };
+		c84b018fbc4d43d8b692b2903f929b2d /* SearchResultTableView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SearchResultTableView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -245,6 +269,7 @@
 				0B0D2D299F11CC119072C346 /* CASCStorageInfo.swift */,
 				44051960FF9179CDDB79AA39 /* CASCError.swift */,
 				ECAC951BA9367B1B54A50B52 /* BLPImageInfo.swift */,
+				5028BB24E307C519C0130E0E /* CDNProduct.swift */,
 			);
 			name = Models;
 			path = Models;
@@ -259,6 +284,7 @@
 				0080CDFEC7BC5E29ED5C8AD0 /* BLPDecoderCoordinator.swift */,
 				F805F4E1E7783D486B22281C /* CDNConfigService.swift */,
 				2458F6C63AF9557BC2D751E0 /* CascBridge+Sendable.swift */,
+				B8DA7A45CD285A674BDEFCCF /* CDNProductService.swift */,
 			);
 			name = Services;
 			path = Services;
@@ -281,9 +307,21 @@
 				5B6BCE37A9280E35F34F1154 /* MainWindowView.swift */,
 				7E998AAA1637F02BDB222B4F26B286AF /* ToolbarView.swift */,
 				78FB51A989637293953B7DA528A8544D /* StatusBarView.swift */,
+				9BE656CB5D129E14AC64E4BE /* OnlineStorageView.swift */,
+				1D87F00A234D8CE030EBEB88 /* OnlineStorageWindowController.swift */,
 			);
 			name = MainWindow;
 			path = MainWindow;
+			sourceTree = "<group>";
+		};
+		310AC8A08F6C5A302BE829E7 /* InstallManifest */ = {
+			isa = PBXGroup;
+			children = (
+				1292BF0F06C253DC91DA157E /* InstallManifestView.swift */,
+				203BA01A02EBC8DEC2462D73 /* InstallManifestWindowController.swift */,
+			);
+			name = InstallManifest;
+			path = InstallManifest;
 			sourceTree = "<group>";
 		};
 		4EC8D351CC474622DDF2A948 /* BLPViewer */ = {
@@ -313,6 +351,8 @@
 		52876911EFB6B64D630AE9C3 /* Search */ = {
 			isa = PBXGroup;
 			children = (
+				5a48b6ac88544c778ba18d917fa129ef /* SearchWindowController.swift */,
+				c84b018fbc4d43d8b692b2903f929b2d /* SearchResultTableView.swift */,
 				c1c7d93268ec4530b5e3690592b665bc /* SearchPanelView.swift */,
 			);
 			name = Search;
@@ -328,6 +368,14 @@
 			);
 			name = Core;
 			path = Core;
+			sourceTree = "<group>";
+		};
+		5E639AB885FD9E5942EA68F5 /* zh-Hans.lproj */ = {
+			isa = PBXGroup;
+			children = (
+				B9578B46AAD3571DDD3649BD /* Localizable.strings */,
+			);
+			name = "zh-Hans.lproj";
 			sourceTree = "<group>";
 		};
 		6848B678D6B0DFE9C03C0649 /* Frameworks */ = {
@@ -348,6 +396,10 @@
 				A7ACAD71F179479399D317B5 /* ServiceTests.swift */,
 				7B49513BF7A5406AAAD097452DF39E98 /* IntegrationTests.swift */,
 				3F0CE6201AD76D5461554E67 /* Info.plist */,
+				E1A3D15ECB52A3E866FA5B62 /* ChildrenMapTests.swift */,
+				05E59819253EFC49AE0D6ECD /* SearchParserTests.swift */,
+				C53A74B49F92CA270158001F /* SearchPreviewTests.swift */,
+				6B3884ED075B3207805D9031 /* AppSettingsTests.swift */,
 			);
 			name = CascViewerTests;
 			path = CascViewerTests;
@@ -374,7 +426,6 @@
 		952931FFD7A7D0C9C3E055E5 /* Common */ = {
 			isa = PBXGroup;
 			children = (
-				947a1fea18a94f38bc8292a69a7a5d90 /* ProgressOverlay.swift */,
 			);
 			name = Common;
 			path = Common;
@@ -385,6 +436,8 @@
 			children = (
 				0F1CC7D58B59DC3D8363D661 /* Assets.xcassets */,
 				B1DB78AD7C1635C26329BCA1 /* Info.plist */,
+				D0081FF760214BFDF7BEA061 /* en.lproj */,
+				5E639AB885FD9E5942EA68F5 /* zh-Hans.lproj */,
 			);
 			name = Resources;
 			path = Resources;
@@ -396,11 +449,18 @@
 				09735D48B9B53C7CD4B0B5A385536583 /* FileTreeView.swift */,
 				9DE766F954D9B014A10A4A372929444F /* FileListView.swift */,
 				1CE0B9866ABEC28A52AD9DA460D84BA2 /* FilePreviewPanel.swift */,
-				651C675C09DA4EC99F204D3911B97C70 /* BreadcrumbView.swift */,
 				1A8215F4B2E848028DCC8338D668EE63 /* ExtractDialogView.swift */,
 			);
 			name = FileBrowser;
 			path = FileBrowser;
+			sourceTree = "<group>";
+		};
+		D0081FF760214BFDF7BEA061 /* en.lproj */ = {
+			isa = PBXGroup;
+			children = (
+				001E70D407C4FABF23E7468A /* Localizable.strings */,
+			);
+			name = en.lproj;
 			sourceTree = "<group>";
 		};
 		D84338248434269F32594FAD /* include */ = {
@@ -446,6 +506,7 @@
 				52876911EFB6B64D630AE9C3 /* Search */,
 				4EC8D351CC474622DDF2A948 /* BLPViewer */,
 				952931FFD7A7D0C9C3E055E5 /* Common */,
+				310AC8A08F6C5A302BE829E7 /* InstallManifest */,
 			);
 			name = UI;
 			path = UI;
@@ -595,6 +656,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				D5E1827D062484478F8E4332 /* Assets.xcassets in Resources */,
+				EA4867FD974BCE4332E163AD /* Localizable.strings in Resources */,
+				6F8F6D1395942D273BE9A9ED /* Localizable.strings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -655,19 +718,25 @@
 				39D9B3484F0602C4D0C0AD0B /* BLPImageInfo.swift in Sources */,
 				53402D15180DB908F43C3BE9 /* BLPDecoderBridge.cpp in Sources */,
 				35FD3BB8F88FC22459CA8A23 /* CascBridge+Sendable.swift in Sources */,
-			037A470504DB30EFFCACF80F45F52C0B /* ToolbarView.swift in Sources */,
-			BC667D0E6B33C558ABE3ECBEA2E0C8C5 /* StatusBarView.swift in Sources */,
-			74EE42895653FED52D9F0337C6DAADEE /* FileTreeView.swift in Sources */,
-			9353117A4C9C9675F7827DEA28AA0032 /* FileListView.swift in Sources */,
-			462578381ED52C1C7CF09D6739A38542 /* FilePreviewPanel.swift in Sources */,
-			4B6F460FA75143308C4CD846F8B9C1D8 /* BreadcrumbView.swift in Sources */,
-			90A4C1DB5D644463A144BB3C132F7863 /* ExtractDialogView.swift in Sources */,
-			61cc49ff07334b63a1f9de517f83efda /* SearchPanelView.swift in Sources */,
-			3bf7e1d0aaed40008075e0142d66e6e4 /* ProgressOverlay.swift in Sources */,
-			E5F6789012345678ABCDEF0123456789 /* BLPViewerWindow.swift in Sources */,
-			F6789012345678ABCDEF0123456789AB /* BLPViewerView.swift in Sources */,
-			6789012345678ABCDEF0123456789ABC /* BLPAnimationControls.swift in Sources */,
-			789012345678ABCDEF0123456789ABCD /* BLPMipMapSelector.swift in Sources */,
+				037A470504DB30EFFCACF80F45F52C0B /* ToolbarView.swift in Sources */,
+				BC667D0E6B33C558ABE3ECBEA2E0C8C5 /* StatusBarView.swift in Sources */,
+				74EE42895653FED52D9F0337C6DAADEE /* FileTreeView.swift in Sources */,
+				9353117A4C9C9675F7827DEA28AA0032 /* FileListView.swift in Sources */,
+				462578381ED52C1C7CF09D6739A38542 /* FilePreviewPanel.swift in Sources */,
+				90A4C1DB5D644463A144BB3C132F7863 /* ExtractDialogView.swift in Sources */,
+				bded554361194cb1820bb7a599abbaaf /* SearchResultTableView.swift in Sources */,
+				8e3acd0a4d954c76b0cc3eba7fbd7119 /* SearchWindowController.swift in Sources */,
+				61cc49ff07334b63a1f9de517f83efda /* SearchPanelView.swift in Sources */,
+				E5F6789012345678ABCDEF0123456789 /* BLPViewerWindow.swift in Sources */,
+				F6789012345678ABCDEF0123456789AB /* BLPViewerView.swift in Sources */,
+				6789012345678ABCDEF0123456789ABC /* BLPAnimationControls.swift in Sources */,
+				789012345678ABCDEF0123456789ABCD /* BLPMipMapSelector.swift in Sources */,
+				5797E3E1AB3A7D429B5C04CF /* OnlineStorageView.swift in Sources */,
+				0BADAAEC3C84D033D5264282 /* CDNProduct.swift in Sources */,
+				F30AA302032A81ABA1CA7ED2 /* CDNProductService.swift in Sources */,
+				8593A63AE5F820BFD2C16B1E /* OnlineStorageWindowController.swift in Sources */,
+				BE5C2E1686F1FD23E21B24C2 /* InstallManifestView.swift in Sources */,
+				2D93B78694FC7A98E3F63545 /* InstallManifestWindowController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -679,6 +748,10 @@
 				308B59ECC23544008EF5FA04 /* BridgeTests.swift in Sources */,
 				3FC64AAADCAC494DBC9CD0BB /* ServiceTests.swift in Sources */,
 				A4362CE38EE34B8B9FDACA56261F029F /* IntegrationTests.swift in Sources */,
+				3B9267AB2BDDE21301D7B864 /* ChildrenMapTests.swift in Sources */,
+				4831170CF5118AC5F7332C7D /* SearchParserTests.swift in Sources */,
+				4D51AB860D38CFB17FD78A82 /* SearchPreviewTests.swift in Sources */,
+				2A3A8BBC5F5C013D873E2828 /* AppSettingsTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
