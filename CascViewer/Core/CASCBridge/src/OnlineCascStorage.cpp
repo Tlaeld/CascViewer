@@ -57,6 +57,12 @@ std::vector<uint8_t> OnlineCascStorage::readFile(const std::string& /*cascPath*/
     return {};
 }
 
+std::vector<uint8_t> OnlineCascStorage::readFilePartial(const std::string& /*cascPath*/, uint64_t /*offset*/, uint64_t /*length*/, CascError& error)
+{
+    error = CascError::NotImplemented;
+    return {};
+}
+
 CascError OnlineCascStorage::extractFile(const std::string& cascPath,
                                          const std::string& destPath,
                                          const ProgressCallback& progress)
@@ -99,6 +105,16 @@ CascStorageInfo OnlineCascStorage::getStorageInfo(CascError& error)
     info.totalFiles = 0;
     info.totalSize = 0;
     return info;
+}
+
+std::vector<std::pair<std::string, uint32_t>> OnlineCascStorage::getTags()
+{
+    return {};
+}
+
+std::pair<std::vector<InstallManifestTag>, std::vector<InstallManifestEntry>> OnlineCascStorage::parseInstallManifest()
+{
+    return {};
 }
 
 } // namespace CascBridge

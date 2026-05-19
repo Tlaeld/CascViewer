@@ -25,6 +25,7 @@ struct CascFileEntry {
     std::string encodingKey;  // empty for directories
     bool isLocal = true;
     CascNameType nameType = CascNameType::Full;
+    uint64_t tagBitMask = 0;
 };
 
 struct CascStorageInfo {
@@ -32,6 +33,18 @@ struct CascStorageInfo {
     std::string buildVersion;
     uint64_t totalFiles;
     uint64_t totalSize;
+};
+
+struct InstallManifestTag {
+    std::string name;
+    uint32_t value;
+};
+
+struct InstallManifestEntry {
+    std::string fileName;
+    std::string ckey;
+    uint32_t flags;
+    std::vector<uint8_t> tagBits;
 };
 
 enum class CascError : uint8_t {
@@ -45,6 +58,7 @@ enum class CascError : uint8_t {
     CDNConfigError,
     DecodingError,
     NotImplemented,
+    Cancelled,
     Unknown
 };
 

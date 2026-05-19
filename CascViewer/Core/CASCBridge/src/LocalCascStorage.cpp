@@ -4,7 +4,9 @@
 #include <cstdio>
 #include <cstring>
 #include <filesystem>
+#include <fstream>
 #include <limits>
+#include <unordered_set>
 
 namespace CascBridge {
 
@@ -51,13 +53,6 @@ static bool cascProgressCallback(void* userParam, CASC_PROGRESS_MSG progressMsg,
         case CascProgressLoadingIndexes: msg = "Loading indexes"; break;
         case CascProgressDownloadingArchiveIndexes: msg = "Downloading archive indexes"; break;
     }
-    if(szObject && szObject[0]) {
-        fprintf(stderr, "[CASC-PROGRESS] %s: %s (%u/%u)\n", msg, szObject, current, total);
-    } else if(total) {
-        fprintf(stderr, "[CASC-PROGRESS] %s (%u/%u)\n", msg, current, total);
-    } else {
-        fprintf(stderr, "[CASC-PROGRESS] %s\n", msg);
-    }
     if (storage) {
         storage->invokeProgressCallback(msg, static_cast<int>(current), static_cast<int>(total));
     }
@@ -75,6 +70,12 @@ void LocalCascStorage::close()
         CascCloseStorage(hStorage);
         hStorage = nullptr;
     }
+    // Clean up processed listfile temp file
+    if (!processedListFilePath.empty()) {
+        std::error_code ec;
+        std::filesystem::remove(processedListFilePath, ec);
+        processedListFilePath.clear();
+    }
 }
 
 void LocalCascStorage::setCdnDownloadEnabled(bool enabled)
@@ -85,6 +86,17 @@ void LocalCascStorage::setCdnDownloadEnabled(bool enabled)
 void LocalCascStorage::setCachePath(const std::string& path)
 {
     cachePath = path;
+}
+
+void LocalCascStorage::setListFilePath(const std::string& path)
+{
+    // Clean up old processed listfile temp file
+    if (!processedListFilePath.empty()) {
+        std::error_code ec;
+        std::filesystem::remove(processedListFilePath, ec);
+        processedListFilePath.clear();
+    }
+    listFilePath = path;
 }
 
 void LocalCascStorage::setOpenProgressCallback(COpenProgressCallback callback, void* context)
@@ -108,22 +120,55 @@ void LocalCascStorage::invokeProgressCallback(const char* message, int current, 
     }
 }
 
+void LocalCascStorage::requestCancelExtraction() {
+    extractionCancelled.store(true, std::memory_order_relaxed);
+}
+
 CascError LocalCascStorage::open(const std::string& localPath)
 {
     if (hStorage != nullptr) {
         close();
     }
 
+    bool isOnlineParam = localPath.find('*') != std::string::npos;
+
     CASC_OPEN_STORAGE_ARGS args = {};
     args.Size = sizeof(CASC_OPEN_STORAGE_ARGS);
     args.dwLocaleMask = CASC_LOCALE_ALL;
     args.PfnProgressCallback = cascProgressCallback;
     args.PtrProgressParam = this;
-    args.dwFlags = cdnDownloadEnabled ? (CASC_FEATURE_ALLOW_DOWNLOAD | CASC_FEATURE_ONLINE) : 0;
 
-    if (!CascOpenStorageEx(localPath.c_str(), &args, false, &hStorage)) {
+    bool opened = false;
+
+    if (isOnlineParam) {
+        // Parse "cachePath*product*region" and pass fields directly via args
+        // to avoid ParseOpenParams bugs with multi-part online storage strings.
+        size_t firstSep = localPath.find('*');
+        size_t secondSep = localPath.find('*', firstSep + 1);
+        
+        std::string cachePathStr = localPath.substr(0, firstSep);
+        std::string productStr = (secondSep != std::string::npos) 
+            ? localPath.substr(firstSep + 1, secondSep - firstSep - 1) 
+            : localPath.substr(firstSep + 1);
+        std::string regionStr = (secondSep != std::string::npos) 
+            ? localPath.substr(secondSep + 1) 
+            : "";
+
+        args.dwFlags = cdnDownloadEnabled ? (CASC_FEATURE_ALLOW_DOWNLOAD | CASC_FEATURE_ONLINE) : 0;
+        args.szLocalPath = cachePathStr.c_str();
+        args.szCodeName = productStr.c_str();
+        if (!regionStr.empty()) {
+            args.szRegion = regionStr.c_str();
+        }
+        
+        opened = CascOpenStorageEx(NULL, &args, true, &hStorage);
+    } else {
+        args.dwFlags = 0;
+        opened = CascOpenStorageEx(localPath.c_str(), &args, false, &hStorage);
+    }
+
+    if (!opened) {
         DWORD error = GetCascError();
-        fprintf(stderr, "[CASC-CPP] open() failed: %s, error=%u\n", localPath.c_str(), error);
         if (error == ERROR_FILE_NOT_FOUND || error == ERROR_PATH_NOT_FOUND) {
             return CascError::StorageNotFound;
         }
@@ -177,9 +222,10 @@ std::vector<CascFileEntry> LocalCascStorage::listDirectory(const std::string& pa
         }
     }
 
+    
     for (const auto& mask : masks) {
         CASC_FIND_DATA findData = {};
-        HANDLE hFind = CascFindFirstFile(hStorage, mask.c_str(), &findData, nullptr);
+        HANDLE hFind = CascFindFirstFile(hStorage, mask.c_str(), &findData, listFilePath.empty() ? nullptr : listFilePath.c_str());
         if (hFind == INVALID_HANDLE_VALUE || hFind == nullptr) {
             continue;
         }
@@ -198,6 +244,7 @@ std::vector<CascFileEntry> LocalCascStorage::listDirectory(const std::string& pa
             entry.encodingKey = ekeyToHex(findData.EKey);
             entry.isLocal = findData.bFileAvailable != 0;
             entry.nameType = static_cast<CascNameType>(findData.NameType);
+            entry.tagBitMask = findData.TagBitMask;
             entries.push_back(std::move(entry));
         } while (CascFindNextFile(hFind, &findData));
 
@@ -274,6 +321,81 @@ std::vector<uint8_t> LocalCascStorage::readFile(const std::string& cascPath, Cas
     return buffer;
 }
 
+std::vector<uint8_t> LocalCascStorage::readFilePartial(const std::string& cascPath, uint64_t offset, uint64_t length, CascError& error)
+{
+    error = CascError::None;
+
+    if (hStorage == nullptr) {
+        error = CascError::StorageNotFound;
+        return {};
+    }
+
+    std::string openPath = cascPath;
+    std::replace(openPath.begin(), openPath.end(), '/', '\\');
+    HANDLE hFile = nullptr;
+    if (!CascOpenFile(hStorage, openPath.c_str(), CASC_LOCALE_ALL, CASC_OPEN_BY_NAME, &hFile)) {
+        error = mapCascError(GetCascError());
+        return {};
+    }
+
+    ULONGLONG fileSize64 = 0;
+    if (!CascGetFileSize64(hFile, &fileSize64)) {
+        CascCloseFile(hFile);
+        error = mapCascError(GetCascError());
+        return {};
+    }
+
+    if (offset >= fileSize64) {
+        CascCloseFile(hFile);
+        return {};
+    }
+
+    ULONGLONG toRead = std::min(length, fileSize64 - offset);
+    if (toRead > static_cast<ULONGLONG>(std::numeric_limits<size_t>::max())) {
+        CascCloseFile(hFile);
+        error = CascError::ReadError;
+        return {};
+    }
+
+    // Cap to 10MB for partial reads
+    constexpr size_t MAX_PARTIAL_READ = 10 * 1024 * 1024;
+    size_t readSize = static_cast<size_t>(std::min<ULONGLONG>(toRead, MAX_PARTIAL_READ));
+
+    if (!CascSetFilePointer64(hFile, static_cast<LONGLONG>(offset), nullptr, FILE_BEGIN)) {
+        CascCloseFile(hFile);
+        error = mapCascError(GetCascError());
+        return {};
+    }
+
+    std::vector<uint8_t> buffer;
+    try {
+        buffer.resize(readSize);
+    } catch (const std::bad_alloc&) {
+        CascCloseFile(hFile);
+        error = CascError::ReadError;
+        return {};
+    }
+
+    DWORD totalRead = 0;
+    while (totalRead < readSize) {
+        DWORD bytesRead = 0;
+        DWORD chunkSize = static_cast<DWORD>(std::min<size_t>(readSize - totalRead, std::numeric_limits<DWORD>::max()));
+        if (!CascReadFile(hFile, buffer.data() + totalRead, chunkSize, &bytesRead)) {
+            CascCloseFile(hFile);
+            error = mapCascError(GetCascError());
+            return {};
+        }
+        if (bytesRead == 0) {
+            break;
+        }
+        totalRead += bytesRead;
+    }
+
+    buffer.resize(totalRead);
+    CascCloseFile(hFile);
+    return buffer;
+}
+
 CascError LocalCascStorage::extractFile(const std::string& cascPath,
                                         const std::string& destPath,
                                         const ProgressCallback& progress)
@@ -282,12 +404,14 @@ CascError LocalCascStorage::extractFile(const std::string& cascPath,
         return CascError::StorageNotFound;
     }
 
+    // Reset cancellation flag at the start of each extraction
+    extractionCancelled.store(false, std::memory_order_relaxed);
+
     constexpr size_t BUFFER_SIZE = 1024 * 1024;  // 1 MB chunks
     std::vector<uint8_t> chunk;
     try {
         chunk.resize(BUFFER_SIZE);
     } catch (const std::bad_alloc&) {
-        fprintf(stderr, "[CASC-CPP] extractFile: bad_alloc\n");
         return CascError::ReadError;
     }
 
@@ -295,7 +419,8 @@ CascError LocalCascStorage::extractFile(const std::string& cascPath,
     std::replace(openPath.begin(), openPath.end(), '/', '\\');
     HANDLE hFile = nullptr;
     if (!CascOpenFile(hStorage, openPath.c_str(), CASC_LOCALE_ALL, CASC_OPEN_BY_NAME, &hFile)) {
-        return mapCascError(GetCascError());
+        DWORD err = GetCascError();
+        return mapCascError(err);
     }
 
     // Create parent directories if needed
@@ -324,6 +449,14 @@ CascError LocalCascStorage::extractFile(const std::string& cascPath,
 
     if (hasKnownSize && fileSize64 > 0) {
         while (totalRead < fileSize64) {
+            // Check cancellation after each chunk
+            if (extractionCancelled.load(std::memory_order_relaxed)) {
+                CascCloseFile(hFile);
+                std::fclose(fp);
+                std::remove(destPath.c_str());
+                return CascError::Cancelled;
+            }
+
             DWORD toRead = static_cast<DWORD>(std::min(BUFFER_SIZE, static_cast<size_t>(fileSize64 - totalRead)));
             DWORD bytesRead = 0;
             if (!CascReadFile(hFile, chunk.data(), toRead, &bytesRead)) {
@@ -344,6 +477,14 @@ CascError LocalCascStorage::extractFile(const std::string& cascPath,
     } else {
         // Stream read without known size (some remote files report size failure but data is readable)
         while (true) {
+            // Check cancellation after each chunk
+            if (extractionCancelled.load(std::memory_order_relaxed)) {
+                CascCloseFile(hFile);
+                std::fclose(fp);
+                std::remove(destPath.c_str());
+                return CascError::Cancelled;
+            }
+
             DWORD bytesRead = 0;
             if (!CascReadFile(hFile, chunk.data(), static_cast<DWORD>(BUFFER_SIZE), &bytesRead)) {
                 DWORD err = GetCascError();
@@ -403,6 +544,169 @@ CascStorageInfo LocalCascStorage::getStorageInfo(CascError& error)
     info.totalFiles = fileCount;
     info.totalSize = 0;
     return info;
+}
+
+std::vector<std::pair<std::string, uint32_t>> LocalCascStorage::getTags()
+{
+    if (hStorage == nullptr) {
+        return {};
+    }
+
+    size_t cbTags = 0;
+    CascGetStorageInfo(hStorage, CascStorageTags, nullptr, 0, &cbTags);
+    if (cbTags == 0) {
+        return {};
+    }
+
+    std::vector<uint8_t> buffer(cbTags);
+    if (!CascGetStorageInfo(hStorage, CascStorageTags, buffer.data(), cbTags, &cbTags)) {
+        return {};
+    }
+
+    auto* pTags = reinterpret_cast<PCASC_STORAGE_TAGS>(buffer.data());
+    std::vector<std::pair<std::string, uint32_t>> result;
+    result.reserve(pTags->TagCount);
+    for (size_t i = 0; i < pTags->TagCount; ++i) {
+        const auto& tag = pTags->Tags[i];
+        result.emplace_back(std::string(tag.szTagName, tag.TagNameLength), tag.TagValue);
+    }
+    return result;
+}
+
+std::pair<std::vector<InstallManifestTag>, std::vector<InstallManifestEntry>> LocalCascStorage::parseInstallManifest()
+{
+    if (hStorage == nullptr) {
+        return {};
+    }
+
+    TCascStorage* hs = TCascStorage::IsValid(hStorage);
+    if (hs == nullptr) {
+        return {};
+    }
+    if ((hs->InstallCKey.Flags & CASC_CE_HAS_CKEY) == 0) {
+        return {};
+    }
+
+    // Open the install file by its CKey
+    HANDLE hFile = nullptr;
+    if (!CascOpenFile(hStorage, reinterpret_cast<const char*>(hs->InstallCKey.CKey), CASC_LOCALE_ALL, CASC_OPEN_BY_CKEY, &hFile)) {
+        return {};
+    }
+
+    // Read the entire file
+    ULONGLONG fileSize64 = 0;
+    if (!CascGetFileSize64(hFile, &fileSize64)) {
+        CascCloseFile(hFile);
+        return {};
+    }
+    if (fileSize64 == 0 || fileSize64 > 256 * 1024 * 1024) {
+        CascCloseFile(hFile);
+        return {};
+    }
+
+    size_t fileSize = static_cast<size_t>(fileSize64);
+    std::vector<uint8_t> data(fileSize);
+    DWORD bytesRead = 0;
+    if (!CascReadFile(hFile, data.data(), static_cast<DWORD>(fileSize), &bytesRead) || bytesRead != fileSize) {
+        CascCloseFile(hFile);
+        return {};
+    }
+    CascCloseFile(hFile);
+
+    const uint8_t* ptr = data.data();
+    const uint8_t* end = data.data() + fileSize;
+
+    // Parse header
+    if (fileSize < 10) {
+        return {};
+    }
+    uint16_t magic = ptr[0] | (ptr[1] << 8);
+    if (magic != 0x4E49) {
+        return {}; // 'IN'
+    }
+    uint8_t version = ptr[2];
+    if (version != 1) {
+        return {};
+    }
+    // uint8_t ekeyLength = ptr[3]; // expected 0x10
+    uint16_t tagCount = (ptr[4] << 8) | ptr[5];
+    uint32_t entryCount = ((uint32_t)ptr[6] << 24) | ((uint32_t)ptr[7] << 16) | ((uint32_t)ptr[8] << 8) | ptr[9];
+
+    ptr += 10;
+
+    std::vector<InstallManifestTag> tags;
+    tags.reserve(tagCount);
+
+    size_t bitmapLength = (entryCount / 8) + ((entryCount & 0x07) ? 1 : 0);
+
+    // Parse tags
+    for (uint16_t i = 0; i < tagCount && ptr < end; ++i) {
+        const char* tagName = reinterpret_cast<const char*>(ptr);
+        size_t nameLen = strlen(tagName);
+        ptr += nameLen + 1;
+        if (ptr + sizeof(uint16_t) > end) break;
+        uint16_t tagValue = (ptr[0] << 8) | ptr[1];
+        ptr += sizeof(uint16_t); // skip USHORT (bitmap size or flags)
+        if (ptr + bitmapLength > end) break;
+        tags.push_back({std::string(tagName, nameLen), tagValue});
+        ptr += bitmapLength;
+    }
+
+    std::vector<InstallManifestEntry> entries;
+    entries.reserve(entryCount);
+
+    // Parse file entries
+    for (uint32_t i = 0; i < entryCount && ptr < end; ++i) {
+        const char* fileName = reinterpret_cast<const char*>(ptr);
+        size_t nameLen = strlen(fileName);
+        ptr += nameLen + 1;
+        if (ptr + 16 + 4 > end) break;
+
+        std::string ckeyStr;
+        ckeyStr.reserve(32);
+        static const char hex[] = "0123456789abcdef";
+        for (int j = 0; j < 16; ++j) {
+            ckeyStr.push_back(hex[ptr[j] >> 4]);
+            ckeyStr.push_back(hex[ptr[j] & 0x0F]);
+        }
+
+        ptr += 16;
+        uint32_t fileSize = ((uint32_t)ptr[0] << 24) | ((uint32_t)ptr[1] << 16) | ((uint32_t)ptr[2] << 8) | ptr[3];
+        ptr += 4;
+
+        // Compute tag bits for this entry from each tag's bitmap
+        std::vector<uint8_t> tagBits;
+        tagBits.reserve(tagCount);
+        const uint8_t* tagPtr = data.data() + 10; // start of tags section
+        for (uint16_t t = 0; t < tagCount && tagPtr < end; ++t) {
+            const char* tName = reinterpret_cast<const char*>(tagPtr);
+            size_t tLen = strlen(tName);
+            tagPtr += tLen + 1 + sizeof(uint16_t); // name + USHORT
+            if (tagPtr + bitmapLength > end) break;
+            uint8_t hasTag = 0;
+            size_t byteIndex = i / 8;
+            size_t bitIndex = i % 8;
+            if (byteIndex < bitmapLength) {
+                hasTag = (tagPtr[byteIndex] & (1 << bitIndex)) != 0 ? 1 : 0;
+            }
+            tagBits.push_back(hasTag);
+            tagPtr += bitmapLength;
+        }
+
+        entries.push_back({std::string(fileName, nameLen), ckeyStr, fileSize, std::move(tagBits)});
+    }
+
+    // Deduplicate by file name (install manifest may contain duplicate entries for different tag combinations)
+    std::vector<InstallManifestEntry> uniqueEntries;
+    uniqueEntries.reserve(entries.size());
+    std::unordered_set<std::string> seen;
+    for (auto& entry : entries) {
+        if (seen.insert(entry.fileName).second) {
+            uniqueEntries.push_back(std::move(entry));
+        }
+    }
+
+    return {std::move(tags), std::move(uniqueEntries)};
 }
 
 } // namespace CascBridge

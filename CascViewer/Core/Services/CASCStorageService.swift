@@ -83,15 +83,18 @@ final class CASCStorageService: ObservableObject {
     @Published var loadProgressMessage: String = ""
     @Published var error: CASCError?
     @Published var lastProgressUpdate: Date = Date.distantPast
+    @Published var isOnlineStorage: Bool = false
+    @Published var needsListFile: Bool = false
 
     var handle: CascBridge.CascStorageHandle
     private let queue = DispatchQueue(label: "casc.storage", qos: .userInitiated)
-    private var allEntries: [CASCFileEntry] = []
+    var allEntries: [CASCFileEntry] = []
     private(set) var childrenByPath: [String: [DirectoryNode]] = [:]
     private var entriesByPath: [String: CASCFileEntry] = [:]
     private var directoryPaths: Set<String> = []
     private var progressContext: UnsafeMutableRawPointer? = nil
     var allEntriesCount: Int { allEntries.count }
+    var tags: [CascTag] = []
 
     init(storage: CascBridge.CascStorageHandle) {
         self.handle = storage
@@ -104,17 +107,23 @@ final class CASCStorageService: ObservableObject {
         handle.close()
     }
 
+    var listFilePath: String = ""
+    
     func openLocal(path: String) async {
         guard !isLoading else { return }
         isLoading = true
+        isOnlineStorage = false
         loadProgress = 0
         loadProgressMessage = L("loading_storage")
         error = nil
-        print("[CASC] " + L("loading_storage") + ": \(path)")
+        
         var localHandle = handle
         localHandle.setCdnDownloadEnabled(AppSettings.shared.cdnDownloadEnabled)
         if !AppSettings.shared.cdnCachePath.isEmpty {
             localHandle.setCachePath(std.string(AppSettings.shared.cdnCachePath))
+        }
+        if !listFilePath.isEmpty {
+            localHandle.setListFilePath(std.string(listFilePath))
         }
         let ctx = Unmanaged.passRetained(self).toOpaque()
         progressContext = ctx
@@ -136,6 +145,7 @@ final class CASCStorageService: ObservableObject {
         } else {
             await refreshStorageInfo()
             await loadRootEntries()
+            await loadTags()
             isLoading = false
             loadProgressMessage = ""
         }
@@ -144,23 +154,69 @@ final class CASCStorageService: ObservableObject {
     func openOnline(product: String, region: String) async {
         guard !isLoading else { return }
         isLoading = true
+        isOnlineStorage = true
         loadProgress = 0
         loadProgressMessage = L("loading_storage")
         error = nil
-        let config = "\(product):\(region)"
-        var localHandle = handle
-        let ctx = Unmanaged.passRetained(self).toOpaque()
-        progressContext = ctx
-        localHandle.setOpenProgressCallback(progressCallbackThunk, ctx)
-        let result = await withCheckedContinuation { (continuation: CheckedContinuation<CascBridge.CascError, Never>) in
-            queue.async {
-                let result = localHandle.open(std.string(config))
-                continuation.resume(returning: result)
+        let baseCachePath = AppSettings.shared.cdnCachePath.isEmpty
+            ? (FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first?.appendingPathComponent("CascViewer").path ?? "")
+            : AppSettings.shared.cdnCachePath
+        // Use product-specific subfolder to avoid cache conflicts between different products
+        let cachePath = (baseCachePath as NSString).appendingPathComponent(product)
+        // Ensure cache directory exists before opening
+        try? FileManager.default.createDirectory(atPath: cachePath, withIntermediateDirectories: true)
+        let config = "\(cachePath)*\(product)*\(region)"
+
+        let result = await openWithConfig(config: config)
+
+        // If cache is corrupted, clean it and retry once
+        if result == .StorageCorrupted {
+            print("[CASC] Cache corrupted for \(product), clearing and retrying...")
+            let fm = FileManager.default
+            let versionsFile = (cachePath as NSString).appendingPathComponent("versions")
+            let cdnsFile = (cachePath as NSString).appendingPathComponent("cdns")
+            try? fm.removeItem(atPath: versionsFile)
+            try? fm.removeItem(atPath: cdnsFile)
+            let retryResult = await openWithConfig(config: config)
+            if retryResult == .None {
+                loadProgress = 0
+                await refreshStorageInfo()
+                await loadRootEntries()
+                await loadTags()
+                isLoading = false
+                loadProgressMessage = ""
+                return
+            } else {
+                loadProgressMessage = ""
+                isLoading = false
+                self.error = mapError(retryResult)
+                return
             }
         }
-        localHandle.setOpenProgressCallback(nil, nil)
-        progressContext = nil
-        Unmanaged<CASCStorageService>.fromOpaque(ctx).release()
+
+        // If storage not found, it may be a transient CDN failure (rate limiting
+        // or connection reset during bulk downloads). Wait a moment and retry once
+        // so partial cache from the first attempt can be reused.
+        if result == .StorageNotFound {
+            print("[CASC] Storage not found for \(product), waiting 3s and retrying...")
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            let retryResult = await openWithConfig(config: config)
+            if retryResult == .None {
+                loadProgress = 0
+                await refreshStorageInfo()
+                await loadRootEntries()
+                await loadTags()
+                isLoading = false
+                loadProgressMessage = ""
+                return
+            } else {
+                loadProgressMessage = ""
+                isLoading = false
+                self.error = mapError(retryResult)
+                return
+            }
+        }
+
         loadProgress = 0
         if result != .None {
             loadProgressMessage = ""
@@ -169,13 +225,75 @@ final class CASCStorageService: ObservableObject {
         } else {
             await refreshStorageInfo()
             await loadRootEntries()
+            await loadTags()
             isLoading = false
             loadProgressMessage = ""
         }
     }
 
+    private func openWithConfig(config: String) async -> CascBridge.CascError {
+        var localHandle = handle
+        let ctx = Unmanaged.passRetained(self).toOpaque()
+        progressContext = ctx
+        localHandle.setOpenProgressCallback(progressCallbackThunk, ctx)
+        let result: CascBridge.CascError = await withCheckedContinuation { (continuation: CheckedContinuation<CascBridge.CascError, Never>) in
+            queue.async {
+                let result = localHandle.open(std.string(config))
+                continuation.resume(returning: result)
+            }
+        }
+        localHandle.setOpenProgressCallback(nil, nil)
+        progressContext = nil
+        Unmanaged<CASCStorageService>.fromOpaque(ctx).release()
+        return result
+    }
+
+    private func loadTags() async {
+        let rawTags = await withCheckedContinuation { (continuation: CheckedContinuation<[CascTag], Never>) in
+            var localHandle = self.handle
+            queue.async {
+                let tags = localHandle.getTags()
+                let mapped = (0..<tags.size()).map { i in
+                    CascTag(name: String(tags[i].first), value: tags[i].second)
+                }
+                continuation.resume(returning: mapped)
+            }
+        }
+        await MainActor.run {
+            self.tags = rawTags
+            
+        }
+    }
+
     /// Load root entries once from C++ and cache them. All heavy work is done on background queue.
     /// Note: caller is responsible for setting/clearing `isLoading`.
+    func loadInstallManifest() async -> (tags: [InstallManifestTag], entries: [InstallManifestEntry])? {
+        return await withCheckedContinuation { (continuation: CheckedContinuation<(tags: [InstallManifestTag], entries: [InstallManifestEntry])?, Never>) in
+            var localHandle = self.handle
+            queue.async {
+                let result = localHandle.parseInstallManifest()
+                let tags = (0..<result.first.size()).map { i in
+                    InstallManifestTag(name: String(result.first[i].name), value: result.first[i].value)
+                }
+                let entries = (0..<result.second.size()).map { i in
+                    let entry = result.second[i]
+                    let bits = (0..<entry.tagBits.size()).map { entry.tagBits[$0] != 0 }
+                    return InstallManifestEntry(
+                        fileName: String(entry.fileName),
+                        ckey: String(entry.ckey),
+                        fileSize: entry.flags,
+                        tagBits: bits
+                    )
+                }
+                if tags.isEmpty && entries.isEmpty {
+                    continuation.resume(returning: nil)
+                } else {
+                    continuation.resume(returning: (tags: tags, entries: entries))
+                }
+            }
+        }
+    }
+
     private func loadRootEntries() async {
         loadProgressMessage = L("building_children_map")
         // Reset progress to 0 so the overlay shows an indeterminate spinner
@@ -203,16 +321,17 @@ final class CASCStorageService: ObservableObject {
                         size: entry.size,
                         encodingKey: String(entry.encodingKey),
                         isLocal: entry.isLocal,
-                        nameType: swiftNameType
+                        nameType: swiftNameType,
+                        tagBitMask: entry.tagBitMask
                     )
                 }
-                print("[CASC] " + L("building_children_map"))
+                
                 let (childrenMap, entriesByPath) = Self.buildChildrenMap(from: mapped)
-                print("[CASC] " + L("built_children_map", childrenMap.count))
+                
                 continuation.resume(returning: (mapped, childrenMap, entriesByPath, error))
             }
         }
-        print("[CASC] loadRootEntries continuation resumed")
+        
         loadProgressMessage = ""
         let (newEntries, childrenMap, newEntriesByPath, err) = result
         if err != .None {
@@ -225,7 +344,41 @@ final class CASCStorageService: ObservableObject {
             self.currentPath = ""
             self.currentChildren = childrenMap[""] ?? []
             self.entries = []
-            print("[CASC] " + L("load_root_entries_done", newEntries.count))
+            // Detect if entries lack human-readable names.
+            // CascLib may report DataId/CKey placeholders as Full,
+            // so we check filename patterns in addition to nameType.
+            if !newEntries.isEmpty {
+                let hasObfuscated = newEntries.contains { entry in
+                    // CKey/EKey files go to virtual folders, not obfuscated
+                    if entry.nameType == .ckey || entry.nameType == .ekey {
+                        return false
+                    }
+                    let name = entry.name
+                    // DataId placeholder: FILE00166360.dat
+                    if name.count == 16, name.hasPrefix("FILE"), name.hasSuffix(".dat") {
+                        let hexStart = name.index(name.startIndex, offsetBy: 4)
+                        let hexEnd = name.index(name.startIndex, offsetBy: 12)
+                        for ch in name[hexStart..<hexEnd] {
+                            guard ch.isASCII && ch.isHexDigit else { return false }
+                        }
+                        return true
+                    }
+                    // CKey/EKey: 32 hex chars
+                    if name.count == 32 {
+                        for ch in name {
+                            guard ch.isASCII && ch.isHexDigit else { return false }
+                        }
+                        return true
+                    }
+                    return false
+                }
+                // Once a listfile has been provided, don't prompt again even if some
+                // files remain obfuscated (the listfile may be incomplete).
+                self.needsListFile = hasObfuscated && self.listFilePath.isEmpty
+            } else {
+                self.needsListFile = false
+            }
+            
         }
     }
 
@@ -239,12 +392,45 @@ final class CASCStorageService: ObservableObject {
         return buildChildrenMapParallel(from: entries)
     }
 
+    /// Returns true for entries that have no human-readable path and should be
+    /// grouped into the UNKNOWN virtual folder.
+    private nonisolated static func isUncategorized(_ entry: CASCFileEntry) -> Bool {
+        if entry.nameType == .ckey || entry.nameType == .ekey {
+            return false
+        }
+        // If it already has a directory path, keep it in the normal tree
+        if entry.normalizedPath.contains("/") {
+            return false
+        }
+        let name = entry.name
+        // DataId-style placeholder: FILE00166360.dat
+        if name.count == 16, name.hasPrefix("FILE"), name.hasSuffix(".dat") {
+            let hexStart = name.index(name.startIndex, offsetBy: 4)
+            let hexEnd = name.index(name.startIndex, offsetBy: 12)
+            for ch in name[hexStart..<hexEnd] {
+                guard ch.isASCII && ch.isHexDigit else { return false }
+            }
+            return true
+        }
+        // CKey/EKey-style hex name
+        if name.count == 32 {
+            for ch in name {
+                if !ch.isASCII || !ch.isHexDigit {
+                    return false
+                }
+            }
+            return true
+        }
+        return false
+    }
+
     private nonisolated static func buildChildrenMapSerial(from entries: [CASCFileEntry]) -> (children: [String: [DirectoryNode]], entriesByPath: [String: CASCFileEntry]) {
         var dirNamesByPath: [String: Set<String>] = [:]
         var fileNodesByPath: [String: [DirectoryNode]] = [:]
         var dirHasLocalFiles = Set<String>()
         var contentKeyFiles: [DirectoryNode] = []
         var encodedKeyFiles: [DirectoryNode] = []
+        var uncategorizedFiles: [DirectoryNode] = []
         var entriesByPath: [String: CASCFileEntry] = [:]
         entriesByPath.reserveCapacity(entries.count)
 
@@ -258,6 +444,10 @@ final class CASCStorageService: ObservableObject {
             }
             if entry.nameType == .ekey {
                 encodedKeyFiles.append(DirectoryNode(from: entry))
+                continue
+            }
+            if isUncategorized(entry) {
+                uncategorizedFiles.append(DirectoryNode(from: entry))
                 continue
             }
 
@@ -318,6 +508,10 @@ final class CASCStorageService: ObservableObject {
             rootChildren.append(DirectoryNode(name: "ENCODED_KEY", path: "ENCODED_KEY", children: [], isLocal: true))
             map["ENCODED_KEY"] = encodedKeyFiles.sorted { $0.name < $1.name }
         }
+        if !uncategorizedFiles.isEmpty {
+            rootChildren.append(DirectoryNode(name: "UNKNOWN", path: "UNKNOWN", children: [], isLocal: true))
+            map["UNKNOWN"] = uncategorizedFiles.sorted { $0.name < $1.name }
+        }
         if !rootChildren.isEmpty {
             map[""] = rootChildren.sorted { $0.name < $1.name }
         }
@@ -336,6 +530,7 @@ final class CASCStorageService: ObservableObject {
             var dirHasLocalFiles = Set<String>()
             var contentKeyFiles: [DirectoryNode] = []
             var encodedKeyFiles: [DirectoryNode] = []
+            var uncategorizedFiles: [DirectoryNode] = []
             var entriesByPath: [String: CASCFileEntry] = [:]
         }
 
@@ -359,6 +554,10 @@ final class CASCStorageService: ObservableObject {
                 }
                 if entry.nameType == .ekey {
                     result.encodedKeyFiles.append(DirectoryNode(from: entry))
+                    continue
+                }
+                if isUncategorized(entry) {
+                    result.uncategorizedFiles.append(DirectoryNode(from: entry))
                     continue
                 }
 
@@ -399,6 +598,7 @@ final class CASCStorageService: ObservableObject {
         var dirHasLocalFiles = Set<String>()
         var contentKeyFiles: [DirectoryNode] = []
         var encodedKeyFiles: [DirectoryNode] = []
+        var uncategorizedFiles: [DirectoryNode] = []
         var entriesByPath: [String: CASCFileEntry] = [:]
         entriesByPath.reserveCapacity(entries.count)
 
@@ -406,6 +606,7 @@ final class CASCStorageService: ObservableObject {
             entriesByPath.merge(chunk.entriesByPath) { _, new in new }
             contentKeyFiles.append(contentsOf: chunk.contentKeyFiles)
             encodedKeyFiles.append(contentsOf: chunk.encodedKeyFiles)
+            uncategorizedFiles.append(contentsOf: chunk.uncategorizedFiles)
             dirHasLocalFiles.formUnion(chunk.dirHasLocalFiles)
             for (path, names) in chunk.dirNamesByPath {
                 dirNamesByPath[path, default: Set()].formUnion(names)
@@ -445,6 +646,10 @@ final class CASCStorageService: ObservableObject {
         if !encodedKeyFiles.isEmpty {
             rootChildren.append(DirectoryNode(name: "ENCODED_KEY", path: "ENCODED_KEY", children: [], isLocal: true))
             map["ENCODED_KEY"] = encodedKeyFiles.sorted { $0.name < $1.name }
+        }
+        if !uncategorizedFiles.isEmpty {
+            rootChildren.append(DirectoryNode(name: "UNKNOWN", path: "UNKNOWN", children: [], isLocal: true))
+            map["UNKNOWN"] = uncategorizedFiles.sorted { $0.name < $1.name }
         }
         if !rootChildren.isEmpty {
             map[""] = rootChildren.sorted { $0.name < $1.name }
@@ -498,12 +703,24 @@ final class CASCStorageService: ObservableObject {
         self.currentChildren = childrenByPath[path, default: []]
     }
 
+    /// Rebuild the children map and reload current directory view.
+    func refreshCurrentStorage() async {
+        isLoading = true
+        loadProgress = 0
+        loadProgressMessage = L("loading_listfile")
+        await loadRootEntries()
+        await loadTags()
+        self.currentChildren = childrenByPath[currentPath, default: []]
+        isLoading = false
+        loadProgressMessage = ""
+    }
+
     /// Maximum allowed regex pattern length to prevent ReDoS via overly complex patterns.
     private nonisolated static let maxRegexPatternLength = 256
 
     /// Reject patterns with nested quantifiers that are common ReDoS vectors:
     /// e.g. (a+)+, (a*)*, (a+)*, (a*)+, ((a+)?)+, etc.
-    private nonisolated static func isSafeRegexPattern(_ pattern: String) -> Bool {
+    nonisolated static func isSafeRegexPattern(_ pattern: String) -> Bool {
         // Limit pattern length
         if pattern.count > maxRegexPatternLength { return false }
         // Reject patterns containing nested repetition groups (heuristic)
@@ -517,55 +734,6 @@ final class CASCStorageService: ObservableObject {
             return false
         }
         return true
-    }
-
-    /// Search all cached entries on background queue.
-    /// Matches against the full path so directory names are searchable too.
-    func searchEntriesAsync(query: String, in path: String, useRegex: Bool) async -> [CASCFileEntry] {
-        let localEntries = allEntries.isEmpty ? entries : allEntries
-        return await withCheckedContinuation { continuation in
-            queue.async {
-                let prefix = path.isEmpty ? "" : path + "/"
-                let candidates = localEntries.filter { $0.normalizedPath.hasPrefix(prefix) }
-                let searchText = query.lowercased()
-                let results: [CASCFileEntry]
-                if useRegex {
-                    guard Self.isSafeRegexPattern(query),
-                          let regex = try? NSRegularExpression(pattern: query, options: .caseInsensitive) else {
-                        continuation.resume(returning: [])
-                        return
-                    }
-                    results = candidates.filter { entry in
-                        let path = entry.normalizedPath
-                        // Limit per-match input length to avoid pathological cases
-                        let matchText = String(path.prefix(4096))
-                        let range = NSRange(matchText.startIndex..., in: matchText)
-                        return regex.firstMatch(in: matchText, options: [], range: range) != nil
-                    }
-                } else if !query.contains("*") && !query.contains("?") {
-                    // Fast path: simple substring match on full path
-                    results = candidates.filter { entry in
-                        entry.normalizedPath.lowercased().contains(searchText)
-                    }
-                } else {
-                    let pattern = query
-                        .replacingOccurrences(of: "*", with: ".*")
-                        .replacingOccurrences(of: "?", with: ".")
-                    guard Self.isSafeRegexPattern(pattern),
-                          let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) else {
-                        continuation.resume(returning: [])
-                        return
-                    }
-                    results = candidates.filter { entry in
-                        let path = entry.normalizedPath
-                        let matchText = String(path.prefix(4096))
-                        let range = NSRange(matchText.startIndex..., in: matchText)
-                        return regex.firstMatch(in: matchText, options: [], range: range) != nil
-                    }
-                }
-                continuation.resume(returning: results)
-            }
-        }
     }
 
     func entry(forPath path: String) -> CASCFileEntry? {
@@ -586,8 +754,18 @@ final class CASCStorageService: ObservableObject {
         if normalized == "ENCODED_KEY" {
             return allEntries.filter { $0.nameType == .ekey }
         }
+        if normalized == "UNKNOWN" {
+            return allEntries.filter { Self.isUncategorized($0) }
+        }
         let prefix = normalized.isEmpty ? "" : normalized + "/"
         return allEntries.filter { $0.normalizedPath.hasPrefix(prefix) }
+    }
+
+    func readFileData(forPath path: String) -> Data? {
+        var error = CascBridge.CascError.None
+        let buffer = handle.readFile(std.string(path), &error)
+        guard error == .None else { return nil }
+        return Data(buffer)
     }
 
     func close() {
@@ -599,6 +777,11 @@ final class CASCStorageService: ObservableObject {
         storageInfo = nil
         entriesByPath = [:]
         directoryPaths = []
+        childrenByPath = [:]
+        tags = []
+        error = nil
+        loadProgress = 0
+        loadProgressMessage = ""
     }
 
     private func refreshStorageInfo() async {
@@ -630,7 +813,9 @@ final class CASCStorageService: ObservableObject {
         case .NetworkError: return .networkError
         case .CDNConfigError: return .cdnConfigError
         case .DecodingError: return .decodingError
-        default: return .unknown
+        case .NotImplemented: return .notImplemented
+        case .Cancelled: return .cancelled
+        case .None, .Unknown: return .unknown
         }
     }
 }

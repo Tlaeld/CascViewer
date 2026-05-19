@@ -3,12 +3,28 @@
 #include <sstream>
 #include <algorithm>
 #include <cctype>
+#include <atomic>
 
 namespace CascBridge {
 
+static std::atomic<bool> g_cancelFlag{false};
+
+void CDNConfig::setGlobalCancelFlag(bool value) {
+    g_cancelFlag.store(value);
+}
+
+static struct CurlGlobalInit {
+    CurlGlobalInit() {
+        curl_global_init(CURL_GLOBAL_DEFAULT);
+    }
+    ~CurlGlobalInit() {
+        curl_global_cleanup();
+    }
+} curlGlobalInit;
+
 static bool isValidProductOrRegion(const std::string& s) {
     return std::all_of(s.begin(), s.end(), [](unsigned char c) {
-        return std::isalnum(c) || c == '-';
+        return std::isalnum(c) || c == '-' || c == '_';
     });
 }
 
@@ -22,6 +38,11 @@ static size_t writeStringCallback(void* contents, size_t size, size_t nmemb, voi
 
 std::string CDNConfig::downloadText(const std::string& url)
 {
+    return downloadText(url, {});
+}
+
+std::string CDNConfig::downloadText(const std::string& url, const std::function<bool()>& isCancelled)
+{
     CURL* curl = curl_easy_init();
     if (!curl) {
         return {};
@@ -32,8 +53,19 @@ std::string CDNConfig::downloadText(const std::string& url)
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeStringCallback);
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response);
     curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 30L);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, 5L);
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
+    curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
+
+    curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
+    curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION,
+        [](void* clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow) -> int {
+            if (g_cancelFlag.load()) return 1; // abort transfer
+            const std::function<bool()>* fn = static_cast<const std::function<bool()>*>(clientp);
+            if (fn && (*fn)()) return 1; // abort transfer
+            return 0;
+        });
+    curl_easy_setopt(curl, CURLOPT_XFERINFODATA, isCancelled ? &isCancelled : nullptr);
 
     CURLcode res = curl_easy_perform(curl);
     long httpCode = 0;
@@ -63,6 +95,16 @@ static std::string trim(const std::string& s)
     auto end = std::find_if_not(s.rbegin(), s.rend(), [](unsigned char c) { return std::isspace(c); }).base();
     if (start >= end) return {};
     return std::string(start, end);
+}
+
+static std::string extractKeyName(const std::string& s)
+{
+    std::string trimmed = trim(s);
+    size_t bangPos = trimmed.find('!');
+    if (bangPos != std::string::npos) {
+        return trimmed.substr(0, bangPos);
+    }
+    return trimmed;
 }
 
 CDNBuildConfig CDNConfig::fetchConfig(const std::string& product, const std::string& region, CascError& error)
@@ -110,7 +152,7 @@ CDNBuildConfig CDNConfig::fetchConfig(const std::string& product, const std::str
     std::vector<std::string> values = splitLine(dataLine, '|');
 
     for (size_t i = 0; i < headers.size() && i < values.size(); ++i) {
-        std::string key = trim(headers[i]);
+        std::string key = extractKeyName(headers[i]);
         std::string val = trim(values[i]);
         if (key == "BuildConfig") {
             config.buildConfigHash = val;
@@ -136,7 +178,7 @@ CDNBuildConfig CDNConfig::fetchConfig(const std::string& product, const std::str
     int pathIdx = -1;
     int hostsIdx = -1;
     for (size_t i = 0; i < cdnsHeaders.size(); ++i) {
-        std::string key = trim(cdnsHeaders[i]);
+        std::string key = extractKeyName(cdnsHeaders[i]);
         if (key == "Name") nameIdx = static_cast<int>(i);
         else if (key == "Path") pathIdx = static_cast<int>(i);
         else if (key == "Hosts") hostsIdx = static_cast<int>(i);
@@ -175,6 +217,59 @@ CDNBuildConfig CDNConfig::fetchConfig(const std::string& product, const std::str
     }
 
     return config;
+}
+
+std::vector<std::string> CDNConfig::fetchProductRegions(const std::string& product)
+{
+    return fetchProductRegions(product, {});
+}
+
+std::vector<std::string> CDNConfig::fetchProductRegions(const std::string& product, const std::function<bool()>& isCancelled)
+{
+    if (!isValidProductOrRegion(product)) {
+        return {};
+    }
+
+    std::string cdnsUrl = "http://us.patch.battle.net:1119/" + product + "/cdns";
+    std::string cdnsText = downloadText(cdnsUrl, isCancelled);
+    if (cdnsText.empty()) {
+        return {};
+    }
+
+    std::vector<std::string> regions;
+    std::istringstream stream(cdnsText);
+    std::string headerLine;
+    if (!std::getline(stream, headerLine)) {
+        return {};
+    }
+
+    std::vector<std::string> headers = splitLine(headerLine, '|');
+    int nameIdx = -1;
+    for (size_t i = 0; i < headers.size(); ++i) {
+        if (extractKeyName(headers[i]) == "Name") {
+            nameIdx = static_cast<int>(i);
+            break;
+        }
+    }
+    if (nameIdx < 0) {
+        return {};
+    }
+
+    std::string line;
+    while (std::getline(stream, line)) {
+        std::string trimmed = trim(line);
+        if (trimmed.empty() || trimmed[0] == '#') continue;
+
+        std::vector<std::string> parts = splitLine(line, '|');
+        if (static_cast<int>(parts.size()) > nameIdx) {
+            std::string region = trim(parts[nameIdx]);
+            if (!region.empty()) {
+                regions.push_back(region);
+            }
+        }
+    }
+
+    return regions;
 }
 
 } // namespace CascBridge

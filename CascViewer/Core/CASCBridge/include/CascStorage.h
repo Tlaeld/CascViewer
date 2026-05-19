@@ -16,7 +16,9 @@ public:
 
     virtual void setCdnDownloadEnabled(bool enabled) {}
     virtual void setCachePath(const std::string& path) {}
+    virtual void setListFilePath(const std::string& path) {}
     virtual void setOpenProgressCallback(COpenProgressCallback callback, void* context) {}
+    virtual void requestCancelExtraction() {}
     virtual CascError open(const std::string& pathOrConfig) = 0;
     virtual void close() = 0;
     virtual bool isOpen() const = 0;
@@ -28,8 +30,13 @@ public:
                                   const ProgressCallback& progress) = 0;
 
     virtual std::vector<uint8_t> readFile(const std::string& cascPath, CascError& error) = 0;
+    virtual std::vector<uint8_t> readFilePartial(const std::string& cascPath, uint64_t offset, uint64_t length, CascError& error) = 0;
 
     virtual CascStorageInfo getStorageInfo(CascError& error) = 0;
+
+    virtual std::vector<std::pair<std::string, uint32_t>> getTags() = 0;
+
+    virtual std::pair<std::vector<InstallManifestTag>, std::vector<InstallManifestEntry>> parseInstallManifest() = 0;
 };
 
 } // namespace CascBridge

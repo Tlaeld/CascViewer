@@ -21,7 +21,11 @@ public:
                           const std::string& destPath,
                           const ProgressCallback& progress) override;
     std::vector<uint8_t> readFile(const std::string& cascPath, CascError& error) override;
+    std::vector<uint8_t> readFilePartial(const std::string& cascPath, uint64_t offset, uint64_t length, CascError& error) override;
     CascStorageInfo getStorageInfo(CascError& error) override;
+    std::vector<std::pair<std::string, uint32_t>> getTags() override;
+
+    std::pair<std::vector<InstallManifestTag>, std::vector<InstallManifestEntry>> parseInstallManifest() override;
 };
 
 } // namespace CascBridge

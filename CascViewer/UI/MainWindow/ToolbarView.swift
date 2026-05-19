@@ -5,32 +5,36 @@ struct ToolbarView: View {
     @EnvironmentObject var appState: AppState
     @State private var showingOpenPanel = false
     @State private var showingSettings = false
-    @State private var showingSearchPanel = false
-    @State private var searchText = ""
-
     var body: some View {
         HStack(spacing: 12) {
-            Button(L("open_storage")) {
-                showingOpenPanel = true
+            Menu {
+                Button(L("open_local_storage")) {
+                    showingOpenPanel = true
+                }
+                Button(L("open_online_storage")) {
+                    OnlineStorageWindowController.show(appState: appState)
+                }
+            } label: {
+                Text(L("open_storage"))
             }
-            .buttonStyle(.borderedProminent)
+            .menuStyle(.borderedButton)
+            .fixedSize()
 
             if appState.currentStorage != nil {
                 HStack(spacing: 4) {
                     Image(systemName: "magnifyingglass")
                         .foregroundColor(.secondary)
                         .font(.system(size: 11))
-                    TextField(L("search_placeholder"), text: $searchText)
+                    TextField(L("search_placeholder"), text: $appState.searchQuery)
                         .textFieldStyle(.plain)
                         .frame(width: 180)
                         .onSubmit {
-                            if !searchText.isEmpty {
-                                appState.searchQuery = searchText
-                                appState.isSearchMode = true
+                            if !appState.searchQuery.isEmpty {
+                                SearchWindowController.show(appState: appState)
                             }
                         }
-                    if !searchText.isEmpty {
-                        Button(action: { searchText = "" }) {
+                    if !appState.searchQuery.isEmpty {
+                        Button(action: { appState.searchQuery = "" }) {
                             Image(systemName: "xmark.circle.fill")
                                 .foregroundColor(.secondary)
                                 .font(.system(size: 11))
@@ -48,19 +52,55 @@ struct ToolbarView: View {
                 )
 
                 Button(L("refresh")) {
-                    if let path = appState.currentStorage?.currentPath {
-                        appState.currentStorage?.navigate(to: path)
+                    guard let storage = appState.currentStorage else { return }
+                    Task {
+                        // Rebuild the children map to pick up any external changes
+                        await storage.refreshCurrentStorage()
                     }
                 }
 
-                Button(L("search")) {
-                    showingSearchPanel = true
+                Button(L("advanced_search")) {
+                    SearchWindowController.show(appState: appState)
                 }
                 .fixedSize()
-                .popover(isPresented: $showingSearchPanel) {
-                    SearchPanelView(initialQuery: searchText)
-                        .frame(minWidth: 700, minHeight: 420)
+
+                if let storage = appState.currentStorage {
+                    ListFileButton(storage: storage)
                 }
+
+                Button(action: {
+                    guard let storage = appState.currentStorage else { return }
+                    let alert = NSAlert()
+                    alert.messageText = L("loading_install_manifest")
+                    alert.informativeText = L("please_wait")
+                    alert.alertStyle = .informational
+                    let indicator = NSProgressIndicator(frame: NSRect(x: 0, y: 0, width: 200, height: 16))
+                    indicator.style = .bar
+                    indicator.isIndeterminate = true
+                    indicator.startAnimation(nil)
+                    alert.accessoryView = indicator
+                    alert.addButton(withTitle: L("cancel"))
+                    guard let window = NSApp.keyWindow else { return }
+                    alert.beginSheetModal(for: window) { _ in }
+                    Task {
+                        let manifest = await storage.loadInstallManifest()
+                        await MainActor.run {
+                            alert.window.sheetParent?.endSheet(alert.window)
+                            if let manifest = manifest {
+                                InstallManifestWindowController.show(
+                                    tags: manifest.tags,
+                                    entries: manifest.entries,
+                                    storageService: storage
+                                )
+                            } else {
+                                appState.errorMessage = L("install_manifest_not_found")
+                            }
+                        }
+                    }
+                }) {
+                    Text(L("install_manifest"))
+                }
+                .fixedSize()
             }
 
             Spacer()
@@ -110,6 +150,7 @@ struct ToolbarView: View {
                 appState.errorMessage = error.localizedDescription
             }
         }
+
     }
 }
 
@@ -180,6 +221,9 @@ struct SettingsView: View {
                     Toggle(L("show_remote_markers"), isOn: $settings.showRemoteMarkers)
                         .help(L("show_remote_markers_help"))
 
+                    Toggle(L("use_builtin_image_viewer"), isOn: $settings.useBuiltInImageViewer)
+                        .help(L("use_builtin_image_viewer_help"))
+
                     Picker(L("theme"), selection: $settings.theme) {
                         ForEach(AppTheme.allCases) { theme in
                             Text(L(theme.localizationKey)).tag(theme)
@@ -241,8 +285,11 @@ struct SettingsView: View {
         panel.allowsMultipleSelection = false
         panel.prompt = L("choose")
 
-        if panel.runModal() == .OK, let url = panel.url {
-            settings.defaultExtractPath = url.path
+        guard let window = NSApp.keyWindow else { return }
+        panel.beginSheetModal(for: window) { result in
+            if result == .OK, let url = panel.url {
+                self.settings.defaultExtractPath = url.path
+            }
         }
     }
 
@@ -253,8 +300,11 @@ struct SettingsView: View {
         panel.allowsMultipleSelection = false
         panel.prompt = L("choose")
 
-        if panel.runModal() == .OK, let url = panel.url {
-            settings.cdnCachePath = url.path
+        guard let window = NSApp.keyWindow else { return }
+        panel.beginSheetModal(for: window) { result in
+            if result == .OK, let url = panel.url {
+                self.settings.cdnCachePath = url.path
+            }
         }
     }
 
@@ -262,6 +312,98 @@ struct SettingsView: View {
         settings.clearCache()
         cacheClearedSize = L("cache_cleared_message")
         showingClearCacheAlert = true
+    }
+}
+
+struct ListFileButton: View {
+    @ObservedObject var storage: CASCStorageService
+    @State private var hasAutoShown = false
+
+    var body: some View {
+        if storage.needsListFile {
+            Button {
+                showPanel()
+            } label: {
+                Label(L("load_listfile"), systemImage: "doc.text")
+            }
+            .fixedSize()
+            .onAppear {
+                if storage.needsListFile && !hasAutoShown {
+                    hasAutoShown = true
+                    showPrompt()
+                }
+            }
+            .onReceive(storage.$needsListFile) { needsListFile in
+                if needsListFile && !hasAutoShown {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        if !hasAutoShown {
+                            hasAutoShown = true
+                            showPrompt()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func showPrompt() {
+        let alert = NSAlert()
+        alert.messageText = L("listfile_prompt_title")
+        alert.informativeText = L("listfile_prompt_message")
+        alert.alertStyle = .informational
+        alert.icon = NSImage(size: NSSize(width: 1, height: 1))
+        alert.addButton(withTitle: L("listfile_prompt_ok"))
+        alert.addButton(withTitle: L("listfile_prompt_cancel"))
+        
+        if let window = NSApp.keyWindow ?? NSApp.mainWindow {
+            alert.beginSheetModal(for: window) { response in
+                if response == .alertFirstButtonReturn {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        self.showPanel()
+                    }
+                }
+            }
+        } else {
+            let response = alert.runModal()
+            if response == .alertFirstButtonReturn {
+                showPanel()
+            }
+        }
+    }
+
+    private func showPanel() {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.allowedContentTypes = [.commaSeparatedText, .plainText]
+        panel.prompt = L("load_listfile")
+        
+        let completion: (NSApplication.ModalResponse) -> Void = { result in
+            if result == .OK, let url = panel.url {
+                let didStartAccessing = url.startAccessingSecurityScopedResource()
+                defer {
+                    if didStartAccessing {
+                        url.stopAccessingSecurityScopedResource()
+                    }
+                }
+                storage.listFilePath = url.path
+                var handle = storage.handle
+                handle.setListFilePath(std.string(url.path))
+                Task {
+                    await storage.refreshCurrentStorage()
+                    await MainActor.run {
+                        storage.needsListFile = false
+                    }
+                }
+            }
+        }
+        
+        if let window = NSApp.keyWindow ?? NSApp.mainWindow {
+            panel.beginSheetModal(for: window, completionHandler: completion)
+        } else {
+            panel.begin(completionHandler: completion)
+        }
     }
 }
 

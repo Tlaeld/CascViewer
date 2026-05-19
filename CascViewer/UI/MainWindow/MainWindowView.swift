@@ -26,7 +26,7 @@ struct LoadingOverlay: View {
                         Text(storage.loadProgressMessage)
                             .font(.system(size: 11))
                             .foregroundColor(.secondary)
-                            .lineLimit(1)
+                            .multilineTextAlignment(.center)
                     }
                     
                     if storage.loadProgress > 0 {
@@ -40,7 +40,7 @@ struct LoadingOverlay: View {
                 .background(Color(NSColor.controlBackgroundColor))
                 .cornerRadius(12)
                 .shadow(radius: 8)
-                .frame(width: 280)
+                .frame(minWidth: 280, maxWidth: 360)
             }
         }
     }
@@ -79,11 +79,11 @@ struct MainWindowView: View {
                         // Vertical drag handle
                         ZStack {
                             Rectangle()
-                                .fill(Color.primary.opacity(0.25))
+                                .fill(Color.primary.opacity(0.2))
                                 .frame(width: 1)
                             Rectangle()
                                 .fill(Color.clear)
-                                .frame(width: 8)
+                                .frame(width: 16)
                                 .contentShape(Rectangle())
                         }
                         .gesture(
@@ -161,6 +161,7 @@ struct MainWindowView: View {
             }
         }
         .frame(minWidth: 900, minHeight: 600)
+        .id(settings.language)
         .preferredColorScheme(settings.theme.colorScheme)
         .alert(L("error"), isPresented: .init(
             get: { appState.errorMessage != nil },
@@ -170,5 +171,6 @@ struct MainWindowView: View {
         } message: {
             Text(appState.errorMessage ?? "")
         }
+
     }
 }
