@@ -19,25 +19,28 @@ final class BridgeTests: XCTestCase {
         )
         XCTAssertEqual(entry.name, "test.blp")
         XCTAssertFalse(entry.isDirectory)
-        XCTAssertEqual(entry.formattedSize, "1 KB")
+        let formatter = ByteCountFormatter()
+        formatter.countStyle = .file
+        XCTAssertEqual(entry.formattedSize, formatter.string(fromByteCount: 1024))
     }
 
     @MainActor
     func testCASCSearchServiceWildcard() async {
         let storage = CascBridge.CascStorageHandle.createLocal()
         let storageService = CASCStorageService(storage: storage)
-        let searchService = CASCSearchService(storage: storageService)
+        let searchService = CASCSearchService(handle: storageService.handle)
 
         // Inject entries by directly setting (for testing only)
-        storageService.entries = [
+        let testEntries = [
             CASCFileEntry(name: "tex1.blp", fullPath: "a/tex1.blp", type: .file, size: 100, encodingKey: ""),
             CASCFileEntry(name: "tex2.blp", fullPath: "a/tex2.blp", type: .file, size: 100, encodingKey: ""),
             CASCFileEntry(name: "model.mdx", fullPath: "a/model.mdx", type: .file, size: 100, encodingKey: "")
         ]
 
-        let results = await searchService.search(query: "*.blp", in: "", useRegex: false)
+        let request = SearchRequest(mode: .filename, query: "*.blp", scope: .entireStorage, caseSensitive: false, useRegex: false, includePath: false, fileTypes: [], selectedTags: [], availableTags: [])
+        let results = await searchService.search(request, allEntries: testEntries, entries: testEntries, currentPath: "")
         XCTAssertEqual(results.count, 2)
-        XCTAssertTrue(results.allSatisfy { $0.name.hasSuffix(".blp") })
+        XCTAssertTrue(results.allSatisfy { $0.entry.name.hasSuffix(".blp") })
     }
 
     func testCASCFileEntryDirectorySize() {

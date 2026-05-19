@@ -25,9 +25,10 @@ final class ServiceTests: XCTestCase {
     func testCASCSearchService() async {
         let storage = CascBridge.CascStorageHandle.createLocal()
         let storageService = CASCStorageService(storage: storage)
-        let searchService = CASCSearchService(storage: storageService)
+        let searchService = CASCSearchService(handle: storageService.handle)
 
-        let results = await searchService.search(query: "*.blp", in: "", useRegex: false)
+        let request = SearchRequest(mode: .filename, query: "*.blp", scope: .entireStorage, caseSensitive: false, useRegex: false, includePath: false, fileTypes: [], selectedTags: [], availableTags: [])
+        let results = await searchService.search(request, allEntries: [], entries: [], currentPath: "")
         XCTAssertTrue(results.isEmpty)
     }
 
@@ -35,14 +36,15 @@ final class ServiceTests: XCTestCase {
     func testCASCSearchServiceRegex() async {
         let storage = CascBridge.CascStorageHandle.createLocal()
         let storageService = CASCStorageService(storage: storage)
-        let searchService = CASCSearchService(storage: storageService)
+        let searchService = CASCSearchService(handle: storageService.handle)
 
-        storageService.entries = [
+        let testEntries = [
             CASCFileEntry(name: "tex1.blp", fullPath: "a/tex1.blp", type: .file, size: 100, encodingKey: ""),
             CASCFileEntry(name: "tex2.blp", fullPath: "a/tex2.blp", type: .file, size: 100, encodingKey: "")
         ]
 
-        let results = await searchService.search(query: ".*\\.blp", in: "", useRegex: true)
+        let request = SearchRequest(mode: .filename, query: ".*\\.blp", scope: .entireStorage, caseSensitive: false, useRegex: true, includePath: false, fileTypes: [], selectedTags: [], availableTags: [])
+        let results = await searchService.search(request, allEntries: testEntries, entries: testEntries, currentPath: "")
         XCTAssertEqual(results.count, 2)
     }
 

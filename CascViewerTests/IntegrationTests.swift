@@ -19,12 +19,13 @@ final class IntegrationTests: XCTestCase {
         ]
 
         // Search through the full service chain
-        let searchService = CASCSearchService(storage: service)
-        let results = await searchService.search(query: "*.blp", in: "", useRegex: false)
+        let searchService = CASCSearchService(handle: service.handle)
+        let request = SearchRequest(mode: .filename, query: "*.blp", scope: .entireStorage, caseSensitive: false, useRegex: false, includePath: false, fileTypes: [], selectedTags: [], availableTags: [])
+        let results = await searchService.search(request, allEntries: service.entries, entries: service.entries, currentPath: "")
 
         // Verify results propagate back through AppState
         XCTAssertEqual(results.count, 2)
-        XCTAssertTrue(results.allSatisfy { $0.name.hasSuffix(".blp") })
+        XCTAssertTrue(results.allSatisfy { $0.entry.name.hasSuffix(".blp") })
     }
 
     @MainActor
@@ -51,10 +52,16 @@ final class IntegrationTests: XCTestCase {
         service.entries = [
             CASCFileEntry(name: "test.blp", fullPath: "test.blp", type: .file, size: 100, encodingKey: "")
         ]
+        service.allEntries = service.entries
+        service.tags = [CascTag(name: "Test", value: 0)]
+        service.error = .storageNotFound
         service.close()
 
         XCTAssertTrue(service.entries.isEmpty)
+        XCTAssertTrue(service.allEntries.isEmpty)
         XCTAssertNil(service.storageInfo)
         XCTAssertEqual(service.currentPath, "")
+        XCTAssertTrue(service.tags.isEmpty)
+        XCTAssertNil(service.error)
     }
 }
