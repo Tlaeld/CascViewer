@@ -1,0 +1,210 @@
+/* General */
+"app_name" = "CascViewer";
+"ok" = "OK";
+"cancel" = "Cancel";
+"done" = "Done";
+"choose" = "Choose";
+"open" = "Open";
+"error" = "Error";
+"version" = "Version";
+
+/* Settings */
+"settings_title" = "Settings";
+"settings_storage" = "Storage";
+"settings_extraction" = "Extraction";
+"settings_display" = "Display";
+"settings_cache" = "Cache";
+"settings_about" = "About";
+
+"language" = "Language";
+"cdn_download" = "Allow CDN Download";
+"cdn_download_help" = "Download missing files from CDN when browsing incomplete storages";
+"cdn_cache_path" = "CDN Cache Path";
+"default_path" = "Default Path";
+"keep_structure" = "Keep directory structure";
+"overwrite_existing" = "Overwrite existing files";
+"open_after_extract" = "Open destination after extraction";
+"show_remote_markers" = "Show remote file markers";
+"show_remote_markers_help" = "Mark files not present locally in red with an asterisk";
+"use_builtin_image_viewer" = "Use Built-in Image Viewer";
+"use_builtin_image_viewer_help" = "Open BLP/DDS files with the built-in viewer instead of the system default";
+"theme" = "Theme";
+"theme_light" = "Light";
+"theme_dark" = "Dark";
+"theme_system" = "Follow System";
+"clear_cache" = "Clear Download Cache";
+"reset_defaults" = "Reset Defaults";
+
+"cache_cleared_title" = "Cache Cleared";
+"cache_cleared_message" = "Download cache has been cleared.";
+
+"casc_lib" = "CascLib";
+
+/* Toolbar / Navigation */
+"open_storage" = "Open Storage";
+"open_local_storage" = "Open Local Storage";
+"open_online_storage" = "Open Online Storage";
+"product" = "Product";
+"region" = "Region";
+"product_name" = "Product Name";
+"product_code" = "Code";
+"regions" = "Regions";
+"regions_unavailable" = "(unavailable)";
+"no_regions_available" = "No regions available";
+"cache_path" = "Cache";
+"cache_path_placeholder" = "Cache directory path";
+"reload_all" = "Reload All";
+"reload_selected" = "Reload Selected";
+"refresh" = "Refresh";
+"search" = "Search";
+"advanced_search" = "Advanced Search";
+"search_placeholder" = "Search...";
+"directories" = "Directories";
+"open_storage_to_browse" = "Open a storage to browse";
+"root" = "Root";
+"parent_directory" = "Parent directory";
+
+/* File Browser Columns */
+"name_column" = "Name";
+"path_column" = "Path";
+"size_column" = "Size";
+"type_column" = "Type";
+"local_column" = "Local";
+
+/* File Types */
+"folder" = "Folder";
+"file" = "File";
+"local_yes" = "Yes";
+"local_no" = "No";
+
+/* Preview Panel */
+"details_panel" = "Details";
+"path_label" = "Path";
+"size_label" = "Size";
+"encoding_key_label" = "Encoding Key";
+"open_image_viewer" = "Open Image Viewer";
+"select_file_for_details" = "Select a file to see details";
+
+/* Image Viewer */
+"export" = "Export";
+"format_label" = "Format";
+"frames_label" = "Frames";
+"decode_failed" = "Failed to decode image: %@";
+
+/* Extraction */
+"extract" = "Extract";
+"extract_title" = "Extract %d item(s)";
+"export_title" = "Export %d file(s)";
+"extract_all" = "Extract All...";
+"destination" = "Destination";
+"browse" = "Browse...";
+"extract_success" = "Extracted %d file(s) successfully";
+"extract_partial" = "Extracted %d file(s), %d failed";
+"copy_path" = "Copy Path";
+
+/* Download / Open */
+"download_required_title" = "Download Required";
+"download_required_message" = "%@ (%@) is not available locally. Download from CDN to open it?";
+"download_and_open" = "Download & Open";
+"downloading_file" = "Downloading %@...";
+"open_failed" = "Failed to open %@: %@";
+
+/* Errors */
+"file_not_found" = "File Not Found";
+"read_error" = "Read Error";
+"unknown_error" = "Unknown Error";
+"loading_storage" = "Loading storage...";
+"loading_listfile" = "Applying listfile...";
+"no_storage_open" = "No Storage Open";
+
+/* Search */
+"search_mode_filename" = "Filename";
+"search_mode_content" = "Content";
+"search_mode_hex" = "Hex";
+"search_mode_tag" = "Tag";
+"search_placeholder_filename" = "Search by filename or path...";
+"search_placeholder_content" = "Search inside file contents...";
+"search_placeholder_hex" = "Hex pattern (e.g. 48 65 6C)";
+"search_placeholder_tag" = "Select a tag...";
+"search_query_placeholder" = "Search by name or path...";
+"search_scope_entire" = "Entire Storage";
+"search_scope_current" = "Current Directory";
+"search_match_options" = "MATCH OPTIONS";
+"search_use_regex" = "Use Regular Expressions";
+"search_case_sensitive" = "Case Sensitive";
+"search_include_path" = "Search in Path";
+"search_file_type" = "FILE TYPE";
+"search_tags" = "TAGS";
+"search_custom_ext" = "Custom:";
+"search_custom_ext_placeholder" = "ext1,ext2";
+"search_sort_by" = "Sort";
+"search_sort_name" = "Name";
+"search_sort_size" = "Size";
+"search_sort_path" = "Path";
+"search_searching" = "Searching...";
+"search_result_count" = "%d result(s)";
+"search_empty_prompt" = "Enter a search term to begin";
+"search_no_results" = "No results found";
+"search_go_to_location" = "Go to Location";
+"search_failed" = "Search failed: %@";
+"search_status_prefix" = "Searching for";
+"search_status_results" = "results";
+"close_search" = "Close Search";
+
+/* Tags */
+"tag_texture" = "Texture";
+"tag_audio" = "Audio";
+"tag_model" = "Model";
+"tag_video" = "Video";
+"tag_text" = "Text";
+"tag_data" = "Data";
+"tag_ui" = "UI";
+"tag_executable" = "Executable";
+"tag_archive" = "Archive";
+"tag_font" = "Font";
+
+/* Status Bar */
+"status_files" = "Files: %d";
+"status_storage" = "Storage: %@ %@";
+"status_ready" = "Ready";
+
+/* Loading Progress */
+"loading_file" = "Loading file";
+"loading_indexes" = "Loading indexes";
+"loading_manifest_encoding" = "Loading manifest: ENCODING";
+"loading_manifest_download" = "Loading manifest: DOWNLOAD";
+"loading_manifest_root" = "Loading manifest: ROOT";
+"building_children_map" = "Building directory index, this may take a moment...";
+"built_children_map" = "Built children map with %d paths";
+"computed_top_level_dirs" = "Computed %d top-level dirs";
+"load_root_entries_done" = "loadRootEntries done, allEntries.count = %d";
+
+/* Cache Exists Dialog */
+"cache_exists_title" = "Cache Already Exists";
+"cache_exists_message" = "A local cache for this product was found. Would you like to reuse it or re-download from the server?";
+"use_history_cache" = "Use History Cache";
+"overwrite_redownload" = "Overwrite & Re-download";
+
+
+/* Install Manifest */
+"view_menu" = "View";
+"open_install_manifest" = "Open Install Manifest";
+"install_manifest_title" = "Install Manifest";
+"filter_tags" = "Filter Tags";
+"files" = "files";
+"file_name" = "File Name";
+"file_size" = "Size";
+"ckey" = "CKey";
+"tags" = "Tags";
+"install_manifest" = "Install Manifest";
+"install_manifest_not_found" = "This storage does not contain an install manifest.";
+"loading_install_manifest" = "Loading Install Manifest";
+"please_wait" = "Please wait...";
+"local_storage_cannot_download" = "%d file(s) could not be downloaded from local storage. Please open with online storage and try again.";
+"load_listfile" = "Load Listfile";
+
+/* Listfile Prompt */
+"listfile_prompt_title" = "Missing Filename Mapping";
+"listfile_prompt_message" = "This storage lacks human-readable filenames. Load a listfile to display proper names?";
+"listfile_prompt_ok" = "Load";
+"listfile_prompt_cancel" = "Not Now";
