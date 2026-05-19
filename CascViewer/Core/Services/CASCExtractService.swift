@@ -20,31 +20,44 @@ final class CASCExtractService: ObservableObject {
     struct ExtractResult {
         let successCount: Int
         let failedFiles: [(path: String, error: CASCError)]
+        let wasCancelled: Bool
     }
 
-    private var isCancelled: Bool {
-        get {
-            cancelLock.lock()
-            defer { cancelLock.unlock() }
-            return _isCancelled
+    private class ExtractProgressContext {
+        weak var service: CASCExtractService?
+        let fileIndex: Int
+        let totalFiles: Int
+
+        init(service: CASCExtractService, fileIndex: Int, totalFiles: Int) {
+            self.service = service
+            self.fileIndex = fileIndex
+            self.totalFiles = totalFiles
         }
-        set {
-            cancelLock.lock()
-            defer { cancelLock.unlock() }
-            _isCancelled = newValue
-        }
+    }
+
+    var isCancelled: Bool {
+        cancelLock.lock()
+        defer { cancelLock.unlock() }
+        return _isCancelled
+    }
+
+    private func setCancelled(_ value: Bool) {
+        cancelLock.lock()
+        defer { cancelLock.unlock() }
+        _isCancelled = value
     }
 
     func cancel() {
         cancelLock.lock()
         defer { cancelLock.unlock() }
         _isCancelled = true
+        storage.requestCancelExtraction()
     }
 
-    func extract(entries: [CASCFileEntry], to destination: URL, preserveStructure: Bool, overwriteExisting: Bool = true) async -> ExtractResult {
+    func extract(entries: [CASCFileEntry], to destination: URL, preserveStructure: Bool, overwriteExisting: Bool = false) async -> ExtractResult {
         isExtracting = true
         progress = 0
-        isCancelled = false
+        setCancelled(false)
         defer { isExtracting = false }
 
         var handle = storage
@@ -106,9 +119,29 @@ final class CASCExtractService: ObservableObject {
                 try? FileManager.default.createDirectory(at: destURL.deletingLastPathComponent(), withIntermediateDirectories: true)
             }
 
+            // Pass progress callback for per-file progress updates
             let result: CascBridge.CascError = await withCheckedContinuation { (continuation: CheckedContinuation<CascBridge.CascError, Never>) in
                 queue.async {
-                    let result = handle.extractFile(std.string(sanitizedPath), std.string(destPath))
+                    let progressCtx = ExtractProgressContext(service: self, fileIndex: index, totalFiles: total)
+                    let rawContext = Unmanaged.passUnretained(progressCtx).toOpaque()
+
+                    let progressBlock: @convention(c) (UnsafeMutableRawPointer?, Int64, Int64) -> Void = { context, current, totalBytes in
+                        guard let ctxPtr = context else { return }
+                        let ctx = Unmanaged<ExtractProgressContext>.fromOpaque(ctxPtr).takeUnretainedValue()
+                        guard let service = ctx.service else { return }
+                        let fileProgress = totalBytes > 0 ? Double(current) / Double(totalBytes) : 0
+                        let overallProgress = (Double(ctx.fileIndex) + fileProgress) / Double(ctx.totalFiles)
+                        DispatchQueue.main.async {
+                            service.progress = overallProgress
+                        }
+                    }
+
+                    let result = handle.extractFile(
+                        std.string(sanitizedPath),
+                        std.string(destPath),
+                        progressBlock,
+                        rawContext
+                    )
                     continuation.resume(returning: result)
                 }
             }
@@ -119,6 +152,9 @@ final class CASCExtractService: ObservableObject {
 
             if result == .None {
                 successCount += 1
+            } else if result == .Cancelled {
+                // Don't treat cancellation as a failure, just stop
+                break
             } else {
                 var cascError = mapError(result)
                 // Distinguish remote files that are not available on CDN
@@ -134,13 +170,14 @@ final class CASCExtractService: ObservableObject {
             }
         }
 
-        return ExtractResult(successCount: successCount, failedFiles: failedFiles)
+        return ExtractResult(successCount: successCount, failedFiles: failedFiles, wasCancelled: isCancelled)
     }
 
     private func mapError(_ error: CascBridge.CascError) -> CASCError {
         switch error {
         case .FileNotFound: return .fileNotFound
         case .ReadError: return .readError
+        case .Cancelled: return .cancelled
         default: return .unknown
         }
     }

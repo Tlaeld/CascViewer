@@ -10,6 +10,7 @@ enum CASCError: Error, LocalizedError, Sendable {
     case networkError
     case cdnConfigError
     case decodingError
+    case cancelled
     case unknown
     case notImplemented
 
@@ -24,6 +25,7 @@ enum CASCError: Error, LocalizedError, Sendable {
         case .networkError: return "Network error. Please check your connection."
         case .cdnConfigError: return "Failed to fetch CDN configuration."
         case .decodingError: return "Failed to decode file data."
+        case .cancelled: return "Operation was cancelled by user."
         case .unknown: return "An unknown error occurred."
         case .notImplemented: return "This feature is not yet implemented."
         }
