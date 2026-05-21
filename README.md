@@ -53,8 +53,8 @@ This project aims to fill that gap by bringing a native, modern macOS experience
 - **Path Copying** — Copy full file paths to clipboard
 
 ### Image Viewing
-- **BLP Textures** — View Warcraft 3 / WoW BLP textures with MIP map level switching
-- **DDS Textures** — View StarCraft 2 DDS textures with DXT1/3/5 decompression
+- **BLP Textures** — View BLP1/2 textures with MIP map level switching
+- **DDS Textures** — View DDS textures with DXT1/3/5 decompression
 - **Built-in Viewer** — Optional built-in viewer or external application opening
 
 ### Install Manifest
