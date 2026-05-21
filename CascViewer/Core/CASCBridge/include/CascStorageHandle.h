@@ -14,7 +14,6 @@ public:
     CascStorageHandle();
 
     static CascStorageHandle createLocal();
-    static CascStorageHandle createOnline();
     static std::vector<std::string> fetchProductRegions(const std::string& product);
     static void setFetchCancellationFlag(bool cancelled);
 

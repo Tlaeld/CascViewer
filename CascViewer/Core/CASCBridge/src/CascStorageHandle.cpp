@@ -1,6 +1,6 @@
 #include "CascStorageHandle.h"
 #include "LocalCascStorage.h"
-#include "OnlineCascStorage.h"
+#include "CDNConfig.h"
 #include <memory>
 #include <mutex>
 #include <shared_mutex>
@@ -17,12 +17,6 @@ CascStorageHandle::CascStorageHandle() : impl(std::make_shared<Impl>()) {}
 CascStorageHandle CascStorageHandle::createLocal() {
     CascStorageHandle handle;
     handle.impl->storage = std::make_unique<LocalCascStorage>();
-    return handle;
-}
-
-CascStorageHandle CascStorageHandle::createOnline() {
-    CascStorageHandle handle;
-    handle.impl->storage = std::make_unique<OnlineCascStorage>();
     return handle;
 }
 
