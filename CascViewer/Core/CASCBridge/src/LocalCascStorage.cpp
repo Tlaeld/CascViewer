@@ -10,6 +10,32 @@
 
 namespace CascBridge {
 
+// Windows error codes that may be returned by CascLib
+#ifndef ERROR_CRC
+#define ERROR_CRC 23
+#endif
+#ifndef ERROR_INVALID_DATA
+#define ERROR_INVALID_DATA 13
+#endif
+#ifndef ERROR_OUTOFMEMORY
+#define ERROR_OUTOFMEMORY 14
+#endif
+#ifndef ERROR_NO_NETWORK
+#define ERROR_NO_NETWORK 1222
+#endif
+#ifndef ERROR_INTERNET_CANNOT_CONNECT
+#define ERROR_INTERNET_CANNOT_CONNECT 12029
+#endif
+#ifndef ERROR_NO_DATA
+#define ERROR_NO_DATA 232
+#endif
+#ifndef ERROR_DISK_FULL
+#define ERROR_DISK_FULL 112
+#endif
+#ifndef ERROR_WRITE_FAULT
+#define ERROR_WRITE_FAULT 29
+#endif
+
 static CascError mapCascError(DWORD error)
 {
     if (error == ERROR_FILE_NOT_FOUND || error == ERROR_PATH_NOT_FOUND) {
@@ -18,14 +44,23 @@ static CascError mapCascError(DWORD error)
     if (error == ERROR_ACCESS_DENIED) {
         return CascError::InvalidPath;
     }
-    if (error == ERROR_FILE_CORRUPT) {
+    if (error == ERROR_FILE_CORRUPT || error == ERROR_CRC || error == ERROR_INVALID_DATA) {
         return CascError::StorageCorrupted;
     }
-    if (error == ERROR_NOT_ENOUGH_MEMORY) {
+    if (error == ERROR_NOT_ENOUGH_MEMORY || error == ERROR_OUTOFMEMORY) {
         return CascError::ReadError;
     }
-    if (error == ERROR_NETWORK_NOT_AVAILABLE) {
+    if (error == ERROR_NETWORK_NOT_AVAILABLE || error == ERROR_NO_NETWORK || error == ERROR_INTERNET_CANNOT_CONNECT) {
         return CascError::NetworkError;
+    }
+    if (error == ERROR_NO_DATA || error == ERROR_HANDLE_EOF) {
+        return CascError::FileNotFound;
+    }
+    if (error == ERROR_NOT_SUPPORTED || error == ERROR_BAD_FORMAT) {
+        return CascError::ReadError;
+    }
+    if (error == ERROR_DISK_FULL || error == ERROR_WRITE_FAULT) {
+        return CascError::InvalidPath;
     }
     return CascError::Unknown;
 }
@@ -274,51 +309,82 @@ std::vector<uint8_t> LocalCascStorage::readFile(const std::string& cascPath, Cas
     }
 
     ULONGLONG fileSize64 = 0;
-    if (!CascGetFileSize64(hFile, &fileSize64)) {
-        CascCloseFile(hFile);
-        error = mapCascError(GetCascError());
-        return {};
-    }
+    bool hasKnownSize = CascGetFileSize64(hFile, &fileSize64);
 
-    if (fileSize64 > static_cast<ULONGLONG>(std::numeric_limits<size_t>::max())) {
-        CascCloseFile(hFile);
-        error = CascError::ReadError;
-        return {};
-    }
-
-    // Cap file size to prevent unbounded memory allocation
-    constexpr size_t MAX_READ_SIZE = 512 * 1024 * 1024; // 512 MB
-    if (fileSize64 > MAX_READ_SIZE) {
-        CascCloseFile(hFile);
-        error = CascError::ReadError;
-        return {};
-    }
-
-    size_t fileSize = static_cast<size_t>(fileSize64);
-    std::vector<uint8_t> buffer;
-    try {
-        buffer.resize(fileSize);
-    } catch (const std::bad_alloc&) {
-        CascCloseFile(hFile);
-        error = CascError::ReadError;
-        return {};
-    }
-
-    constexpr size_t CHUNK_SIZE = static_cast<size_t>(std::numeric_limits<DWORD>::max());
-    size_t offset = 0;
-    while (offset < fileSize) {
-        DWORD toRead = static_cast<DWORD>(std::min(CHUNK_SIZE, fileSize - offset));
-        DWORD bytesRead = 0;
-        if (!CascReadFile(hFile, buffer.data() + offset, toRead, &bytesRead)) {
+    if (hasKnownSize) {
+        if (fileSize64 > static_cast<ULONGLONG>(std::numeric_limits<size_t>::max())) {
             CascCloseFile(hFile);
-            error = mapCascError(GetCascError());
+            error = CascError::ReadError;
             return {};
         }
-        offset += bytesRead;
-    }
 
-    CascCloseFile(hFile);
-    return buffer;
+        // Cap file size to prevent unbounded memory allocation
+        constexpr size_t MAX_READ_SIZE = 512 * 1024 * 1024; // 512 MB
+        if (fileSize64 > MAX_READ_SIZE) {
+            CascCloseFile(hFile);
+            error = CascError::ReadError;
+            return {};
+        }
+
+        size_t fileSize = static_cast<size_t>(fileSize64);
+        std::vector<uint8_t> buffer;
+        try {
+            buffer.resize(fileSize);
+        } catch (const std::bad_alloc&) {
+            CascCloseFile(hFile);
+            error = CascError::ReadError;
+            return {};
+        }
+
+        constexpr size_t CHUNK_SIZE = static_cast<size_t>(std::numeric_limits<DWORD>::max());
+        size_t offset = 0;
+        while (offset < fileSize) {
+            DWORD toRead = static_cast<DWORD>(std::min(CHUNK_SIZE, fileSize - offset));
+            DWORD bytesRead = 0;
+            if (!CascReadFile(hFile, buffer.data() + offset, toRead, &bytesRead)) {
+                CascCloseFile(hFile);
+                error = mapCascError(GetCascError());
+                return {};
+            }
+            offset += bytesRead;
+        }
+
+        CascCloseFile(hFile);
+        return buffer;
+    } else {
+        // Fallback: stream read without known size (some files report size failure but data is readable)
+        constexpr size_t BUFFER_SIZE = 1024 * 1024; // 1 MB chunks
+        std::vector<uint8_t> chunk(BUFFER_SIZE);
+        std::vector<uint8_t> buffer;
+        buffer.reserve(BUFFER_SIZE);
+        uint64_t totalRead = 0;
+
+        while (true) {
+            DWORD bytesRead = 0;
+            if (!CascReadFile(hFile, chunk.data(), static_cast<DWORD>(BUFFER_SIZE), &bytesRead)) {
+                DWORD err = GetCascError();
+                if (err == ERROR_HANDLE_EOF || totalRead > 0) {
+                    break;
+                }
+                CascCloseFile(hFile);
+                error = mapCascError(err);
+                return {};
+            }
+            if (bytesRead == 0) {
+                if (totalRead == 0) {
+                    CascCloseFile(hFile);
+                    error = CascError::FileNotFound;
+                    return {};
+                }
+                break;
+            }
+            buffer.insert(buffer.end(), chunk.begin(), chunk.begin() + bytesRead);
+            totalRead += bytesRead;
+        }
+
+        CascCloseFile(hFile);
+        return buffer;
+    }
 }
 
 std::vector<uint8_t> LocalCascStorage::readFilePartial(const std::string& cascPath, uint64_t offset, uint64_t length, CascError& error)

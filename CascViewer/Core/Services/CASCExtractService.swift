@@ -178,6 +178,13 @@ final class CASCExtractService: ObservableObject {
         case .FileNotFound: return .fileNotFound
         case .ReadError: return .readError
         case .Cancelled: return .cancelled
+        case .InvalidPath: return .invalidPath
+        case .StorageNotFound: return .storageNotFound
+        case .StorageCorrupted: return .storageCorrupted
+        case .NetworkError: return .networkError
+        case .CDNConfigError: return .cdnConfigError
+        case .DecodingError: return .decodingError
+        case .NotImplemented: return .notImplemented
         default: return .unknown
         }
     }

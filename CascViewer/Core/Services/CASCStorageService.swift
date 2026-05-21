@@ -195,12 +195,19 @@ final class CASCStorageService: ObservableObject {
         }
 
         // If storage not found, it may be a transient CDN failure (rate limiting
-        // or connection reset during bulk downloads). Wait a moment and retry once
-        // so partial cache from the first attempt can be reused.
+        // or connection reset during bulk downloads). Retry with exponential backoff
+        // so partial cache from earlier attempts can be reused.
         if result == .StorageNotFound {
-            print("[CASC] Storage not found for \(product), waiting 3s and retrying...")
-            try? await Task.sleep(nanoseconds: 3_000_000_000)
-            let retryResult = await openWithConfig(config: config)
+            var retryResult = result
+            for attempt in 1...3 {
+                let waitSeconds = UInt64(3 * attempt)
+                print("[CASC] Storage not found for \(product), waiting \(waitSeconds)s before retry \(attempt)/3...")
+                try? await Task.sleep(nanoseconds: waitSeconds * 1_000_000_000)
+                retryResult = await openWithConfig(config: config)
+                if retryResult == .None {
+                    break
+                }
+            }
             if retryResult == .None {
                 loadProgress = 0
                 await refreshStorageInfo()
