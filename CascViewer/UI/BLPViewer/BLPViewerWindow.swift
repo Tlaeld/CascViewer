@@ -135,6 +135,16 @@ class BLPViewerViewModel: ObservableObject {
 
     private func updateCurrentFrame() {
         guard let result = decodedResult else { return }
+
+        // If no mipmaps, use the main frame directly
+        if result.mipMaps.isEmpty {
+            let frame = min(currentFrameIndex, result.frames.count - 1)
+            if frame >= 0 {
+                currentFrame = result.frames[frame].cgImage
+            }
+            return
+        }
+
         let level = min(Int(currentMipLevel), result.mipMaps.count - 1)
         let frame = min(currentFrameIndex, result.mipMaps[level].count - 1)
         if level >= 0, frame >= 0 {

@@ -17,6 +17,7 @@ enum class ImageCompression : uint8_t {
     DXTC1,
     DXTC3,
     DXTC5,
+    JPEG,
     Unknown
 };
 
