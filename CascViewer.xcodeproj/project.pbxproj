@@ -44,6 +44,7 @@
 		6789012345678ABCDEF0123456789ABC /* BLPAnimationControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3D4E5F6789012345678ABCDEF012345 /* BLPAnimationControls.swift */; };
 		6F8F6D1395942D273BE9A9ED /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = B9578B46AAD3571DDD3649BD /* Localizable.strings */; };
 		745F71D8BA82A40EBC6D2B0C /* CASCSearchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2761450A441A10DA77FEBF86 /* CASCSearchService.swift */; };
+	5CD38ABCA564158A22A877BA /* LocalizationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCFBFBFAED73D4521A472ACE /* LocalizationManager.swift */; };
 		74EE42895653FED52D9F0337C6DAADEE /* FileTreeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09735D48B9B53C7CD4B0B5A385536583 /* FileTreeView.swift */; };
 		789012345678ABCDEF0123456789ABCD /* BLPMipMapSelector.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4E5F6789012345678ABCDEF01234567 /* BLPMipMapSelector.swift */; };
 		7DF6A5C45692C2B8C08D2969 /* ListFile.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A71329496ECA91E09CBC2223 /* ListFile.cpp */; };
@@ -64,12 +65,16 @@
 		AFFE10EAE618391FADB5F697 /* CASCError.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44051960FF9179CDDB79AA39 /* CASCError.swift */; };
 		B2B43A90C034F9B9E4A4B09B /* CDNCacheManager.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0F540B1A5FC8CBA58ED0AC72 /* CDNCacheManager.cpp */; };
 		B3CFC4C0A529025B4BC55DCB /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D10EBED085E4B4286FDD9D9 /* AppState.swift */; };
+	74C21186E885D92B510B089E /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 60F82CEB2DCB30634960BFAD /* AppSettings.swift */; };
 		B6A2628E1AB1979CD0118AB5 /* Csv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 903A6074953CCD3D24F4EB65 /* Csv.cpp */; };
 		B6CBA3311C5A32B894703F94 /* sha1.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 552F10D7E0DF7836BBDB395D /* sha1.cpp */; };
 		BC39F5663F558DC4888266E1 /* FileTree.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 13EE8E2EAF607AFE5380A534 /* FileTree.cpp */; };
 		BC667D0E6B33C558ABE3ECBEA2E0C8C5 /* StatusBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78FB51A989637293953B7DA528A8544D /* StatusBarView.swift */; };
 		BDD431DF64EF2F8D373EA6B8 /* CascRootFile_TVFS.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 20D05AD073882AA3AE97A8F7 /* CascRootFile_TVFS.cpp */; };
 		BE5C2E1686F1FD23E21B24C2 /* InstallManifestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1292BF0F06C253DC91DA157E /* InstallManifestView.swift */; };
+	CC9D6442C53CDE8DBC3AC8A7 /* InstallManifestTableView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD4A290F57E72A0CB0CD58E5 /* InstallManifestTableView.swift */; };
+	AE634EE7C8A0FBFD9A128E34 /* InstallManifestEntryDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6CC545C0DE32694850407E0 /* InstallManifestEntryDetailView.swift */; };
+	3D0A6EAEC614C46E103C56AF /* InstallManifestExportSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5E9355006C48354EBD7283F /* InstallManifestExportSheet.swift */; };
 		C1A0EBD11DE92127659B3300 /* CDNConfig.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4E39B4D1CD21D0464CAA3CE0 /* CDNConfig.cpp */; };
 		CB7D493FFB970DB98CDCF788 /* md5.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 514472C8EC4C506706F46690 /* md5.cpp */; };
 		CC27540714E29CA130EE9D2F /* CascDecompress.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 6C289CDBB7ED62A067619C29 /* CascDecompress.cpp */; };
@@ -116,6 +121,9 @@
 		0F540B1A5FC8CBA58ED0AC72 /* CDNCacheManager.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = CDNCacheManager.cpp; path = CDNCacheManager.cpp; sourceTree = "<group>"; };
 		1167740686BF24CB9E179A46 /* Csv.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = Csv.h; path = CascLib/src/common/Csv.h; sourceTree = "<group>"; };
 		1292BF0F06C253DC91DA157E /* InstallManifestView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = InstallManifestView.swift; path = InstallManifestView.swift; sourceTree = "<group>"; };
+	AD4A290F57E72A0CB0CD58E5 /* InstallManifestTableView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = InstallManifestTableView.swift; path = InstallManifestTableView.swift; sourceTree = "<group>"; };
+	F6CC545C0DE32694850407E0 /* InstallManifestEntryDetailView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = InstallManifestEntryDetailView.swift; path = InstallManifestEntryDetailView.swift; sourceTree = "<group>"; };
+	F5E9355006C48354EBD7283F /* InstallManifestExportSheet.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = InstallManifestExportSheet.swift; path = InstallManifestExportSheet.swift; sourceTree = "<group>"; };
 		13EE8E2EAF607AFE5380A534 /* FileTree.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = FileTree.cpp; path = CascLib/src/common/FileTree.cpp; sourceTree = "<group>"; };
 		163D27D9001ABE92A4C87117 /* FileStream.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = FileStream.cpp; path = CascLib/src/common/FileStream.cpp; sourceTree = "<group>"; };
 		1A8215F4B2E848028DCC8338D668EE63 /* ExtractDialogView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ExtractDialogView.swift; sourceTree = "<group>"; };
@@ -128,6 +136,7 @@
 		23607A5F1D7C0F155E14B24B /* Mime.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = Mime.cpp; path = CascLib/src/common/Mime.cpp; sourceTree = "<group>"; };
 		2458F6C63AF9557BC2D751E0 /* CascBridge+Sendable.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = "CascBridge+Sendable.swift"; path = "CascBridge+Sendable.swift"; sourceTree = "<group>"; };
 		2761450A441A10DA77FEBF86 /* CASCSearchService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CASCSearchService.swift; sourceTree = "<group>"; };
+	DCFBFBFAED73D4521A472ACE /* LocalizationManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = LocalizationManager.swift; path = LocalizationManager.swift; sourceTree = "<group>"; };
 		278A09974B745D208E54D7D8 /* Common.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = Common.h; path = CascLib/src/common/Common.h; sourceTree = "<group>"; };
 		2B321136423FAF8FC571698A /* lookup3.c */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.c; name = lookup3.c; path = CascLib/src/jenkins/lookup3.c; sourceTree = "<group>"; };
 		30CF441EFCAA4921BCA96139 /* BridgeTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BridgeTests.swift; sourceTree = "<group>"; };
@@ -174,6 +183,7 @@
 		9A54EC3617391F1161024B73 /* CascPort.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = CascPort.h; path = CascLib/src/CascPort.h; sourceTree = "<group>"; };
 		9BE656CB5D129E14AC64E4BE /* OnlineStorageView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = OnlineStorageView.swift; sourceTree = "<group>"; };
 		9D10EBED085E4B4286FDD9D9 /* AppState.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
+	60F82CEB2DCB30634960BFAD /* AppSettings.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = AppSettings.swift; path = AppSettings.swift; sourceTree = "<group>"; };
 		9DAFFCFDEF255B1550EC271E /* CascViewerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CascViewerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		9DE766F954D9B014A10A4A372929444F /* FileListView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FileListView.swift; sourceTree = "<group>"; };
 		9EAA813064588827985FFDA2 /* Map.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = Map.h; path = CascLib/src/common/Map.h; sourceTree = "<group>"; };
@@ -276,6 +286,7 @@
 			children = (
 				0EAF6700599D831770C9F3C8 /* CASCStorageService.swift */,
 				2761450A441A10DA77FEBF86 /* CASCSearchService.swift */,
+				DCFBFBFAED73D4521A472ACE /* LocalizationManager.swift */ ,
 				D201A7934AC3A3D661C6CB4C /* CASCExtractService.swift */,
 				0080CDFEC7BC5E29ED5C8AD0 /* BLPDecoderCoordinator.swift */,
 				F805F4E1E7783D486B22281C /* CDNConfigService.swift */,
@@ -314,6 +325,9 @@
 			isa = PBXGroup;
 			children = (
 				1292BF0F06C253DC91DA157E /* InstallManifestView.swift */,
+				AD4A290F57E72A0CB0CD58E5 /* InstallManifestTableView.swift */ ,
+				F6CC545C0DE32694850407E0 /* InstallManifestEntryDetailView.swift */ ,
+				F5E9355006C48354EBD7283F /* InstallManifestExportSheet.swift */ ,
 				203BA01A02EBC8DEC2462D73 /* InstallManifestWindowController.swift */,
 			);
 			name = InstallManifest;
@@ -479,6 +493,7 @@
 			children = (
 				DDC871518AA0909451F89C72 /* CascViewerApp.swift */,
 				9D10EBED085E4B4286FDD9D9 /* AppState.swift */,
+				60F82CEB2DCB30634960BFAD /* AppSettings.swift */ ,
 			);
 			name = App;
 			path = App;
@@ -665,6 +680,7 @@
 			files = (
 				02FF2989C83AE287D1D90A5D /* CascViewerApp.swift in Sources */,
 				B3CFC4C0A529025B4BC55DCB /* AppState.swift in Sources */,
+				74C21186E885D92B510B089E /* AppSettings.swift in Sources */ ,
 				172E6E146C2A14931A56F7FF /* MainWindowView.swift in Sources */,
 				55A1A7B2DFFE07299CACDE22 /* CASCStorageService.swift in Sources */,
 				8D8E1147AE582A1F71956949 /* Common.cpp in Sources */,
@@ -703,6 +719,7 @@
 				B2B43A90C034F9B9E4A4B09B /* CDNCacheManager.cpp in Sources */,
 				8B9FFD4DA9F78665A98B9987 /* CascStorageHandle.cpp in Sources */,
 				745F71D8BA82A40EBC6D2B0C /* CASCSearchService.swift in Sources */,
+				5CD38ABCA564158A22A877BA /* LocalizationManager.swift in Sources */ ,
 				D505C329C595D3C0907A8388 /* CASCExtractService.swift in Sources */,
 				06A83327074E651AD8980A84 /* BLPDecoderCoordinator.swift in Sources */,
 				E382BD244FF12FB87B867307 /* CDNConfigService.swift in Sources */,
@@ -730,6 +747,9 @@
 				F30AA302032A81ABA1CA7ED2 /* CDNProductService.swift in Sources */,
 				8593A63AE5F820BFD2C16B1E /* OnlineStorageWindowController.swift in Sources */,
 				BE5C2E1686F1FD23E21B24C2 /* InstallManifestView.swift in Sources */,
+				CC9D6442C53CDE8DBC3AC8A7 /* InstallManifestTableView.swift in Sources */ ,
+				AE634EE7C8A0FBFD9A128E34 /* InstallManifestEntryDetailView.swift in Sources */ ,
+				3D0A6EAEC614C46E103C56AF /* InstallManifestExportSheet.swift in Sources */ ,
 				2D93B78694FC7A98E3F63545 /* InstallManifestWindowController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
