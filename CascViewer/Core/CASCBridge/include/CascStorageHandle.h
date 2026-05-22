@@ -12,6 +12,7 @@ class CascStorageHandle {
     std::shared_ptr<Impl> impl;
 public:
     CascStorageHandle();
+    ~CascStorageHandle();
 
     static CascStorageHandle createLocal();
     static std::vector<std::string> fetchProductRegions(const std::string& product);

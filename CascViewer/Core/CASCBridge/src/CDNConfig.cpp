@@ -7,10 +7,12 @@
 
 namespace CascBridge {
 
-static std::atomic<bool> g_cancelFlag{false};
+static std::atomic<uint64_t> g_cancelGeneration{0};
 
 void CDNConfig::setGlobalCancelFlag(bool value) {
-    g_cancelFlag.store(value);
+    if (value) {
+        g_cancelGeneration.fetch_add(1, std::memory_order_relaxed);
+    }
 }
 
 static struct CurlGlobalInit {
@@ -22,19 +24,52 @@ static struct CurlGlobalInit {
     }
 } curlGlobalInit;
 
-static bool isValidProductOrRegion(const std::string& s) {
+namespace {
+
+bool isValidProductOrRegion(const std::string& s) {
     return std::all_of(s.begin(), s.end(), [](unsigned char c) {
         return std::isalnum(c) || c == '-' || c == '_';
     });
 }
 
-static size_t writeStringCallback(void* contents, size_t size, size_t nmemb, void* userp)
+size_t writeStringCallback(void* contents, size_t size, size_t nmemb, void* userp)
 {
     size_t totalSize = size * nmemb;
     std::string* str = static_cast<std::string*>(userp);
     str->append(static_cast<char*>(contents), totalSize);
     return totalSize;
 }
+
+std::vector<std::string> splitLine(const std::string& line, char delimiter)
+{
+    std::vector<std::string> parts;
+    std::stringstream ss(line);
+    std::string part;
+    while (std::getline(ss, part, delimiter)) {
+        parts.push_back(part);
+    }
+    return parts;
+}
+
+std::string trim(const std::string& s)
+{
+    auto start = std::find_if_not(s.begin(), s.end(), [](unsigned char c) { return std::isspace(c); });
+    auto end = std::find_if_not(s.rbegin(), s.rend(), [](unsigned char c) { return std::isspace(c); }).base();
+    if (start >= end) return {};
+    return std::string(start, end);
+}
+
+std::string extractKeyName(const std::string& s)
+{
+    std::string trimmed = trim(s);
+    size_t bangPos = trimmed.find('!');
+    if (bangPos != std::string::npos) {
+        return trimmed.substr(0, bangPos);
+    }
+    return trimmed;
+}
+
+} // namespace
 
 std::string CDNConfig::downloadText(const std::string& url)
 {
@@ -57,10 +92,10 @@ std::string CDNConfig::downloadText(const std::string& url, const std::function<
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
     curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
 
+    uint64_t sessionGeneration = g_cancelGeneration.load(std::memory_order_relaxed);
     curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
     curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION,
         [](void* clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow) -> int {
-            if (g_cancelFlag.load()) return 1; // abort transfer
             const std::function<bool()>* fn = static_cast<const std::function<bool()>*>(clientp);
             if (fn && (*fn)()) return 1; // abort transfer
             return 0;
@@ -72,39 +107,13 @@ std::string CDNConfig::downloadText(const std::string& url, const std::function<
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
     curl_easy_cleanup(curl);
 
+    if (g_cancelGeneration.load(std::memory_order_relaxed) != sessionGeneration) {
+        return {};
+    }
     if (res != CURLE_OK || httpCode != 200) {
         return {};
     }
     return response;
-}
-
-static std::vector<std::string> splitLine(const std::string& line, char delimiter)
-{
-    std::vector<std::string> parts;
-    std::stringstream ss(line);
-    std::string part;
-    while (std::getline(ss, part, delimiter)) {
-        parts.push_back(part);
-    }
-    return parts;
-}
-
-static std::string trim(const std::string& s)
-{
-    auto start = std::find_if_not(s.begin(), s.end(), [](unsigned char c) { return std::isspace(c); });
-    auto end = std::find_if_not(s.rbegin(), s.rend(), [](unsigned char c) { return std::isspace(c); }).base();
-    if (start >= end) return {};
-    return std::string(start, end);
-}
-
-static std::string extractKeyName(const std::string& s)
-{
-    std::string trimmed = trim(s);
-    size_t bangPos = trimmed.find('!');
-    if (bangPos != std::string::npos) {
-        return trimmed.substr(0, bangPos);
-    }
-    return trimmed;
 }
 
 CDNBuildConfig CDNConfig::fetchConfig(const std::string& product, const std::string& region, CascError& error)
@@ -230,8 +239,12 @@ std::vector<std::string> CDNConfig::fetchProductRegions(const std::string& produ
         return {};
     }
 
+    uint64_t sessionGeneration = g_cancelGeneration.load(std::memory_order_relaxed);
     std::string cdnsUrl = "http://us.patch.battle.net:1119/" + product + "/cdns";
     std::string cdnsText = downloadText(cdnsUrl, isCancelled);
+    if (g_cancelGeneration.load(std::memory_order_relaxed) != sessionGeneration) {
+        return {};
+    }
     if (cdnsText.empty()) {
         return {};
     }
