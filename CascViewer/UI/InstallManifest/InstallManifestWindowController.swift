@@ -1,7 +1,11 @@
 import SwiftUI
 import AppKit
 
-class InstallManifestWindowController: NSWindowController {
+@MainActor
+class InstallManifestWindowController: NSWindowController, NSWindowDelegate {
+    private static var controllers: [InstallManifestWindowController] = []
+    private static let lock = NSLock()
+
     static func show(tags: [InstallManifestTag], entries: [InstallManifestEntry], storageService: CASCStorageService?) {
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 900, height: 600),
@@ -20,7 +24,21 @@ class InstallManifestWindowController: NSWindowController {
         window.contentView = hostingView
 
         let controller = InstallManifestWindowController(window: window)
+        window.delegate = controller
         controller.showWindow(nil)
+        Self.lock.lock()
+        Self.controllers.append(controller)
+        Self.lock.unlock()
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        window?.contentView = nil
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            Self.lock.lock()
+            Self.controllers.removeAll { $0 === self }
+            Self.lock.unlock()
+        }
     }
 }
