@@ -1,10 +1,14 @@
 import SwiftUI
 import AppKit
 
+@MainActor
 class SearchWindowController: NSWindowController, NSWindowDelegate {
     static var shared: SearchWindowController?
+    private static let lock = NSLock()
 
     static func show(appState: AppState) {
+        lock.lock()
+        defer { lock.unlock() }
         if let existing = shared {
             existing.window?.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
@@ -37,6 +41,8 @@ class SearchWindowController: NSWindowController, NSWindowDelegate {
 
     func windowWillClose(_ notification: Notification) {
         window?.contentView = nil
+        SearchWindowController.lock.lock()
         Self.shared = nil
+        SearchWindowController.lock.unlock()
     }
 }

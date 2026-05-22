@@ -169,8 +169,10 @@ class BLPViewerViewModel: ObservableObject {
 
 // MARK: - Window opener helper
 
+@MainActor
 final class ImageViewerWindowController: NSWindowController, NSWindowDelegate {
     private static var controllers: [ImageViewerWindowController] = []
+    private static let lock = NSLock()
 
     init(fileName: String, imageData: Data) {
         let window = NSWindow(
@@ -185,7 +187,9 @@ final class ImageViewerWindowController: NSWindowController, NSWindowDelegate {
         super.init(window: window)
         window.delegate = self
         window.contentView = NSHostingView(rootView: BLPViewerWindow(fileName: fileName, imageData: imageData))
+        Self.lock.lock()
         Self.controllers.append(self)
+        Self.lock.unlock()
         window.makeKeyAndOrderFront(nil)
     }
 
@@ -198,11 +202,14 @@ final class ImageViewerWindowController: NSWindowController, NSWindowDelegate {
         window?.contentView = nil
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
+            Self.lock.lock()
             Self.controllers.removeAll { $0 === self }
+            Self.lock.unlock()
         }
     }
 }
 
+@MainActor
 func openImageViewerWindow(fileName: String, imageData: Data) {
     _ = ImageViewerWindowController(fileName: fileName, imageData: imageData)
 }

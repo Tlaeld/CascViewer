@@ -2,10 +2,14 @@ import SwiftUI
 import AppKit
 import CascBridge
 
+@MainActor
 class OnlineStorageWindowController: NSWindowController, NSWindowDelegate {
     static var shared: OnlineStorageWindowController?
+    private static let lock = NSLock()
 
     static func show(appState: AppState) {
+        lock.lock()
+        defer { lock.unlock() }
         if let existing = shared {
             existing.window?.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
@@ -119,6 +123,8 @@ class OnlineStorageWindowController: NSWindowController, NSWindowDelegate {
 
     func windowWillClose(_ notification: Notification) {
         window?.contentView = nil
+        OnlineStorageWindowController.lock.lock()
         Self.shared = nil
+        OnlineStorageWindowController.lock.unlock()
     }
 }
