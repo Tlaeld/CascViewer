@@ -6,14 +6,17 @@ final class AppSettingsTests: XCTestCase {
 
     private var defaults: UserDefaults!
     private let suiteName = "test.CascViewer.AppSettings"
+    private var originalLanguageCode: String!
 
     override func setUp() {
         super.setUp()
+        originalLanguageCode = LocalizationManager.shared.languageCode
         defaults = UserDefaults(suiteName: suiteName)
         defaults.removePersistentDomain(forName: suiteName)
     }
 
     override func tearDown() {
+        LocalizationManager.shared.languageCode = originalLanguageCode
         defaults.removePersistentDomain(forName: suiteName)
         defaults = nil
         super.tearDown()
