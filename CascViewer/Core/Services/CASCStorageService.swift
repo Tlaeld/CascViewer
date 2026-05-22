@@ -119,9 +119,6 @@ final class CASCStorageService: ObservableObject {
         
         var localHandle = handle
         localHandle.setCdnDownloadEnabled(AppSettings.shared.cdnDownloadEnabled)
-        if !AppSettings.shared.cdnCachePath.isEmpty {
-            localHandle.setCachePath(std.string(AppSettings.shared.cdnCachePath))
-        }
         if !listFilePath.isEmpty {
             localHandle.setListFilePath(std.string(listFilePath))
         }
@@ -178,20 +175,8 @@ final class CASCStorageService: ObservableObject {
             try? fm.removeItem(atPath: versionsFile)
             try? fm.removeItem(atPath: cdnsFile)
             let retryResult = await openWithConfig(config: config)
-            if retryResult == .None {
-                loadProgress = 0
-                await refreshStorageInfo()
-                await loadRootEntries()
-                await loadTags()
-                isLoading = false
-                loadProgressMessage = ""
-                return
-            } else {
-                loadProgressMessage = ""
-                isLoading = false
-                self.error = mapError(retryResult)
-                return
-            }
+            await handleOpenResult(retryResult)
+            return
         }
 
         // If storage not found, it may be a transient CDN failure (rate limiting
@@ -208,22 +193,14 @@ final class CASCStorageService: ObservableObject {
                     break
                 }
             }
-            if retryResult == .None {
-                loadProgress = 0
-                await refreshStorageInfo()
-                await loadRootEntries()
-                await loadTags()
-                isLoading = false
-                loadProgressMessage = ""
-                return
-            } else {
-                loadProgressMessage = ""
-                isLoading = false
-                self.error = mapError(retryResult)
-                return
-            }
+            await handleOpenResult(retryResult)
+            return
         }
 
+        await handleOpenResult(result)
+    }
+
+    private func handleOpenResult(_ result: CascBridge.CascError) async {
         loadProgress = 0
         if result != .None {
             loadProgressMessage = ""
@@ -288,7 +265,7 @@ final class CASCStorageService: ObservableObject {
                     return InstallManifestEntry(
                         fileName: String(entry.fileName),
                         ckey: String(entry.ckey),
-                        fileSize: entry.flags,
+                        fileSize: entry.fileSize,
                         tagBits: bits
                     )
                 }

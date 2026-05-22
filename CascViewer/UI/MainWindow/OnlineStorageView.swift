@@ -84,7 +84,6 @@ struct OnlineStorageView: View {
                 Button(L("cancel")) {
                     CascBridge.CascStorageHandle.setFetchCancellationFlag(true)
                     loadTask?.cancel()
-                    CascBridge.CascStorageHandle.setFetchCancellationFlag(false)
                     onCancel()
                 }
                 .keyboardShortcut(.cancelAction)
@@ -92,7 +91,6 @@ struct OnlineStorageView: View {
                 Button(L("open")) {
                     CascBridge.CascStorageHandle.setFetchCancellationFlag(true)
                     loadTask?.cancel()
-                    CascBridge.CascStorageHandle.setFetchCancellationFlag(false)
                     service.saveCachePath()
                     if let product = service.selectedProduct, !service.selectedRegion.isEmpty {
                         onOpen(product.code, service.selectedRegion)
@@ -107,8 +105,6 @@ struct OnlineStorageView: View {
         }
         .frame(width: 720, height: 540)
         .onAppear {
-            // Ensure cancellation flag is clear when opening the window
-            CascBridge.CascStorageHandle.setFetchCancellationFlag(false)
             // Only auto-load on first open when no cached regions exist.
             // Otherwise show cached data and let user decide when to reload.
             if !service.hasCachedRegions {
@@ -121,7 +117,6 @@ struct OnlineStorageView: View {
             CascBridge.CascStorageHandle.setFetchCancellationFlag(true)
             loadTask?.cancel()
             loadTask = nil
-            CascBridge.CascStorageHandle.setFetchCancellationFlag(false)
         }
     }
 

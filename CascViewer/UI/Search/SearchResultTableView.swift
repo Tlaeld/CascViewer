@@ -253,8 +253,8 @@ struct SearchResultTableView: NSViewControllerRepresentable {
         // Avoid O(n) identity comparison on 50K+ rows.
         // Reload when: count changed, first element changed, or last element changed.
         let countChanged = vc.matches.count != matches.count
-        let firstChanged = vc.matches.first?.id != matches.first?.id
-        let lastChanged = vc.matches.last?.id != matches.last?.id
+        let firstChanged = vc.matches.first != matches.first
+        let lastChanged = vc.matches.last != matches.last
         if countChanged || firstChanged || lastChanged {
             vc.reload(matches: matches, mode: searchMode)
         }

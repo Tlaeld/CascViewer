@@ -30,10 +30,8 @@ final class CDNProductService: ObservableObject {
 
     func loadRegions() async {
         isLoading = true
-        CascBridge.CascStorageHandle.setFetchCancellationFlag(false)
         defer {
             isLoading = false
-            CascBridge.CascStorageHandle.setFetchCancellationFlag(false)
             saveCachedRegions()
         }
 

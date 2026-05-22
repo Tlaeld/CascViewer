@@ -340,20 +340,31 @@ class CASCSearchService {
     /// Fast case-insensitive byte search. Converts both needle and haystack to lowercase ASCII.
     /// Falls back to UTF-8 string comparison for non-ASCII content.
     internal static func rangeOfCaseInsensitive(_ needle: String, in haystack: Data) -> Range<Data.Index>? {
-        let needleData = Data(needle.utf8)
         let needleLower = Data(needle.lowercased().utf8)
 
-        // Fast path: if haystack is valid UTF-8 and mostly ASCII, lowercase the whole thing
+        // Fast path: if haystack is valid UTF-8, lowercase the whole thing
         if let text = String(data: haystack, encoding: .utf8) {
             let lowerData = Data(text.lowercased().utf8)
             return lowerData.range(of: needleLower)
         }
 
-        // Fallback: raw byte comparison with uppercase needle too
-        if let range = haystack.range(of: needleData) {
-            return range
+        // Fallback: ASCII case-insensitive byte scan for non-UTF-8 data
+        let needleUpper = Data(needle.uppercased().utf8)
+        guard needleLower.count > 0 && haystack.count >= needleLower.count else { return nil }
+        for i in 0...(haystack.count - needleLower.count) {
+            var matched = true
+            for j in 0..<needleLower.count {
+                let byte = haystack[i + j]
+                if byte != needleLower[j] && byte != needleUpper[j] {
+                    matched = false
+                    break
+                }
+            }
+            if matched {
+                return i..<(i + needleLower.count)
+            }
         }
-        return haystack.range(of: Data(needle.uppercased().utf8))
+        return nil
     }
 
     // MARK: - Hex Search (parallel with TaskGroup)
