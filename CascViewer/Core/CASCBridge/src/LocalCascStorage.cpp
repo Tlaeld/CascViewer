@@ -165,7 +165,13 @@ CascError LocalCascStorage::open(const std::string& localPath)
         close();
     }
 
-    bool isOnlineParam = localPath.find('*') != std::string::npos;
+    bool isOnlineParam = false;
+    size_t firstStar = localPath.find('*');
+    if (firstStar != std::string::npos && firstStar > 0) {
+        size_t secondStar = localPath.find('*', firstStar + 1);
+        // Online config format: cachePath*product*region (region optional)
+        isOnlineParam = (secondStar != std::string::npos) ? (secondStar > firstStar + 1) : true;
+    }
 
     CASC_OPEN_STORAGE_ARGS args = {};
     args.Size = sizeof(CASC_OPEN_STORAGE_ARGS);
@@ -208,17 +214,6 @@ CascError LocalCascStorage::open(const std::string& localPath)
             return CascError::StorageNotFound;
         }
         return mapCascError(error);
-    }
-
-    // Override data path with user-specified cache directory
-    if (!cachePath.empty()) {
-        TCascStorage* hs = TCascStorage::IsValid(hStorage);
-        if (hs != NULL) {
-            if (hs->szDataPath != NULL) {
-                CASC_FREE(hs->szDataPath);
-            }
-            hs->szDataPath = CascNewStr(cachePath.c_str());
-        }
     }
 
     return CascError::None;
@@ -494,11 +489,7 @@ CascError LocalCascStorage::extractFile(const std::string& cascPath,
         size_t lastSep = destPath.find_last_of("/\\");
         if (lastSep != std::string::npos) {
             std::string dir = destPath.substr(0, lastSep);
-            static thread_local std::string lastCreatedDir;
-            if (dir != lastCreatedDir) {
-                std::filesystem::create_directories(dir);
-                lastCreatedDir = dir;
-            }
+            std::filesystem::create_directories(dir);
         }
     }
 
@@ -576,9 +567,7 @@ CascError LocalCascStorage::extractFile(const std::string& cascPath,
                 return CascError::ReadError;
             }
             totalRead += bytesRead;
-            if (progress) {
-                progress(static_cast<int64_t>(totalRead), static_cast<int64_t>(totalRead + BUFFER_SIZE));
-            }
+            // Unknown total size: skip per-chunk progress to avoid misleading totals
         }
     }
 
@@ -708,7 +697,7 @@ std::pair<std::vector<InstallManifestTag>, std::vector<InstallManifestEntry>> Lo
     // Parse tags
     for (uint16_t i = 0; i < tagCount && ptr < end; ++i) {
         const char* tagName = reinterpret_cast<const char*>(ptr);
-        size_t nameLen = strlen(tagName);
+        size_t nameLen = strnlen(tagName, static_cast<size_t>(end - ptr));
         ptr += nameLen + 1;
         if (ptr + sizeof(uint16_t) > end) break;
         uint16_t tagValue = (ptr[0] << 8) | ptr[1];
@@ -724,7 +713,7 @@ std::pair<std::vector<InstallManifestTag>, std::vector<InstallManifestEntry>> Lo
     // Parse file entries
     for (uint32_t i = 0; i < entryCount && ptr < end; ++i) {
         const char* fileName = reinterpret_cast<const char*>(ptr);
-        size_t nameLen = strlen(fileName);
+        size_t nameLen = strnlen(fileName, static_cast<size_t>(end - ptr));
         ptr += nameLen + 1;
         if (ptr + 16 + 4 > end) break;
 
@@ -746,7 +735,7 @@ std::pair<std::vector<InstallManifestTag>, std::vector<InstallManifestEntry>> Lo
         const uint8_t* tagPtr = data.data() + 10; // start of tags section
         for (uint16_t t = 0; t < tagCount && tagPtr < end; ++t) {
             const char* tName = reinterpret_cast<const char*>(tagPtr);
-            size_t tLen = strlen(tName);
+            size_t tLen = strnlen(tName, static_cast<size_t>(end - tagPtr));
             tagPtr += tLen + 1 + sizeof(uint16_t); // name + USHORT
             if (tagPtr + bitmapLength > end) break;
             uint8_t hasTag = 0;

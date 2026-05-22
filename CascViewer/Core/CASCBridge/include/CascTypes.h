@@ -43,7 +43,7 @@ struct InstallManifestTag {
 struct InstallManifestEntry {
     std::string fileName;
     std::string ckey;
-    uint32_t flags;
+    uint32_t fileSize;
     std::vector<uint8_t> tagBits;
 };
 

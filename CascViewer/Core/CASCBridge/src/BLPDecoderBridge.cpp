@@ -312,15 +312,13 @@ static ImageDecodeResult decodeDDS(const uint8_t* data, size_t length, CascError
     result.compression = compression;
     result.hasAlpha = hasAlpha;
 
-    size_t dataOffset = sizeof(DDSHeader);
-    // Skip DX10 header if present (DXT1/3/5 in DX10 uses 'DX10' FourCC)
-    if (fourccMatch(header.pfFourCC, "DX10") && length >= dataOffset + 20) {
-        dataOffset += 20;
+    if (fourccMatch(header.pfFourCC, "DX10")) {
         // We don't parse DX10 DXGI_FORMAT here — would need mapping table
         error = CascError::DecodingError;
         return result;
     }
 
+    size_t dataOffset = sizeof(DDSHeader);
     size_t blockSize = (compression == ImageCompression::DXTC1) ? 8 : 16;
     size_t blockCountX = (width + 3) / 4;
     size_t blockCountY = (height + 3) / 4;
@@ -489,11 +487,13 @@ static ImageDecodeResult decodeBLP(const uint8_t* data, size_t length, CascError
                     return true;
                 }
                 if (totalSize > 4) {
-                    uint32_t declaredSize = *reinterpret_cast<const uint32_t*>(ptr);
-                    if (declaredSize > 0 && declaredSize <= totalSize - 4 &&
-                        ptr[4] == 0xFF && ptr[5] == 0xD8) {
+                    uint32_t declaredSize;
+                    std::memcpy(&declaredSize, ptr, sizeof(uint32_t));
+                    if (ptr[4] == 0xFF && ptr[5] == 0xD8) {
                         outPtr = ptr + 4;
-                        outSize = declaredSize;
+                        outSize = (declaredSize > 0 && declaredSize <= totalSize - 4)
+                                  ? declaredSize
+                                  : (totalSize - 4);
                         return true;
                     }
                 }
