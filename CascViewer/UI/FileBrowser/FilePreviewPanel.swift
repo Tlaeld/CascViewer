@@ -90,7 +90,7 @@ struct FilePreviewPanel: View {
         guard let storageService = appState.currentStorage else { return }
 
         if AppSettings.shared.useBuiltInImageViewer,
-           let data = storageService.readFileData(forPath: entry.normalizedPath) {
+           let data = await storageService.readFileData(forPath: entry.normalizedPath) {
             openImageViewerWindow(fileName: entry.name, imageData: data)
             return
         }
@@ -110,12 +110,19 @@ struct FilePreviewPanel: View {
         let extractService = CASCExtractService(storage: storageService.handle)
         let result = await extractService.extract(entries: [entry], to: sessionDir, preserveStructure: false)
 
+        // Clean up temporary directory after a short delay regardless of outcome
+        Task {
+            try? await Task.sleep(nanoseconds: 5_000_000_000)
+            try? FileManager.default.removeItem(at: sessionDir)
+        }
+
         if result.wasCancelled {
-            try? FileManager.default.removeItem(at: sessionDir)
+            return
         } else if result.failedFiles.isEmpty {
-            NSWorkspace.shared.open(destURL)
+            await MainActor.run {
+                NSWorkspace.shared.open(destURL)
+            }
         } else {
-            try? FileManager.default.removeItem(at: sessionDir)
             let reason = result.failedFiles.first?.error.localizedDescription ?? L("unknown_error")
             appState.errorMessage = L("open_failed", safeName, reason)
         }

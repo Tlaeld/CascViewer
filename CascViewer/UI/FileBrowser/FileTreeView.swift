@@ -39,6 +39,7 @@ struct FileTreeView: View {
 
 struct FileTreeContent: View {
     @ObservedObject var storage: CASCStorageService
+    @EnvironmentObject var appState: AppState
     @State private var expandedPaths: Set<String> = []
     @State private var extractEntries: [CASCFileEntry] = []
     @State private var showingExtractSheet = false
@@ -116,12 +117,18 @@ struct FileTreeContent: View {
             // Silently ignore cancelled extractions
         } else if result.failedFiles.isEmpty {
             if openAfterExtract {
-                NSWorkspace.shared.open(destination)
+                await MainActor.run {
+                    NSWorkspace.shared.open(destination)
+                }
             }
         } else {
-            print("[Extract] \(result.successCount) succeeded, \(result.failedFiles.count) failed")
-            for f in result.failedFiles.prefix(5) {
-                print("  FAILED: \(f.path) - \(f.error.localizedDescription)")
+            let failedList = result.failedFiles.prefix(10).map {
+                let reason = $0.error.localizedDescription
+                return "\($0.path)\n  ↳ \(reason)"
+            }.joined(separator: "\n")
+            let more = result.failedFiles.count > 10 ? "\n... \(result.failedFiles.count - 10) more" : ""
+            await MainActor.run {
+                appState.errorMessage = L("extract_partial", result.successCount, result.failedFiles.count) + "\n\n" + failedList + more
             }
         }
     }
@@ -217,7 +224,7 @@ final class TreeTableViewController: NSViewController {
         let path = items[row].node.path
         onToggleExpand?(path)
         // Defer clearing until the next event cycle, after SwiftUI has reloaded the tree
-        DispatchQueue.main.async { [weak self] in
+        Task { @MainActor [weak self] in
             self?.suppressSelection = false
         }
     }

@@ -308,7 +308,8 @@ struct ListFileButton: View {
             }
             .onReceive(storage.$needsListFile) { needsListFile in
                 if needsListFile && !hasAutoShown {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 300_000_000)
                         if !hasAutoShown {
                             hasAutoShown = true
                             showPrompt()
@@ -331,7 +332,8 @@ struct ListFileButton: View {
         if let window = NSApp.keyWindow ?? NSApp.mainWindow {
             alert.beginSheetModal(for: window) { response in
                 if response == .alertFirstButtonReturn {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    Task { @MainActor in
+                        try? await Task.sleep(nanoseconds: 100_000_000)
                         self.showPanel()
                     }
                 }

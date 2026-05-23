@@ -29,10 +29,15 @@ final class InstallManifestExtractService: ObservableObject {
         var failed: [String] = []
         var skipped = 0
 
+        var lastProgressUpdate = 0.0
         for (index, entry) in entries.enumerated() {
-            await MainActor.run {
-                progress = Double(index) / Double(total)
-                currentFile = entry.fileName
+            let newProgress = Double(index) / Double(total)
+            if newProgress - lastProgressUpdate >= 0.05 || index == 0 || index == total - 1 {
+                await MainActor.run {
+                    progress = newProgress
+                    currentFile = entry.fileName
+                }
+                lastProgressUpdate = newProgress
             }
 
             // Use CKey as cascPath so CascLib can find files not in ROOT handler
@@ -62,10 +67,8 @@ final class InstallManifestExtractService: ObservableObject {
                         guard let service = ctx.service else { return }
                         let fileProgress = Double(current) / Double(totalBytes)
                         let overallProgress = (Double(ctx.fileIndex) + fileProgress) / Double(ctx.totalFiles)
-                        if ctx.fileIndex == 0 || current == totalBytes {
-                            NSLog("[InstallManifestExtract] progress callback: file \(ctx.fileIndex)/\(ctx.totalFiles), current=\(current), total=\(totalBytes), overall=\(overallProgress)")
-                        }
-                        DispatchQueue.main.async {
+                        // Throttled progress logging removed
+                        Task { @MainActor in
                             service.progress = overallProgress
                         }
                     }
@@ -81,15 +84,11 @@ final class InstallManifestExtractService: ObservableObject {
             }
 
             if error == .FileNotFound {
-                NSLog("[InstallManifestExtract] file \(index): \(entry.fileName) -> FileNotFound (skipped)")
                 skipped += 1
                 continue
             } else if error != .None {
                 let reason = error.localizedDescription
-                NSLog("[InstallManifestExtract] file \(index): \(entry.fileName) -> error: \(reason) (raw: \(error))")
                 failed.append("\(entry.fileName): \(reason)")
-            } else {
-                NSLog("[InstallManifestExtract] file \(index): \(entry.fileName) -> success")
             }
         }
 
@@ -262,7 +261,7 @@ struct InstallManifestExportSheet: View {
             return !fileEntry.isLocal
         }
 
-        NSLog("[InstallManifestExport] total entries: \(entries.count), remote: \(remote.count), isOnline: \(service.isOnlineStorage)")
+        // Removed debug logging
 
         // Local storage cannot download missing files from CDN
         if !service.isOnlineStorage && !remote.isEmpty {

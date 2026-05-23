@@ -94,7 +94,7 @@ final class SearchResultTableViewController: NSViewController {
     func reload(matches: [SearchMatch], mode: SearchMode) {
         self.matches = matches
         self.searchMode = mode
-        DispatchQueue.main.async { [weak self] in
+        Task { @MainActor [weak self] in
             self?.tableView.reloadData()
             self?.updateSelection()
             // Ensure width matches container after data reload

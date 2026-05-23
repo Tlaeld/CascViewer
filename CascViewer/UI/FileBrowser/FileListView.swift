@@ -180,7 +180,15 @@ struct FileListContent: View {
             activeExtractService = nil
         }
 
-        if result.failedFiles.isEmpty {
+        // Schedule cleanup regardless of outcome
+        Task {
+            try? await Task.sleep(nanoseconds: 5_000_000_000)
+            try? FileManager.default.removeItem(at: sessionDir)
+        }
+
+        if result.wasCancelled {
+            return
+        } else if result.failedFiles.isEmpty {
             let isImage = safeName.lowercased().hasSuffix(".blp") || safeName.lowercased().hasSuffix(".dds")
             if isImage, let data = try? Data(contentsOf: destURL) {
                 await MainActor.run {
@@ -191,11 +199,9 @@ struct FileListContent: View {
                     NSWorkspace.shared.open(destURL)
                 }
             }
-        } else if !service.isExtracting {
-            // Cancelled by user
         } else {
             await MainActor.run {
-                let reason = result.failedFiles.first?.error.localizedDescription ?? "Unknown error"
+                let reason = result.failedFiles.first?.error.localizedDescription ?? L("unknown_error")
                 appState.errorMessage = L("open_failed", safeName, reason)
             }
         }
@@ -208,9 +214,31 @@ struct FileListContent: View {
         appState.searchResults = []
 
         let query = appState.searchQuery
+        let mode = appState.searchMode
+        let scope = appState.searchScope
+        let caseSensitive = appState.searchCaseSensitive
+        let useRegex = appState.searchUseRegex
+        let includePath = appState.searchIncludePath
+        var fileTypes = appState.searchSelectedTypes
+        if !appState.searchCustomExtension.isEmpty {
+            fileTypes.insert(appState.searchCustomExtension.uppercased())
+        }
+        let selectedTags = appState.searchSelectedTags
+        let availableTags = storageService.tags
+
         searchTask = Task {
             let searchService = CASCSearchService(handle: storageService.handle)
-            let request = SearchRequest(mode: .filename, query: query, scope: .entireStorage, caseSensitive: false, useRegex: false, includePath: false, fileTypes: [], selectedTags: [], availableTags: [])
+            let request = SearchRequest(
+                mode: mode,
+                query: query,
+                scope: scope,
+                caseSensitive: caseSensitive,
+                useRegex: useRegex,
+                includePath: includePath,
+                fileTypes: fileTypes,
+                selectedTags: selectedTags,
+                availableTags: availableTags
+            )
             let results = await searchService.search(request, allEntries: storageService.allEntries, entries: storageService.entries, currentPath: storageService.currentPath)
 
             guard !Task.isCancelled else { return }
@@ -229,7 +257,9 @@ struct FileListContent: View {
         if result.failedFiles.isEmpty {
             appState.errorMessage = L("extract_success", result.successCount)
             if openAfterExtract {
-                NSWorkspace.shared.open(destination)
+                await MainActor.run {
+                    NSWorkspace.shared.open(destination)
+                }
             }
         } else {
             let failedList = result.failedFiles.prefix(10).map {
@@ -448,7 +478,7 @@ final class FileTableViewController: NSViewController {
     }
 
     private func reloadTable() {
-        DispatchQueue.main.async { [weak self] in
+        Task { @MainActor [weak self] in
             guard let self = self else { return }
             self.tableView.reloadData()
             self.view.needsLayout = true

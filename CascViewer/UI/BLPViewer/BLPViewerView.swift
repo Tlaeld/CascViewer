@@ -12,6 +12,7 @@ struct BLPViewerView: View {
             ZStack {
                 CheckerboardView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .drawingGroup()
 
                 if let errorMessage = viewModel.errorMessage {
                     Text(errorMessage)
