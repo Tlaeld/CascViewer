@@ -6,7 +6,7 @@ import SwiftUI
 final class AppSettings: ObservableObject {
     static let shared = AppSettings()
 
-    private let defaults = UserDefaults.standard
+    private let defaults: UserDefaults
 
     @Published var cdnDownloadEnabled: Bool {
         didSet { defaults.set(cdnDownloadEnabled, forKey: "cdnDownloadEnabled") }
@@ -45,7 +45,8 @@ final class AppSettings: ObservableObject {
         }
     }
 
-    private init() {
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
         self.cdnDownloadEnabled = defaults.object(forKey: "cdnDownloadEnabled") as? Bool ?? true
         let cachePath = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first?.appendingPathComponent("CascViewer").path
         self.cdnCachePath = defaults.string(forKey: "cdnCachePath") ?? (cachePath ?? "")
@@ -86,16 +87,17 @@ final class AppSettings: ObservableObject {
         LocalizationManager.shared.languageCode = lang
     }
 
-    func clearCache() {
+    func clearCache(baseDirectory: URL? = nil) {
         let fileManager = FileManager.default
         // Only remove CascViewer's own cache directories, not the entire system cache
-        if let cachesDir = fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first {
+        let cachesDir = baseDirectory ?? fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first
+        if let cachesDir = cachesDir {
             let cascCache = cachesDir.appendingPathComponent("CascViewer")
             if fileManager.fileExists(atPath: cascCache.path) {
                 try? fileManager.removeItem(at: cascCache)
             }
         }
-        if let appSupport = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
+        if let appSupport = baseDirectory == nil ? fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first : nil {
             let cascCache = appSupport.appendingPathComponent("CascViewer/Cache")
             if fileManager.fileExists(atPath: cascCache.path) {
                 try? fileManager.removeItem(at: cascCache)
