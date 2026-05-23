@@ -19,7 +19,7 @@ static bool isValidHex(const std::string& s) {
 
 static bool isValidProductOrRegion(const std::string& s) {
     return std::all_of(s.begin(), s.end(), [](unsigned char c) {
-        return std::isalnum(c) || c == '-';
+        return std::isalnum(c) || c == '-' || c == '_';
     });
 }
 
