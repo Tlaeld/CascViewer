@@ -211,7 +211,7 @@ extension SearchResultTableViewController: NSTableViewDelegate {
             cell?.textField?.textColor = .secondaryLabelColor
             cell?.imageView?.isHidden = true
         case "size":
-            cell?.textField?.stringValue = match.entry.isDirectory ? "--" : ByteCountFormatter.string(fromByteCount: Int64(match.entry.size), countStyle: .file)
+            cell?.textField?.stringValue = match.entry.formattedSize
             cell?.textField?.textColor = .secondaryLabelColor
             cell?.imageView?.isHidden = true
         default:
