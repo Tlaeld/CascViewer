@@ -85,12 +85,12 @@ struct InstallManifestEntryDetailView: View {
             let path = entry.fileName.replacingOccurrences(of: "/", with: "\\")
             var error = CascBridge.CascError.None
             var handle = service.handle
-            let data = handle.readFile(std.string(path), &error)
-            let exists = error == .None && !data.isEmpty
-            let size = exists ? UInt64(data.count) : nil
+            // Read a single byte to check existence without pulling the whole file into memory
+            _ = handle.readFilePartial(std.string(path), 0, 1, &error)
+            let exists = error == .None
             await MainActor.run {
                 self.fileExists = exists
-                self.actualSize = size
+                self.actualSize = exists ? UInt64(self.entry.fileSize) : nil
             }
         }
     }

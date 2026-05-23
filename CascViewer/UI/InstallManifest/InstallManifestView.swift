@@ -222,6 +222,13 @@ struct InstallManifestView: View {
         }
     }
 
+    private func csvEscape(_ field: String) -> String {
+        if field.contains(",") || field.contains("\"") || field.contains("\n") || field.contains("\r") {
+            return "\"\(field.replacingOccurrences(of: "\"", with: "\"\""))\""
+        }
+        return field
+    }
+
     private var csvContent: String {
         var lines: [String] = []
         lines.append("FileName,Size,CKey,Tags")
@@ -229,8 +236,7 @@ struct InstallManifestView: View {
             let tagNames = tags.enumerated().compactMap { index, tag -> String? in
                 entry.hasTag(at: index) ? tag.name : nil
             }.joined(separator: ";")
-            let escapedName = entry.fileName.contains(",") ? "\"\(entry.fileName)\"" : entry.fileName
-            lines.append("\(escapedName),\(entry.fileSize),\(entry.ckey),\(tagNames)")
+            lines.append("\(csvEscape(entry.fileName)),\(entry.fileSize),\(entry.ckey),\(csvEscape(tagNames))")
         }
         return lines.joined(separator: "\n")
     }

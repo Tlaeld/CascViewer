@@ -43,11 +43,16 @@ extension AppState {
         indicator.startAnimation(nil)
         alert.accessoryView = indicator
         alert.addButton(withTitle: L("cancel"))
-        alert.beginSheetModal(for: window) { _ in }
+
+        var wasCancelled = false
+        alert.beginSheetModal(for: window) { _ in
+            wasCancelled = true
+        }
 
         Task {
             let manifest = await storage.loadInstallManifest()
             await MainActor.run {
+                guard !wasCancelled else { return }
                 alert.window.sheetParent?.endSheet(alert.window)
                 if let manifest = manifest {
                     InstallManifestWindowController.show(
