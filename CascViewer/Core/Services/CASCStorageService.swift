@@ -40,11 +40,15 @@ public struct DirectoryNode: Identifiable, Hashable, Sendable {
     public let isLocal: Bool
     public let size: UInt64
 
+    private static let byteFormatter: ByteCountFormatter = {
+        let f = ByteCountFormatter()
+        f.countStyle = .file
+        return f
+    }()
+
     public var formattedSize: String {
         if children != nil { return "--" }
-        let formatter = ByteCountFormatter()
-        formatter.countStyle = .file
-        return formatter.string(fromByteCount: Int64(size))
+        return DirectoryNode.byteFormatter.string(fromByteCount: Int64(size))
     }
 
     public init(name: String, path: String, children: [DirectoryNode]? = nil, isLocal: Bool = true, size: UInt64 = 0) {
@@ -101,6 +105,7 @@ final class CASCStorageService: ObservableObject {
     }
 
     deinit {
+        handle.setOpenProgressCallback(nil, nil)
         if let ctx = progressContext {
             Unmanaged<CASCStorageService>.fromOpaque(ctx).release()
         }
@@ -640,45 +645,6 @@ final class CASCStorageService: ObservableObject {
         }
 
         return (map, entriesByPath)
-    }
-
-    /// Compute direct children for a given path. Runs on caller's queue.
-    nonisolated static func computeChildren(for path: String, from entries: [CASCFileEntry]) -> [DirectoryNode] {
-        let prefix = path.isEmpty ? "" : path + "/"
-        var dirs = Set<String>()
-        var dirNodes = [DirectoryNode]()
-        var fileNodes = [DirectoryNode]()
-        var dirHasLocalFiles = Set<String>()
-
-        for entry in entries {
-            let normalized = entry.normalizedPath
-            guard normalized.hasPrefix(prefix) else { continue }
-            let remainder = String(normalized.dropFirst(prefix.count))
-            let components = remainder.split(separator: "/", omittingEmptySubsequences: true)
-            guard let first = components.first else { continue }
-            let name = String(first)
-
-            if components.count == 1 {
-                fileNodes.append(DirectoryNode(name: name, path: normalized, children: nil, isLocal: entry.isLocal, size: entry.size))
-                if entry.isLocal {
-                    dirHasLocalFiles.insert(prefix + name)
-                }
-            } else if dirs.insert(name).inserted {
-                let dirPath = prefix + name
-                dirNodes.append(DirectoryNode(name: name, path: dirPath, children: nil))
-            }
-
-            // Also propagate local flag to parent directories
-            if entry.isLocal && components.count > 1 {
-                let dirPath = prefix + name
-                dirHasLocalFiles.insert(dirPath)
-            }
-        }
-
-        let dirsWithLocal = dirNodes.map {
-            DirectoryNode(name: $0.name, path: $0.path, children: nil, isLocal: dirHasLocalFiles.contains($0.path))
-        }
-        return (dirsWithLocal + fileNodes).sorted { $0.name < $1.name }
     }
 
     /// Pure in-memory navigation — O(1) lookup via pre-computed map.

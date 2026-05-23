@@ -107,36 +107,4 @@ final class ChildrenMapTests: XCTestCase {
         XCTAssertNotNil(conflictNodes.first?.children)
     }
 
-    // MARK: - computeChildren
-
-    func testComputeChildrenBasic() {
-        let entries = [
-            CASCFileEntry(name: "file1.txt", fullPath: "root/file1.txt", type: .file, size: 100, encodingKey: ""),
-            CASCFileEntry(name: "subdir", fullPath: "root/subdir/file2.txt", type: .file, size: 200, encodingKey: "")
-        ]
-
-        let children = CASCStorageService.computeChildren(for: "root", from: entries)
-        XCTAssertEqual(children.count, 2)
-        XCTAssertTrue(children.contains(where: { $0.name == "file1.txt" && $0.children == nil }))
-        XCTAssertTrue(children.contains(where: { $0.name == "subdir" && $0.children == nil }))
-    }
-
-    func testComputeChildrenEmptyPath() {
-        let entries = [
-            CASCFileEntry(name: "top.txt", fullPath: "top.txt", type: .file, size: 100, encodingKey: "")
-        ]
-
-        let children = CASCStorageService.computeChildren(for: "", from: entries)
-        XCTAssertEqual(children.count, 1)
-        XCTAssertEqual(children.first?.name, "top.txt")
-    }
-
-    func testComputeChildrenNoMatches() {
-        let entries = [
-            CASCFileEntry(name: "file.txt", fullPath: "other/file.txt", type: .file, size: 100, encodingKey: "")
-        ]
-
-        let children = CASCStorageService.computeChildren(for: "nonexistent", from: entries)
-        XCTAssertTrue(children.isEmpty)
-    }
 }
