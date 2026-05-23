@@ -25,6 +25,9 @@ static bool isValidProductOrRegion(const std::string& s) {
 
 static size_t writeFileCallback(void* contents, size_t size, size_t nmemb, void* userp)
 {
+    if (size != 0 && nmemb > SIZE_MAX / size) {
+        return 0;
+    }
     size_t totalSize = size * nmemb;
     std::FILE* fp = static_cast<std::FILE*>(userp);
     size_t written = std::fwrite(contents, 1, totalSize, fp);
@@ -121,7 +124,10 @@ CascError CDNCacheManager::downloadChunk(const std::string& url, const std::stri
     long httpCode = 0;
     curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &httpCode);
     curl_easy_cleanup(curl);
-    std::fclose(fp);
+    if (std::fclose(fp) != 0) {
+        std::remove(destPath.c_str());
+        return CascError::ReadError;
+    }
 
     if (res != CURLE_OK || httpCode != 200) {
         std::remove(destPath.c_str());
@@ -140,7 +146,10 @@ std::vector<uint8_t> CDNCacheManager::getChunk(const std::string& encodingKey,
 
     if (!hasChunk(encodingKey)) {
         std::string subDir = path.substr(0, path.find_last_of('/'));
-        ensureDirectoryRecursive(subDir);
+        if (!ensureDirectoryRecursive(subDir)) {
+            error = CascError::ReadError;
+            return {};
+        }
 
         error = downloadChunk(cdnUrl, path);
         if (error != CascError::None) {
@@ -182,7 +191,8 @@ void CDNCacheManager::clearCache()
     if (cacheRoot.empty() || cacheRoot.find("CascViewer") == std::string::npos) {
         return;
     }
-    std::filesystem::remove_all(cacheRoot);
+    std::error_code ec;
+    std::filesystem::remove_all(cacheRoot, ec);
 }
 
 } // namespace CascBridge

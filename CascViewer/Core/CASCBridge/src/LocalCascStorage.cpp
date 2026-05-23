@@ -156,7 +156,7 @@ void LocalCascStorage::invokeProgressCallback(const char* message, int current, 
 }
 
 void LocalCascStorage::requestCancelExtraction() {
-    extractionCancelled.store(true, std::memory_order_relaxed);
+    cancelGeneration.fetch_add(1, std::memory_order_relaxed);
 }
 
 CascError LocalCascStorage::open(const std::string& localPath)
@@ -354,11 +354,17 @@ std::vector<uint8_t> LocalCascStorage::readFile(const std::string& cascPath, Cas
         buffer.reserve(BUFFER_SIZE);
         uint64_t totalRead = 0;
 
+        constexpr uint64_t MAX_STREAM_SIZE = 512ULL * 1024 * 1024; // 512 MB
         while (true) {
+            if (totalRead >= MAX_STREAM_SIZE) {
+                CascCloseFile(hFile);
+                error = CascError::ReadError;
+                return {};
+            }
             DWORD bytesRead = 0;
             if (!CascReadFile(hFile, chunk.data(), static_cast<DWORD>(BUFFER_SIZE), &bytesRead)) {
                 DWORD err = GetCascError();
-                if (err == ERROR_HANDLE_EOF || totalRead > 0) {
+                if (err == ERROR_HANDLE_EOF) {
                     break;
                 }
                 CascCloseFile(hFile);
@@ -465,10 +471,8 @@ CascError LocalCascStorage::extractFile(const std::string& cascPath,
         return CascError::StorageNotFound;
     }
 
-    // Reset cancellation flag at the start of each extraction
-    extractionCancelled.store(false, std::memory_order_relaxed);
-
     constexpr size_t BUFFER_SIZE = 1024 * 1024;  // 1 MB chunks
+    constexpr uint64_t MAX_EXTRACT_SIZE = 512ULL * 1024 * 1024; // 512 MB
     std::vector<uint8_t> chunk;
     try {
         chunk.resize(BUFFER_SIZE);
@@ -508,11 +512,18 @@ CascError LocalCascStorage::extractFile(const std::string& cascPath,
     bool hasKnownSize = CascGetFileSize64(hFile, &fileSize64);
 
     uint64_t totalRead = 0;
+    const uint64_t startCancelGen = cancelGeneration.load(std::memory_order_relaxed);
 
     if (hasKnownSize && fileSize64 > 0) {
+        if (fileSize64 > MAX_EXTRACT_SIZE) {
+            CascCloseFile(hFile);
+            std::fclose(fp);
+            std::remove(destPath.c_str());
+            return CascError::ReadError;
+        }
         while (totalRead < fileSize64) {
             // Check cancellation after each chunk
-            if (extractionCancelled.load(std::memory_order_relaxed)) {
+            if (cancelGeneration.load(std::memory_order_relaxed) != startCancelGen) {
                 CascCloseFile(hFile);
                 std::fclose(fp);
                 std::remove(destPath.c_str());
@@ -529,6 +540,7 @@ CascError LocalCascStorage::extractFile(const std::string& cascPath,
             if (std::fwrite(chunk.data(), 1, bytesRead, fp) != bytesRead) {
                 CascCloseFile(hFile);
                 std::fclose(fp);
+                std::remove(destPath.c_str());
                 return CascError::ReadError;
             }
             totalRead += bytesRead;
@@ -539,8 +551,14 @@ CascError LocalCascStorage::extractFile(const std::string& cascPath,
     } else {
         // Stream read without known size (some remote files report size failure but data is readable)
         while (true) {
+            if (totalRead >= MAX_EXTRACT_SIZE) {
+                CascCloseFile(hFile);
+                std::fclose(fp);
+                std::remove(destPath.c_str());
+                return CascError::ReadError;
+            }
             // Check cancellation after each chunk
-            if (extractionCancelled.load(std::memory_order_relaxed)) {
+            if (cancelGeneration.load(std::memory_order_relaxed) != startCancelGen) {
                 CascCloseFile(hFile);
                 std::fclose(fp);
                 std::remove(destPath.c_str());
@@ -550,7 +568,7 @@ CascError LocalCascStorage::extractFile(const std::string& cascPath,
             DWORD bytesRead = 0;
             if (!CascReadFile(hFile, chunk.data(), static_cast<DWORD>(BUFFER_SIZE), &bytesRead)) {
                 DWORD err = GetCascError();
-                if (err == ERROR_HANDLE_EOF || totalRead > 0) {
+                if (err == ERROR_HANDLE_EOF) {
                     break;
                 }
                 CascCloseFile(hFile);
@@ -569,6 +587,7 @@ CascError LocalCascStorage::extractFile(const std::string& cascPath,
             if (std::fwrite(chunk.data(), 1, bytesRead, fp) != bytesRead) {
                 CascCloseFile(hFile);
                 std::fclose(fp);
+                std::remove(destPath.c_str());
                 return CascError::ReadError;
             }
             totalRead += bytesRead;
@@ -618,12 +637,14 @@ std::vector<std::pair<std::string, uint32_t>> LocalCascStorage::getTags()
         return {};
     }
 
-    std::vector<uint8_t> buffer(cbTags);
-    if (!CascGetStorageInfo(hStorage, CascStorageTags, buffer.data(), cbTags, &cbTags)) {
+    // Allocate with max alignment to avoid UB from reinterpret_cast on under-aligned storage
+    std::vector<std::max_align_t> alignedBuffer((cbTags + sizeof(std::max_align_t) - 1) / sizeof(std::max_align_t));
+    auto* bufferData = reinterpret_cast<uint8_t*>(alignedBuffer.data());
+    if (!CascGetStorageInfo(hStorage, CascStorageTags, bufferData, cbTags, &cbTags)) {
         return {};
     }
 
-    auto* pTags = reinterpret_cast<PCASC_STORAGE_TAGS>(buffer.data());
+    auto* pTags = reinterpret_cast<PCASC_STORAGE_TAGS>(bufferData);
     std::vector<std::pair<std::string, uint32_t>> result;
     result.reserve(pTags->TagCount);
     for (size_t i = 0; i < pTags->TagCount; ++i) {
@@ -697,12 +718,15 @@ std::pair<std::vector<InstallManifestTag>, std::vector<InstallManifestEntry>> Lo
     std::vector<InstallManifestTag> tags;
     tags.reserve(tagCount);
 
-    size_t bitmapLength = (entryCount / 8) + ((entryCount & 0x07) ? 1 : 0);
+    uint64_t bitmapLength64 = (static_cast<uint64_t>(entryCount) / 8) + ((entryCount & 0x07) ? 1 : 0);
+    size_t bitmapLength = static_cast<size_t>(bitmapLength64);
 
     // Parse tags
     for (uint16_t i = 0; i < tagCount && ptr < end; ++i) {
         const char* tagName = reinterpret_cast<const char*>(ptr);
-        size_t nameLen = strnlen(tagName, static_cast<size_t>(end - ptr));
+        size_t maxNameLen = static_cast<size_t>(end - ptr);
+        size_t nameLen = strnlen(tagName, maxNameLen);
+        if (nameLen >= maxNameLen) break;
         ptr += nameLen + 1;
         if (ptr + sizeof(uint16_t) > end) break;
         uint16_t tagValue = (ptr[0] << 8) | ptr[1];
@@ -718,7 +742,9 @@ std::pair<std::vector<InstallManifestTag>, std::vector<InstallManifestEntry>> Lo
     // Parse file entries
     for (uint32_t i = 0; i < entryCount && ptr < end; ++i) {
         const char* fileName = reinterpret_cast<const char*>(ptr);
-        size_t nameLen = strnlen(fileName, static_cast<size_t>(end - ptr));
+        size_t maxNameLen = static_cast<size_t>(end - ptr);
+        size_t nameLen = strnlen(fileName, maxNameLen);
+        if (nameLen >= maxNameLen) break;
         ptr += nameLen + 1;
         if (ptr + 16 + 4 > end) break;
 
@@ -766,7 +792,7 @@ std::pair<std::vector<InstallManifestTag>, std::vector<InstallManifestEntry>> Lo
         }
     }
 
-    return {std::move(tags), std::move(uniqueEntries)};
+    return {tags, uniqueEntries};
 }
 
 } // namespace CascBridge

@@ -34,9 +34,16 @@ bool isValidProductOrRegion(const std::string& s) {
 
 size_t writeStringCallback(void* contents, size_t size, size_t nmemb, void* userp)
 {
+    if (size != 0 && nmemb > SIZE_MAX / size) {
+        return 0;
+    }
     size_t totalSize = size * nmemb;
     std::string* str = static_cast<std::string*>(userp);
-    str->append(static_cast<char*>(contents), totalSize);
+    try {
+        str->append(static_cast<char*>(contents), totalSize);
+    } catch (...) {
+        return 0;
+    }
     return totalSize;
 }
 
@@ -96,9 +103,13 @@ std::string CDNConfig::downloadText(const std::string& url, const std::function<
     curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0L);
     curl_easy_setopt(curl, CURLOPT_XFERINFOFUNCTION,
         [](void* clientp, curl_off_t dltotal, curl_off_t dlnow, curl_off_t ultotal, curl_off_t ulnow) -> int {
-            const std::function<bool()>* fn = static_cast<const std::function<bool()>*>(clientp);
-            if (fn && (*fn)()) return 1; // abort transfer
-            return 0;
+            try {
+                const std::function<bool()>* fn = static_cast<const std::function<bool()>*>(clientp);
+                if (fn && (*fn)()) return 1; // abort transfer
+                return 0;
+            } catch (...) {
+                return 1; // abort on exception
+            }
         });
     curl_easy_setopt(curl, CURLOPT_XFERINFODATA, isCancelled ? &isCancelled : nullptr);
 
@@ -128,8 +139,17 @@ CDNBuildConfig CDNConfig::fetchConfig(const std::string& product, const std::str
     std::string versionsUrl = "http://us.patch.battle.net:1119/" + product + "/versions";
     std::string cdnsUrl = "http://us.patch.battle.net:1119/" + product + "/cdns";
 
+    uint64_t sessionGeneration = g_cancelGeneration.load(std::memory_order_relaxed);
     std::string versionsText = downloadText(versionsUrl);
+    if (g_cancelGeneration.load(std::memory_order_relaxed) != sessionGeneration) {
+        error = CascError::NetworkError;
+        return {};
+    }
     std::string cdnsText = downloadText(cdnsUrl);
+    if (g_cancelGeneration.load(std::memory_order_relaxed) != sessionGeneration) {
+        error = CascError::NetworkError;
+        return {};
+    }
 
     if (versionsText.empty() || cdnsText.empty()) {
         error = CascError::NetworkError;

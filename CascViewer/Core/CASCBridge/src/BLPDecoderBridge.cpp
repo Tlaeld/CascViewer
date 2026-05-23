@@ -286,7 +286,7 @@ static ImageDecodeResult decodeDDS(const uint8_t* data, size_t length, CascError
     result.format = ImageFormat::DDS;
     result.width = width;
     result.height = height;
-    result.mipLevels = std::max(1U, header.dwMipMapCount);
+    result.mipLevels = std::min(std::max(1U, header.dwMipMapCount), 31U);
 
     ImageCompression compression = ImageCompression::Unknown;
     bool hasAlpha = false;
@@ -384,6 +384,13 @@ static bool decodeJPEGData(const uint8_t* jpegData, size_t jpegLen,
     outW = static_cast<uint32_t>(CGImageGetWidth(image));
     outH = static_cast<uint32_t>(CGImageGetHeight(image));
 
+    constexpr uint32_t MAX_DIMENSION = 16384;
+    constexpr uint64_t MAX_PIXELS = static_cast<uint64_t>(MAX_DIMENSION) * MAX_DIMENSION;
+    if (outW > MAX_DIMENSION || outH > MAX_DIMENSION || static_cast<uint64_t>(outW) * outH > MAX_PIXELS) {
+        CGImageRelease(image);
+        return false;
+    }
+
     size_t width = outW;
     size_t height = outH;
     rgba.resize(width * height * 4);
@@ -478,13 +485,13 @@ static ImageDecodeResult decodeBLP(const uint8_t* data, size_t length, CascError
             // Some files have raw JPEG starting at offset.
             auto resolveJPEG = [&](const uint8_t* ptr, uint32_t totalSize,
                                    const uint8_t*& outPtr, uint32_t& outSize) -> bool {
-                if (totalSize > 4 && ptr[0] == 0xFF && ptr[1] == 0xD8) {
+                if (totalSize >= 2 && ptr[0] == 0xFF && ptr[1] == 0xD8) {
                     // Raw JPEG data
                     outPtr = ptr;
                     outSize = totalSize;
                     return true;
                 }
-                if (totalSize > 4) {
+                if (totalSize >= 6) {
                     uint32_t declaredSize;
                     std::memcpy(&declaredSize, ptr, sizeof(uint32_t));
                     if (ptr[4] == 0xFF && ptr[5] == 0xD8) {
@@ -816,24 +823,34 @@ static ImageDecodeResult decodeBLP(const uint8_t* data, size_t length, CascError
 // ---------------------------------------------------------------------------
 
 ImageDecodeResult ImageDecoderBridge::decode(const uint8_t* data, size_t length, CascError& error) {
-    error = CascError::None;
+    try {
+        error = CascError::None;
 
-    if (length < 4) {
+        if (length < 4) {
+            error = CascError::DecodingError;
+            return {};
+        }
+
+        if (std::strncmp(reinterpret_cast<const char*>(data), "DDS ", 4) == 0) {
+            return decodeDDS(data, length, error);
+        }
+
+        if (std::strncmp(reinterpret_cast<const char*>(data), "BLP2", 4) == 0 ||
+            std::strncmp(reinterpret_cast<const char*>(data), "BLP1", 4) == 0) {
+            return decodeBLP(data, length, error);
+        }
+
+        error = CascError::DecodingError;
+        return {};
+    } catch (const std::exception& e) {
+        std::fprintf(stderr, "[ImageDecoderBridge] Exception in decode(): %s\n", e.what());
+        error = CascError::DecodingError;
+        return {};
+    } catch (...) {
+        std::fprintf(stderr, "[ImageDecoderBridge] Unknown exception in decode()\n");
         error = CascError::DecodingError;
         return {};
     }
-
-    if (std::strncmp(reinterpret_cast<const char*>(data), "DDS ", 4) == 0) {
-        return decodeDDS(data, length, error);
-    }
-
-    if (std::strncmp(reinterpret_cast<const char*>(data), "BLP2", 4) == 0 ||
-        std::strncmp(reinterpret_cast<const char*>(data), "BLP1", 4) == 0) {
-        return decodeBLP(data, length, error);
-    }
-
-    error = CascError::DecodingError;
-    return {};
 }
 
 } // namespace CascBridge

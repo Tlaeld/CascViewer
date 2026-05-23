@@ -15,7 +15,7 @@ class LocalCascStorage : public ICascStorage {
     COpenProgressCallback progressCallback = nullptr;
     void* progressContext = nullptr;
     mutable std::mutex progressMutex;
-    std::atomic<bool> extractionCancelled{false};
+    std::atomic<uint64_t> cancelGeneration{0};
 public:
     ~LocalCascStorage() override;
     void setCdnDownloadEnabled(bool enabled) override;

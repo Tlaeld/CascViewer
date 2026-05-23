@@ -4,13 +4,13 @@
 #include <cstdio>
 #include <memory>
 #include <mutex>
-#include <shared_mutex>
+
 
 namespace CascBridge {
 
 struct CascStorageHandle::Impl {
     std::unique_ptr<ICascStorage> storage;
-    mutable std::shared_mutex mutex;
+    mutable std::mutex mutex;
 };
 
 CascStorageHandle::CascStorageHandle() : impl(std::make_shared<Impl>()) {}
@@ -23,8 +23,16 @@ CascStorageHandle CascStorageHandle::createLocal() {
 }
 
 std::vector<std::string> CascStorageHandle::fetchProductRegions(const std::string& product) {
-    CDNConfig config;
-    return config.fetchProductRegions(product);
+    try {
+        CDNConfig config;
+        return config.fetchProductRegions(product);
+    } catch (const std::exception& e) {
+        std::fprintf(stderr, "[CascStorageHandle] Exception in fetchProductRegions(): %s\n", e.what());
+        return {};
+    } catch (...) {
+        std::fprintf(stderr, "[CascStorageHandle] Unknown exception in fetchProductRegions()\n");
+        return {};
+    }
 }
 
 void CascStorageHandle::setFetchCancellationFlag(bool cancelled) {
@@ -32,28 +40,28 @@ void CascStorageHandle::setFetchCancellationFlag(bool cancelled) {
 }
 
 void CascStorageHandle::setCdnDownloadEnabled(bool enabled) {
-    std::lock_guard<std::shared_mutex> lock(impl->mutex);
+    std::lock_guard<std::mutex> lock(impl->mutex);
     if (impl->storage) {
         impl->storage->setCdnDownloadEnabled(enabled);
     }
 }
 
 void CascStorageHandle::setCachePath(const std::string& path) {
-    std::lock_guard<std::shared_mutex> lock(impl->mutex);
+    std::lock_guard<std::mutex> lock(impl->mutex);
     if (impl->storage) {
         impl->storage->setCachePath(path);
     }
 }
 
 void CascStorageHandle::setListFilePath(const std::string& path) {
-    std::lock_guard<std::shared_mutex> lock(impl->mutex);
+    std::lock_guard<std::mutex> lock(impl->mutex);
     if (impl->storage) {
         impl->storage->setListFilePath(path);
     }
 }
 
 void CascStorageHandle::setOpenProgressCallback(COpenProgressCallback callback, void* context) {
-    std::lock_guard<std::shared_mutex> lock(impl->mutex);
+    std::lock_guard<std::mutex> lock(impl->mutex);
     if (impl->storage) {
         impl->storage->setOpenProgressCallback(callback, context);
     }
@@ -61,7 +69,7 @@ void CascStorageHandle::setOpenProgressCallback(COpenProgressCallback callback, 
 
 CascError CascStorageHandle::open(const std::string& pathOrConfig) {
     try {
-        std::lock_guard<std::shared_mutex> lock(impl->mutex);
+        std::lock_guard<std::mutex> lock(impl->mutex);
         return impl->storage ? impl->storage->open(pathOrConfig) : CascError::Unknown;
     } catch (const std::exception& e) {
         std::fprintf(stderr, "[CascStorageHandle] Exception in open(): %s\n", e.what());
@@ -74,7 +82,7 @@ CascError CascStorageHandle::open(const std::string& pathOrConfig) {
 
 void CascStorageHandle::close() {
     try {
-        std::lock_guard<std::shared_mutex> lock(impl->mutex);
+        std::lock_guard<std::mutex> lock(impl->mutex);
         if (impl->storage) {
             impl->storage->close();
         }
@@ -87,7 +95,7 @@ void CascStorageHandle::close() {
 
 bool CascStorageHandle::isOpen() const {
     try {
-        std::shared_lock<std::shared_mutex> lock(impl->mutex);
+        std::lock_guard<std::mutex> lock(impl->mutex);
         return impl->storage && impl->storage->isOpen();
     } catch (const std::exception& e) {
         std::fprintf(stderr, "[CascStorageHandle] Exception in isOpen(): %s\n", e.what());
@@ -100,7 +108,7 @@ bool CascStorageHandle::isOpen() const {
 
 std::vector<CascFileEntry> CascStorageHandle::listDirectory(const std::string& path, CascError& error) {
     try {
-        std::shared_lock<std::shared_mutex> lock(impl->mutex);
+        std::lock_guard<std::mutex> lock(impl->mutex);
         return impl->storage ? impl->storage->listDirectory(path, error) : std::vector<CascFileEntry>{};
     } catch (const std::exception& e) {
         std::fprintf(stderr, "[CascStorageHandle] Exception in listDirectory(): %s\n", e.what());
@@ -116,7 +124,7 @@ std::vector<CascFileEntry> CascStorageHandle::listDirectory(const std::string& p
 CascError CascStorageHandle::extractFile(const std::string& cascPath,
                                          const std::string& destPath) {
     try {
-        std::shared_lock<std::shared_mutex> lock(impl->mutex);
+        std::lock_guard<std::mutex> lock(impl->mutex);
         return impl->storage ? impl->storage->extractFile(cascPath, destPath, ProgressCallback{}) : CascError::Unknown;
     } catch (const std::exception& e) {
         std::fprintf(stderr, "[CascStorageHandle] Exception in extractFile(): %s\n", e.what());
@@ -132,7 +140,7 @@ CascError CascStorageHandle::extractFile(const std::string& cascPath,
                                          void (*progressCallback)(void*, int64_t, int64_t),
                                          void* progressContext) {
     try {
-        std::shared_lock<std::shared_mutex> lock(impl->mutex);
+        std::lock_guard<std::mutex> lock(impl->mutex);
         if (!impl->storage) {
             return CascError::Unknown;
         }
@@ -154,17 +162,20 @@ CascError CascStorageHandle::extractFile(const std::string& cascPath,
 
 void CascStorageHandle::requestCancelExtraction() {
     try {
-        std::shared_lock<std::shared_mutex> lock(impl->mutex);
+        std::lock_guard<std::mutex> lock(impl->mutex);
         if (impl->storage) {
             impl->storage->requestCancelExtraction();
         }
+    } catch (const std::exception& e) {
+        std::fprintf(stderr, "[CascStorageHandle] Exception in requestCancelExtraction(): %s\n", e.what());
     } catch (...) {
+        std::fprintf(stderr, "[CascStorageHandle] Unknown exception in requestCancelExtraction()\n");
     }
 }
 
 std::vector<uint8_t> CascStorageHandle::readFile(const std::string& cascPath, CascError& error) {
     try {
-        std::shared_lock<std::shared_mutex> lock(impl->mutex);
+        std::lock_guard<std::mutex> lock(impl->mutex);
         return impl->storage ? impl->storage->readFile(cascPath, error) : std::vector<uint8_t>{};
     } catch (const std::exception& e) {
         std::fprintf(stderr, "[CascStorageHandle] Exception in readFile(): %s\n", e.what());
@@ -179,7 +190,7 @@ std::vector<uint8_t> CascStorageHandle::readFile(const std::string& cascPath, Ca
 
 std::vector<uint8_t> CascStorageHandle::readFilePartial(const std::string& cascPath, uint64_t offset, uint64_t length, CascError& error) {
     try {
-        std::shared_lock<std::shared_mutex> lock(impl->mutex);
+        std::lock_guard<std::mutex> lock(impl->mutex);
         return impl->storage ? impl->storage->readFilePartial(cascPath, offset, length, error) : std::vector<uint8_t>{};
     } catch (const std::exception& e) {
         std::fprintf(stderr, "[CascStorageHandle] Exception in readFilePartial(): %s\n", e.what());
@@ -194,7 +205,7 @@ std::vector<uint8_t> CascStorageHandle::readFilePartial(const std::string& cascP
 
 CascStorageInfo CascStorageHandle::getStorageInfo(CascError& error) {
     try {
-        std::shared_lock<std::shared_mutex> lock(impl->mutex);
+        std::lock_guard<std::mutex> lock(impl->mutex);
         return impl->storage ? impl->storage->getStorageInfo(error) : CascStorageInfo{};
     } catch (const std::exception& e) {
         std::fprintf(stderr, "[CascStorageHandle] Exception in getStorageInfo(): %s\n", e.what());
@@ -209,7 +220,7 @@ CascStorageInfo CascStorageHandle::getStorageInfo(CascError& error) {
 
 std::vector<std::pair<std::string, uint32_t>> CascStorageHandle::getTags() {
     try {
-        std::shared_lock<std::shared_mutex> lock(impl->mutex);
+        std::lock_guard<std::mutex> lock(impl->mutex);
         return impl->storage ? impl->storage->getTags() : std::vector<std::pair<std::string, uint32_t>>{};
     } catch (const std::exception& e) {
         std::fprintf(stderr, "[CascStorageHandle] Exception in getTags(): %s\n", e.what());
@@ -222,7 +233,7 @@ std::vector<std::pair<std::string, uint32_t>> CascStorageHandle::getTags() {
 
 std::pair<std::vector<InstallManifestTag>, std::vector<InstallManifestEntry>> CascStorageHandle::parseInstallManifest() {
     try {
-        std::shared_lock<std::shared_mutex> lock(impl->mutex);
+        std::lock_guard<std::mutex> lock(impl->mutex);
         return impl->storage ? impl->storage->parseInstallManifest() : std::pair<std::vector<InstallManifestTag>, std::vector<InstallManifestEntry>>{};
     } catch (const std::exception& e) {
         std::fprintf(stderr, "[CascStorageHandle] Exception in parseInstallManifest(): %s\n", e.what());
