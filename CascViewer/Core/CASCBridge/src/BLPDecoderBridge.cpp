@@ -301,6 +301,10 @@ static ImageDecodeResult decodeDDS(const uint8_t* data, size_t length, CascError
         } else if (fourccMatch(header.pfFourCC, "DXT5")) {
             compression = ImageCompression::DXTC5;
             hasAlpha = true;
+        } else if (fourccMatch(header.pfFourCC, "DX10")) {
+            // We don't parse DX10 DXGI_FORMAT here — would need mapping table
+            error = CascError::DecodingError;
+            return result;
         }
     }
 
@@ -311,12 +315,6 @@ static ImageDecodeResult decodeDDS(const uint8_t* data, size_t length, CascError
 
     result.compression = compression;
     result.hasAlpha = hasAlpha;
-
-    if (fourccMatch(header.pfFourCC, "DX10")) {
-        // We don't parse DX10 DXGI_FORMAT here — would need mapping table
-        error = CascError::DecodingError;
-        return result;
-    }
 
     size_t dataOffset = sizeof(DDSHeader);
     size_t blockSize = (compression == ImageCompression::DXTC1) ? 8 : 16;

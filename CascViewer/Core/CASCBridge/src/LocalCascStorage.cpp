@@ -489,7 +489,12 @@ CascError LocalCascStorage::extractFile(const std::string& cascPath,
         size_t lastSep = destPath.find_last_of("/\\");
         if (lastSep != std::string::npos) {
             std::string dir = destPath.substr(0, lastSep);
-            std::filesystem::create_directories(dir);
+            std::error_code ec;
+            std::filesystem::create_directories(dir, ec);
+            if (ec) {
+                CascCloseFile(hFile);
+                return CascError::InvalidPath;
+            }
         }
     }
 

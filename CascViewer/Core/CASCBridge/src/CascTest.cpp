@@ -1,3 +1,6 @@
+// NOTE: This is a standalone internal test program for the CascLib submodule.
+// It directly includes CascLib internal headers and is NOT part of the public
+// CascBridge API. Do not use it as a reference for production code.
 #include <cstdio>
 #include <string>
 #include <CascLib.h>
