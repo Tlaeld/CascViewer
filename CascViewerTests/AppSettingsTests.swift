@@ -24,6 +24,7 @@ final class AppSettingsTests: XCTestCase {
 
     func testDefaultValues() {
         // Verify that AppSettings initializes with reasonable defaults
+        AppSettings.shared.resetToDefaults()
         let settings = AppSettings.shared
         XCTAssertTrue(settings.cdnDownloadEnabled)
         XCTAssertTrue(settings.showRemoteMarkers)

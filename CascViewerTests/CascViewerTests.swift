@@ -31,9 +31,9 @@ final class CascViewerTests: XCTestCase {
     }
 
     func testHexPatternParserValid() {
-        XCTAssertEqual(HexPatternParser.parse("48 65 6C")?.compactMap { $0 }, [0x48, 0x65, 0x6C])
-        XCTAssertEqual(HexPatternParser.parse("48??6C")?.compactMap { $0 }, [0x48, nil, 0x6C])
-        XCTAssertEqual(HexPatternParser.parse("48 ? 6C")?.compactMap { $0 }, [0x48, nil, 0x6C])
+        XCTAssertEqual(HexPatternParser.parse("48 65 6C"), [0x48, 0x65, 0x6C])
+        XCTAssertEqual(HexPatternParser.parse("48??6C"), [0x48, nil, 0x6C])
+        XCTAssertEqual(HexPatternParser.parse("48 ? 6C"), [0x48, nil, 0x6C])
     }
 
     func testHexPatternParserInvalid() {
