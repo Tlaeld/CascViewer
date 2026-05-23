@@ -168,6 +168,8 @@ class CASCSearchService {
     private var handle: CascBridge.CascStorageHandle
     private let maxContentReadSize = 10 * 1024 * 1024 // 10MB cap per file
     private let maxConcurrentSearches = ProcessInfo.processInfo.processorCount
+    /// Serial queue for file reads to avoid concurrent access to the underlying CascLib handle.
+    private static let readQueue = DispatchQueue(label: "casc.search.read", qos: .userInitiated)
 
     init(handle: CascBridge.CascStorageHandle) {
         self.handle = handle
@@ -296,18 +298,20 @@ class CASCSearchService {
                 group.addTask {
                     if Task.isCancelled { return nil }
 
-                    var error = CascBridge.CascError.None
-                    let buffer = localHandle.readFilePartial(
-                        std.string(entry.normalizedPath),
-                        0,
-                        maxRead,
-                        &error
-                    )
-                    guard error == .None else { return nil }
+                    let searchSpace = await withCheckedContinuation { (continuation: CheckedContinuation<Data, Never>) in
+                        Self.readQueue.async {
+                            var error = CascBridge.CascError.None
+                            let buffer = localHandle.readFilePartial(
+                                std.string(entry.normalizedPath),
+                                0,
+                                maxRead,
+                                &error
+                            )
+                            continuation.resume(returning: error == .None ? Data(buffer) : Data())
+                        }
+                    }
 
                     if Task.isCancelled { return nil }
-
-                    let searchSpace = Data(buffer)
                     guard !searchSpace.isEmpty else { return nil }
 
                     let range: Range<Data.Index>?
@@ -394,18 +398,20 @@ class CASCSearchService {
                 group.addTask {
                     if Task.isCancelled { return nil }
 
-                    var error = CascBridge.CascError.None
-                    let buffer = localHandle.readFilePartial(
-                        std.string(entry.normalizedPath),
-                        0,
-                        UInt64(maxRead),
-                        &error
-                    )
-                    guard error == .None else { return nil }
+                    let searchSpace = await withCheckedContinuation { (continuation: CheckedContinuation<Data, Never>) in
+                        Self.readQueue.async {
+                            var error = CascBridge.CascError.None
+                            let buffer = localHandle.readFilePartial(
+                                std.string(entry.normalizedPath),
+                                0,
+                                UInt64(maxRead),
+                                &error
+                            )
+                            continuation.resume(returning: error == .None ? Data(buffer) : Data())
+                        }
+                    }
 
                     if Task.isCancelled { return nil }
-
-                    let searchSpace = Data(buffer)
                     guard !searchSpace.isEmpty else { return nil }
 
                     guard let offset = Self.findHexPattern(pattern, in: searchSpace) else { return nil }
