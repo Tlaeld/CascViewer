@@ -9,8 +9,6 @@ final class CDNProductService: ObservableObject {
     @Published var isLoading = false
     @Published var cachePath: String = ""
 
-    // Concurrent queue so cancellation / parallel fetching isn't blocked by serial execution
-    private let queue = DispatchQueue(label: "casc.products", qos: .userInitiated, attributes: .concurrent)
 
     private static let cacheFileURL: URL = {
         let fm = FileManager.default
@@ -40,8 +38,8 @@ final class CDNProductService: ObservableObject {
                 if Task.isCancelled { break }
                 products[index].isLoading = true
                 group.addTask {
-                    let regions = await self.fetchRegions(for: product.code)
-                    print("[CDN] \(product.code): fetched \(regions.count) regions")
+                    let regions = await CDNProductService.fetchRegions(for: product.code)
+                    // Progress logged internally
                     return (index, regions)
                 }
             }
@@ -93,7 +91,7 @@ final class CDNProductService: ObservableObject {
         guard let data = try? JSONEncoder().encode(dict) else { return }
         try? fm.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
         if let _ = try? data.write(to: url) {
-            print("[CDN] Cache saved: \(dict.keys.sorted().joined(separator: ", "))")
+            // Cache saved
         }
     }
 
@@ -126,7 +124,7 @@ final class CDNProductService: ObservableObject {
                 continuation.resume(returning: result)
             }
         }
-        print("[CDN] \(product.code): reloaded \(regions.count) regions")
+        // Regions reloaded
 
         if index < products.count {
             products[index].regions = regions
@@ -147,9 +145,9 @@ final class CDNProductService: ObservableObject {
         selectedRegion = product.regions.first ?? ""
     }
 
-    private nonisolated func fetchRegions(for code: String) async -> [String] {
+    private nonisolated static func fetchRegions(for code: String) async -> [String] {
         await withCheckedContinuation { continuation in
-            queue.async {
+            DispatchQueue.global(qos: .userInitiated).async {
                 let regions = CascBridge.CascStorageHandle.fetchProductRegions(std.string(code))
                 var result: [String] = []
                 for region in regions {

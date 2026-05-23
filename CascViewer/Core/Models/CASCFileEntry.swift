@@ -84,8 +84,11 @@ public struct CASCFileEntry: Identifiable, Hashable, Sendable {
         self.tagBitMask = tagBitMask
     }
 
-    public var id: String { fullPath.replacingOccurrences(of: "\\", with: "/") }
+    public var id: String { normalizedPath }
 
+    /// Identity is based solely on `fullPath` (normalized as `id`).
+    /// Two entries with the same path but different sizes, tags, or locality compare as equal.
+    /// This is intentional for SwiftUI `ForEach` identity, but a footgun for `Set` or `Dictionary` use.
     public func hash(into hasher: inout Hasher) {
         hasher.combine(id)
     }

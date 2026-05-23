@@ -19,7 +19,7 @@ private let progressCallbackThunk: @convention(c) (UnsafeMutableRawPointer?, Uns
     guard let ctx = context, let msg = message else { return }
     let service = Unmanaged<CASCStorageService>.fromOpaque(ctx).takeUnretainedValue()
     let localizedMsg = localizedProgressMessage(msg)
-    DispatchQueue.main.async {
+    Task { @MainActor in
         if Date().timeIntervalSince(service.lastProgressUpdate) > 0.05 {
             service.lastProgressUpdate = Date()
             service.loadProgressMessage = localizedMsg
@@ -86,16 +86,17 @@ final class CASCStorageService: ObservableObject {
     @Published var loadProgress: Double = 0
     @Published var loadProgressMessage: String = ""
     @Published var error: CASCError?
-    @Published var lastProgressUpdate: Date = Date.distantPast
+    var lastProgressUpdate: Date = Date.distantPast
     @Published var isOnlineStorage: Bool = false
     @Published var needsListFile: Bool = false
 
     var handle: CascBridge.CascStorageHandle
     private let queue = DispatchQueue(label: "casc.storage", qos: .userInitiated)
+    private let group = DispatchGroup()
     var allEntries: [CASCFileEntry] = []
-    private(set) var childrenByPath: [String: [DirectoryNode]] = [:]
-    private var entriesByPath: [String: CASCFileEntry] = [:]
-    private var directoryPaths: Set<String> = []
+    internal var childrenByPath: [String: [DirectoryNode]] = [:]
+    internal var entriesByPath: [String: CASCFileEntry] = [:]
+
     private var progressContext: UnsafeMutableRawPointer? = nil
     var allEntriesCount: Int { allEntries.count }
     var tags: [CascTag] = []
@@ -106,10 +107,24 @@ final class CASCStorageService: ObservableObject {
 
     deinit {
         handle.setOpenProgressCallback(nil, nil)
-        if let ctx = progressContext {
-            Unmanaged<CASCStorageService>.fromOpaque(ctx).release()
-        }
+        // Wait for all pending queue operations to finish before closing the
+        // handle so background work never touches a destroyed C++ object.
+        group.wait()
         handle.close()
+    }
+
+    /// Run work on the serial background queue, tracking it with a DispatchGroup
+    /// so `deinit` can wait for completion before closing the handle.
+    private func runOnQueue<T>(_ work: @escaping () -> T) async -> T {
+        let g = group
+        return await withCheckedContinuation { continuation in
+            g.enter()
+            queue.async {
+                defer { g.leave() }
+                let result = work()
+                continuation.resume(returning: result)
+            }
+        }
     }
 
     var listFilePath: String = ""
@@ -130,11 +145,8 @@ final class CASCStorageService: ObservableObject {
         let ctx = Unmanaged.passRetained(self).toOpaque()
         progressContext = ctx
         localHandle.setOpenProgressCallback(progressCallbackThunk, ctx)
-        let result = await withCheckedContinuation { (continuation: CheckedContinuation<CascBridge.CascError, Never>) in
-            queue.async {
-                let result = localHandle.open(std.string(path))
-                continuation.resume(returning: result)
-            }
+        let result: CascBridge.CascError = await runOnQueue {
+            localHandle.open(std.string(path))
         }
         localHandle.setOpenProgressCallback(nil, nil)
         progressContext = nil
@@ -173,7 +185,7 @@ final class CASCStorageService: ObservableObject {
 
         // If cache is corrupted, clean it and retry once
         if result == .StorageCorrupted {
-            print("[CASC] Cache corrupted for \(product), clearing and retrying...")
+            // Cache corrupted, retrying
             let fm = FileManager.default
             let versionsFile = (cachePath as NSString).appendingPathComponent("versions")
             let cdnsFile = (cachePath as NSString).appendingPathComponent("cdns")
@@ -190,9 +202,17 @@ final class CASCStorageService: ObservableObject {
         if result == .StorageNotFound {
             var retryResult = result
             for attempt in 1...3 {
+                if Task.isCancelled {
+                    await handleOpenResult(retryResult)
+                    return
+                }
                 let waitSeconds = UInt64(3 * attempt)
-                print("[CASC] Storage not found for \(product), waiting \(waitSeconds)s before retry \(attempt)/3...")
-                try? await Task.sleep(nanoseconds: waitSeconds * 1_000_000_000)
+                do {
+                    try await Task.sleep(nanoseconds: waitSeconds * 1_000_000_000)
+                } catch {
+                    await handleOpenResult(retryResult)
+                    return
+                }
                 retryResult = await openWithConfig(config: config)
                 if retryResult == .None {
                     break
@@ -225,11 +245,8 @@ final class CASCStorageService: ObservableObject {
         let ctx = Unmanaged.passRetained(self).toOpaque()
         progressContext = ctx
         localHandle.setOpenProgressCallback(progressCallbackThunk, ctx)
-        let result: CascBridge.CascError = await withCheckedContinuation { (continuation: CheckedContinuation<CascBridge.CascError, Never>) in
-            queue.async {
-                let result = localHandle.open(std.string(config))
-                continuation.resume(returning: result)
-            }
+        let result: CascBridge.CascError = await runOnQueue {
+            localHandle.open(std.string(config))
         }
         localHandle.setOpenProgressCallback(nil, nil)
         progressContext = nil
@@ -238,47 +255,37 @@ final class CASCStorageService: ObservableObject {
     }
 
     private func loadTags() async {
-        let rawTags = await withCheckedContinuation { (continuation: CheckedContinuation<[CascTag], Never>) in
-            var localHandle = self.handle
-            queue.async {
-                let tags = localHandle.getTags()
-                let mapped = (0..<tags.size()).map { i in
-                    CascTag(name: String(tags[i].first), value: tags[i].second)
-                }
-                continuation.resume(returning: mapped)
+        let rawTags: [CascTag] = await runOnQueue {
+            let tags = self.handle.getTags()
+            return (0..<tags.size()).map { i in
+                CascTag(name: String(tags[i].first), value: tags[i].second)
             }
         }
-        await MainActor.run {
-            self.tags = rawTags
-            
-        }
+        self.tags = rawTags
     }
 
     /// Load root entries once from C++ and cache them. All heavy work is done on background queue.
     /// Note: caller is responsible for setting/clearing `isLoading`.
     func loadInstallManifest() async -> (tags: [InstallManifestTag], entries: [InstallManifestEntry])? {
-        return await withCheckedContinuation { (continuation: CheckedContinuation<(tags: [InstallManifestTag], entries: [InstallManifestEntry])?, Never>) in
-            var localHandle = self.handle
-            queue.async {
-                let result = localHandle.parseInstallManifest()
-                let tags = (0..<result.first.size()).map { i in
-                    InstallManifestTag(name: String(result.first[i].name), value: result.first[i].value)
-                }
-                let entries = (0..<result.second.size()).map { i in
-                    let entry = result.second[i]
-                    let bits = (0..<entry.tagBits.size()).map { entry.tagBits[$0] != 0 }
-                    return InstallManifestEntry(
-                        fileName: String(entry.fileName),
-                        ckey: String(entry.ckey),
-                        fileSize: entry.fileSize,
-                        tagBits: bits
-                    )
-                }
-                if tags.isEmpty && entries.isEmpty {
-                    continuation.resume(returning: nil)
-                } else {
-                    continuation.resume(returning: (tags: tags, entries: entries))
-                }
+        return await runOnQueue {
+            let result = self.handle.parseInstallManifest()
+            let tags = (0..<result.first.size()).map { i in
+                InstallManifestTag(name: String(result.first[i].name), value: result.first[i].value)
+            }
+            let entries = (0..<result.second.size()).map { i in
+                let entry = result.second[i]
+                let bits = (0..<entry.tagBits.size()).map { entry.tagBits[$0] != 0 }
+                return InstallManifestEntry(
+                    fileName: String(entry.fileName),
+                    ckey: String(entry.ckey),
+                    fileSize: entry.fileSize,
+                    tagBits: bits
+                )
+            }
+            if tags.isEmpty && entries.isEmpty {
+                return nil
+            } else {
+                return (tags: tags, entries: entries)
             }
         }
     }
@@ -289,36 +296,34 @@ final class CASCStorageService: ObservableObject {
         // instead of a stuck progress bar during this phase.
         loadProgress = 0
         var localHandle = handle
-        let result = await withCheckedContinuation { (continuation: CheckedContinuation<([CASCFileEntry], [String: [DirectoryNode]], [String: CASCFileEntry], CascBridge.CascError), Never>) in
-            queue.async {
-                var error = CascBridge.CascError.None
-                let rawEntries = localHandle.listDirectory(std.string(""), &error)
-                let mapped = (0..<rawEntries.size()).map { i in
-                    let entry = rawEntries[i]
-                    let swiftNameType: CascNameType
-                    switch entry.nameType {
-                    case .Full: swiftNameType = .full
-                    case .DataId: swiftNameType = .dataId
-                    case .CKey: swiftNameType = .ckey
-                    case .EKey: swiftNameType = .ekey
-                    default: swiftNameType = .full
-                    }
-                    return CASCFileEntry(
-                        name: String(entry.name),
-                        fullPath: String(entry.fullPath),
-                        type: entry.type == .File ? .file : .directory,
-                        size: entry.size,
-                        encodingKey: String(entry.encodingKey),
-                        isLocal: entry.isLocal,
-                        nameType: swiftNameType,
-                        tagBitMask: entry.tagBitMask
-                    )
+        let result: ([CASCFileEntry], [String: [DirectoryNode]], [String: CASCFileEntry], CascBridge.CascError) = await runOnQueue {
+            var error = CascBridge.CascError.None
+            let rawEntries = localHandle.listDirectory(std.string(""), &error)
+            let mapped = (0..<rawEntries.size()).map { i in
+                let entry = rawEntries[i]
+                let swiftNameType: CascNameType
+                switch entry.nameType {
+                case .Full: swiftNameType = .full
+                case .DataId: swiftNameType = .dataId
+                case .CKey: swiftNameType = .ckey
+                case .EKey: swiftNameType = .ekey
+                default: swiftNameType = .full
                 }
-                
-                let (childrenMap, entriesByPath) = Self.buildChildrenMap(from: mapped)
-                
-                continuation.resume(returning: (mapped, childrenMap, entriesByPath, error))
+                return CASCFileEntry(
+                    name: String(entry.name),
+                    fullPath: String(entry.fullPath),
+                    type: entry.type == .File ? .file : .directory,
+                    size: entry.size,
+                    encodingKey: String(entry.encodingKey),
+                    isLocal: entry.isLocal,
+                    nameType: swiftNameType,
+                    tagBitMask: entry.tagBitMask
+                )
             }
+            
+            let (childrenMap, entriesByPath) = Self.buildChildrenMap(from: mapped)
+            
+            return (mapped, childrenMap, entriesByPath, error)
         }
         
         loadProgressMessage = ""
@@ -328,7 +333,6 @@ final class CASCStorageService: ObservableObject {
         } else {
             self.allEntries = newEntries
             self.entriesByPath = newEntriesByPath
-            self.directoryPaths = Set(childrenMap.keys)
             self.childrenByPath = childrenMap
             self.currentPath = ""
             self.currentChildren = childrenMap[""] ?? []
@@ -383,7 +387,7 @@ final class CASCStorageService: ObservableObject {
 
     /// Returns true for entries that have no human-readable path and should be
     /// grouped into the UNKNOWN virtual folder.
-    private nonisolated static func isUncategorized(_ entry: CASCFileEntry) -> Bool {
+    internal nonisolated static func isUncategorized(_ entry: CASCFileEntry) -> Bool {
         if entry.nameType == .ckey || entry.nameType == .ekey {
             return false
         }
@@ -655,6 +659,7 @@ final class CASCStorageService: ObservableObject {
 
     /// Rebuild the children map and reload current directory view.
     func refreshCurrentStorage() async {
+        guard !isLoading else { return }
         isLoading = true
         loadProgress = 0
         loadProgressMessage = L("loading_listfile")
@@ -711,11 +716,16 @@ final class CASCStorageService: ObservableObject {
         return allEntries.filter { $0.normalizedPath.hasPrefix(prefix) }
     }
 
-    func readFileData(forPath path: String) -> Data? {
-        var error = CascBridge.CascError.None
-        let buffer = handle.readFile(std.string(path), &error)
-        guard error == .None else { return nil }
-        return Data(buffer)
+    func readFileData(forPath path: String) async -> Data? {
+        var localHandle = handle
+        return await runOnQueue {
+            var error = CascBridge.CascError.None
+            let result = localHandle.readFile(std.string(path), &error)
+            guard error == .None else {
+                return nil
+            }
+            return Data(result)
+        }
     }
 
     func close() {
@@ -726,7 +736,7 @@ final class CASCStorageService: ObservableObject {
         currentPath = ""
         storageInfo = nil
         entriesByPath = [:]
-        directoryPaths = []
+
         childrenByPath = [:]
         tags = []
         error = nil
@@ -736,12 +746,10 @@ final class CASCStorageService: ObservableObject {
 
     private func refreshStorageInfo() async {
         var localHandle = handle
-        let (info, err) = await withCheckedContinuation { (continuation: CheckedContinuation<(CascBridge.CascStorageInfo, CascBridge.CascError), Never>) in
-            queue.async {
-                var error = CascBridge.CascError.None
-                let info = localHandle.getStorageInfo(&error)
-                continuation.resume(returning: (info, error))
-            }
+        let (info, err) = await runOnQueue {
+            var error = CascBridge.CascError.None
+            let info = localHandle.getStorageInfo(&error)
+            return (info, error)
         }
         if err == .None {
             self.storageInfo = CASCStorageInfo(
@@ -766,6 +774,7 @@ final class CASCStorageService: ObservableObject {
         case .NotImplemented: return .notImplemented
         case .Cancelled: return .cancelled
         case .None, .Unknown: return .unknown
+        @unknown default: return .unknown
         }
     }
 }

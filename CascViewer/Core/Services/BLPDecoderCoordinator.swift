@@ -9,7 +9,9 @@ actor BLPDecoderCoordinator {
         guard !data.isEmpty else { throw CASCError.decodingError }
         var error = CascBridge.CascError.None
         let result = data.withUnsafeBytes { rawBuffer in
-            let ptr = rawBuffer.bindMemory(to: UInt8.self).baseAddress!
+            guard let ptr = rawBuffer.bindMemory(to: UInt8.self).baseAddress else {
+                return CascBridge.ImageDecodeResult()
+            }
             return decoder.decode(ptr, data.count, &error)
         }
         if error != .None {

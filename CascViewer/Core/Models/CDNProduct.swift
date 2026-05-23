@@ -1,12 +1,16 @@
 import Foundation
 
 struct CDNProduct: Identifiable, Equatable {
-    let id = UUID()
+    var id: String { code }
     let name: String
     let code: String
     var regions: [String] = []
     var isLoading = false
     var loadFailed = false
+
+    static func == (lhs: CDNProduct, rhs: CDNProduct) -> Bool {
+        lhs.name == rhs.name && lhs.code == rhs.code
+    }
 
     static let builtInList: [CDNProduct] = [
         CDNProduct(name: "Battle.net Agent", code: "agent"),

@@ -3,18 +3,30 @@ import Foundation
 final class LocalizationManager {
     static let shared = LocalizationManager()
 
-    var languageCode: String = "en" {
-        didSet {
-            if languageCode == "zh" { languageCode = "zh-Hans" }
+    private let lock = NSLock()
+    private var _languageCode: String = "en"
+    private var _cachedBundle: Bundle?
+
+    var languageCode: String {
+        get {
+            lock.lock()
+            defer { lock.unlock() }
+            return _languageCode
+        }
+        set {
+            let code = (newValue == "zh") ? "zh-Hans" : newValue
+            lock.lock()
+            _languageCode = code
             _cachedBundle = nil
+            lock.unlock()
         }
     }
 
-    private var _cachedBundle: Bundle?
-
     private var localizedBundle: Bundle {
+        lock.lock()
+        defer { lock.unlock() }
         if let cached = _cachedBundle { return cached }
-        guard let path = Bundle.main.path(forResource: languageCode, ofType: "lproj"),
+        guard let path = Bundle.main.path(forResource: _languageCode, ofType: "lproj"),
               let bundle = Bundle(path: path) else {
             _cachedBundle = Bundle.main
             return Bundle.main

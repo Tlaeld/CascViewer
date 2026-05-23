@@ -55,6 +55,7 @@ final class CASCExtractService: ObservableObject {
     }
 
     func extract(entries: [CASCFileEntry], to destination: URL, preserveStructure: Bool, overwriteExisting: Bool = false) async -> ExtractResult {
+        guard !isExtracting else { return ExtractResult(successCount: 0, failedFiles: [], wasCancelled: false) }
         isExtracting = true
         progress = 0
         setCancelled(false)
@@ -75,53 +76,46 @@ final class CASCExtractService: ObservableObject {
                 currentFile = entry.name
             }
 
-            let sanitizedPath = entry.normalizedPath
-                .components(separatedBy: "/")
-                .filter { $0 != ".." && $0 != "." && !$0.isEmpty }
-                .joined(separator: "/")
-
-            let sanitizedName = entry.name
-                .components(separatedBy: "/")
-                .filter { $0 != ".." && $0 != "." && !$0.isEmpty }
-                .joined(separator: "_")
-
-            // Skip entries whose path sanitizes to nothing (e.g. only dots/slashes)
-            if sanitizedPath.isEmpty || sanitizedName.isEmpty {
-                failedFiles.append((path: entry.fullPath, error: .invalidPath))
-                let newProgress = Double(index + 1) / Double(total)
-                if newProgress - progress > 0.01 || index == total - 1 {
-                    progress = newProgress
-                }
-                continue
-            }
-
-            let destPath: String
-            if preserveStructure {
-                destPath = destination.appendingPathComponent(sanitizedPath).path
-            } else {
-                destPath = destination.appendingPathComponent(sanitizedName).path
-            }
-            
-            // Skip if file exists and overwrite is disabled
-            if !overwriteExisting && FileManager.default.fileExists(atPath: destPath) {
-                successCount += 1
-                let newProgress = Double(index + 1) / Double(total)
-                if newProgress - progress > 0.01 || index == total - 1 {
-                    progress = newProgress
-                }
-                continue
-            }
-            
-            // Ensure parent directories exist before extraction
-            let destURL = URL(fileURLWithPath: destPath)
-            let parentDir = destURL.deletingLastPathComponent().path
-            if createdDirs.insert(parentDir).inserted {
-                try? FileManager.default.createDirectory(at: destURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-            }
-
-            // Pass progress callback for per-file progress updates
+            // Offload all per-file I/O and extraction to the background queue
+            // so the MainActor is not blocked by path sanitization or FileManager calls.
             let result: CascBridge.CascError = await withCheckedContinuation { (continuation: CheckedContinuation<CascBridge.CascError, Never>) in
                 queue.async {
+                    let sanitizedPath = entry.normalizedPath
+                        .components(separatedBy: "/")
+                        .filter { $0 != ".." && $0 != "." && !$0.isEmpty }
+                        .joined(separator: "/")
+
+                    let sanitizedName = entry.name
+                        .components(separatedBy: "/")
+                        .filter { $0 != ".." && $0 != "." && !$0.isEmpty }
+                        .joined(separator: "_")
+
+                    // Skip entries whose path sanitizes to nothing
+                    if sanitizedPath.isEmpty || sanitizedName.isEmpty {
+                        continuation.resume(returning: .InvalidPath)
+                        return
+                    }
+
+                    let destPath: String
+                    if preserveStructure {
+                        destPath = destination.appendingPathComponent(sanitizedPath).path
+                    } else {
+                        destPath = destination.appendingPathComponent(sanitizedName).path
+                    }
+
+                    // Skip if file exists and overwrite is disabled
+                    if !overwriteExisting && FileManager.default.fileExists(atPath: destPath) {
+                        continuation.resume(returning: .None)
+                        return
+                    }
+
+                    // Ensure parent directories exist before extraction
+                    let destURL = URL(fileURLWithPath: destPath)
+                    let parentDir = destURL.deletingLastPathComponent().path
+                    if createdDirs.insert(parentDir).inserted {
+                        try? FileManager.default.createDirectory(at: destURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+                    }
+
                     let progressCtx = ExtractProgressContext(service: self, fileIndex: index, totalFiles: total)
                     let rawContext = Unmanaged.passUnretained(progressCtx).toOpaque()
 
@@ -131,7 +125,7 @@ final class CASCExtractService: ObservableObject {
                         guard let service = ctx.service else { return }
                         let fileProgress = totalBytes > 0 ? Double(current) / Double(totalBytes) : 0
                         let overallProgress = (Double(ctx.fileIndex) + fileProgress) / Double(ctx.totalFiles)
-                        DispatchQueue.main.async {
+                        Task { @MainActor in
                             service.progress = overallProgress
                         }
                     }
@@ -185,7 +179,9 @@ final class CASCExtractService: ObservableObject {
         case .CDNConfigError: return .cdnConfigError
         case .DecodingError: return .decodingError
         case .NotImplemented: return .notImplemented
-        default: return .unknown
+        case .Cancelled: return .cancelled
+        case .None: return .unknown
+        @unknown default: return .unknown
         }
     }
 }

@@ -145,6 +145,7 @@ struct SearchTagSystem {
     static func tagBitMasks(from tags: [CascTag]) -> [String: UInt64] {
         var map: [String: UInt64] = [:]
         for tag in tags {
+            guard tag.value < 64 else { continue }
             map[tag.name] = (1 as UInt64) << UInt64(tag.value)
         }
         return map
@@ -378,7 +379,7 @@ class CASCSearchService {
         guard !pattern.isEmpty else { return [] }
 
         let filteredByType = filterByTypes(candidates, request.fileTypes)
-        let targetFiles = filteredByType.filter { !$0.isDirectory && $0.size > 0 }
+        let targetFiles = filteredByType.filter { !$0.isDirectory && $0.size > 0 && $0.isLocal }
 
         let maxRead = maxContentReadSize
         var localHandle = handle
@@ -460,7 +461,18 @@ class CASCSearchService {
         case .entireStorage:
             return all
         case .currentDirectory:
-            let prefix = currentPath.isEmpty ? "" : currentPath + "/"
+            let normalized = currentPath.replacingOccurrences(of: "\\", with: "/")
+            // Virtual directories are not real paths in entries; handle them explicitly.
+            if normalized == "CONTENT_KEY" {
+                return all.filter { $0.nameType == .ckey }
+            }
+            if normalized == "ENCODED_KEY" {
+                return all.filter { $0.nameType == .ekey }
+            }
+            if normalized == "UNKNOWN" {
+                return all.filter { CASCStorageService.isUncategorized($0) }
+            }
+            let prefix = normalized.isEmpty ? "" : normalized + "/"
             return all.filter { $0.normalizedPath.hasPrefix(prefix) }
         }
     }
