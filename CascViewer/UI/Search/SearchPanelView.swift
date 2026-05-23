@@ -7,6 +7,7 @@ struct SearchPanelView: View {
     @State private var searchTask: Task<Void, Never>? = nil
     @State private var selectedMatchId: String? = nil
     @State private var sortedMatches: [SearchMatch] = []
+    @State private var sortTask: Task<Void, Never>? = nil
 
     let builtInTypes = ["BLP", "DDS", "MDX", "MP3", "WAV", "TXT", "DBC", "M2", "OGG", "TGA", "PNG", "JPG", "JSON", "XML", "LUA"]
 
@@ -275,16 +276,25 @@ struct SearchPanelView: View {
     }
 
     private func applySorting() {
-        let sorted: [SearchMatch]
-        switch appState.searchSortBy {
-        case .name:
-            sorted = appState.searchResults.sorted { appState.searchSortAscending ? $0.entry.name < $1.entry.name : $0.entry.name > $1.entry.name }
-        case .size:
-            sorted = appState.searchResults.sorted { appState.searchSortAscending ? $0.entry.size < $1.entry.size : $0.entry.size > $1.entry.size }
-        case .path:
-            sorted = appState.searchResults.sorted { appState.searchSortAscending ? $0.entry.fullPath < $1.entry.fullPath : $0.entry.fullPath > $1.entry.fullPath }
+        sortTask?.cancel()
+        let results = appState.searchResults
+        let sortBy = appState.searchSortBy
+        let ascending = appState.searchSortAscending
+        sortTask = Task {
+            let sorted: [SearchMatch]
+            switch sortBy {
+            case .name:
+                sorted = results.sorted { ascending ? $0.entry.name < $1.entry.name : $0.entry.name > $1.entry.name }
+            case .size:
+                sorted = results.sorted { ascending ? $0.entry.size < $1.entry.size : $0.entry.size > $1.entry.size }
+            case .path:
+                sorted = results.sorted { ascending ? $0.entry.fullPath < $1.entry.fullPath : $0.entry.fullPath > $1.entry.fullPath }
+            }
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                self.sortedMatches = sorted
+            }
         }
-        sortedMatches = sorted
     }
 
     private func toggleType(_ type: String) {

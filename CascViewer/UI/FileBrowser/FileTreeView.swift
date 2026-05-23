@@ -210,11 +210,15 @@ final class TreeTableViewController: NSViewController {
     @objc private func toggleExpand(_ sender: NSButton) {
         suppressSelection = true
         let row = sender.tag
-        guard row >= 0, row < items.count else { return }
+        guard row >= 0, row < items.count else {
+            suppressSelection = false
+            return
+        }
         let path = items[row].node.path
         onToggleExpand?(path)
-        DispatchQueue.main.async {
-            self.suppressSelection = false
+        // Defer clearing until the next event cycle, after SwiftUI has reloaded the tree
+        DispatchQueue.main.async { [weak self] in
+            self?.suppressSelection = false
         }
     }
 }
