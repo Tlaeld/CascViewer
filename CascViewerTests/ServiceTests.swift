@@ -115,4 +115,90 @@ final class ServiceTests: XCTestCase {
         let codes = products.map(\.code)
         XCTAssertEqual(codes.count, Set(codes).count)
     }
+
+    // MARK: - Mock-based Tests (no C++ bridge required)
+
+    @MainActor
+    func testCASCSearchServiceWithMockReader() async {
+        let mockReader = MockFileReader()
+        mockReader.files = [
+            "a/test.txt": Data("hello world".utf8),
+            "b/other.md": Data("swift concurrency".utf8)
+        ]
+        let searchService = CASCSearchService(reader: mockReader)
+
+        let entries = [
+            CASCFileEntry(name: "test.txt", fullPath: "a/test.txt", type: .file, size: 11, encodingKey: ""),
+            CASCFileEntry(name: "other.md", fullPath: "b/other.md", type: .file, size: 17, encodingKey: "")
+        ]
+
+        // Filename search (no handle needed)
+        let request = SearchRequest(mode: .filename, query: "test", scope: .entireStorage, caseSensitive: false, useRegex: false, includePath: false, fileTypes: [], selectedTags: [], availableTags: [])
+        let results = await searchService.search(request, allEntries: entries, entries: entries, currentPath: "")
+        XCTAssertEqual(results.count, 1)
+        XCTAssertEqual(results.first?.entry.name, "test.txt")
+    }
+
+    @MainActor
+    func testCASCSearchServiceContentWithMockReader() async {
+        let mockReader = MockFileReader()
+        mockReader.files = [
+            "a/test.txt": Data("hello world".utf8),
+            "b/other.md": Data("swift concurrency".utf8)
+        ]
+        let searchService = CASCSearchService(reader: mockReader)
+
+        let entries = [
+            CASCFileEntry(name: "test.txt", fullPath: "a/test.txt", type: .file, size: 11, encodingKey: ""),
+            CASCFileEntry(name: "other.md", fullPath: "b/other.md", type: .file, size: 17, encodingKey: "")
+        ]
+
+        // Content search (uses mock readFilePartial)
+        let request = SearchRequest(mode: .content, query: "world", scope: .entireStorage, caseSensitive: false, useRegex: false, includePath: false, fileTypes: [], selectedTags: [], availableTags: [])
+        let results = await searchService.search(request, allEntries: entries, entries: entries, currentPath: "")
+        XCTAssertEqual(results.count, 1)
+        XCTAssertEqual(results.first?.entry.name, "test.txt")
+    }
+
+    @MainActor
+    func testCASCExtractServiceWithMockExtractor() async {
+        let mockExtractor = MockFileExtractor()
+        let service = CASCExtractService(extractor: mockExtractor)
+
+        let entries = [
+            CASCFileEntry(name: "test.txt", fullPath: "a/test.txt", type: .file, size: 11, encodingKey: "")
+        ]
+        let dest = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+
+        let result = await service.extract(entries: entries, to: dest, preserveStructure: false)
+        XCTAssertEqual(result.successCount, 1)
+        XCTAssertTrue(result.failedFiles.isEmpty)
+        XCTAssertEqual(mockExtractor.extractedFiles.count, 1)
+        XCTAssertEqual(mockExtractor.extractedFiles.first?.cascPath, "a/test.txt")
+    }
+
+    @MainActor
+    func testCASCExtractServiceMockFailure() async {
+        let mockExtractor = MockFileExtractor()
+        mockExtractor.shouldSucceed = false
+        let service = CASCExtractService(extractor: mockExtractor)
+
+        let entries = [
+            CASCFileEntry(name: "test.txt", fullPath: "a/test.txt", type: .file, size: 11, encodingKey: "")
+        ]
+        let dest = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+
+        let result = await service.extract(entries: entries, to: dest, preserveStructure: false)
+        XCTAssertEqual(result.successCount, 0)
+        XCTAssertEqual(result.failedFiles.count, 1)
+    }
+
+    @MainActor
+    func testCASCExtractServiceMockCancellation() {
+        let mockExtractor = MockFileExtractor()
+        let service = CASCExtractService(extractor: mockExtractor)
+        service.cancel()
+        XCTAssertTrue(service.isCancelled)
+        XCTAssertTrue(mockExtractor.wasCancelRequested)
+    }
 }

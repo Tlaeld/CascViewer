@@ -8,13 +8,18 @@ final class CASCExtractService: ObservableObject {
     @Published var isExtracting = false
     @Published var currentFile: String = ""
 
-    private var storage: CascBridge.CascStorageHandle
+    private let extractor: CASCFileExtractor
     private let queue = DispatchQueue(label: "casc.extract", qos: .userInitiated)
     private let cancelLock = NSLock()
     private var _isCancelled = false
 
-    init(storage: CascBridge.CascStorageHandle) {
-        self.storage = storage
+    init(extractor: CASCFileExtractor) {
+        self.extractor = extractor
+    }
+
+    /// Convenience init for callers that still have a raw CascStorageHandle.
+    convenience init(storage: CascBridge.CascStorageHandle) {
+        self.init(extractor: CascStorageHandleAdapter(handle: storage))
     }
 
     struct ExtractResult {
@@ -51,7 +56,7 @@ final class CASCExtractService: ObservableObject {
         cancelLock.lock()
         defer { cancelLock.unlock() }
         _isCancelled = true
-        storage.requestCancelExtraction()
+        extractor.requestCancelExtraction()
     }
 
     func extract(entries: [CASCFileEntry], to destination: URL, preserveStructure: Bool, overwriteExisting: Bool = false) async -> ExtractResult {
@@ -61,7 +66,7 @@ final class CASCExtractService: ObservableObject {
         setCancelled(false)
         defer { isExtracting = false }
 
-        var handle = storage
+        let extractor = self.extractor
         let total = entries.count
         var successCount = 0
         var failedFiles = [(path: String, error: CASCError)]()
@@ -116,25 +121,18 @@ final class CASCExtractService: ObservableObject {
                         try? FileManager.default.createDirectory(at: destURL.deletingLastPathComponent(), withIntermediateDirectories: true)
                     }
 
-                    let progressCtx = ExtractProgressContext(service: self, fileIndex: index, totalFiles: total)
-                    let rawContext = Unmanaged.passUnretained(progressCtx).toOpaque()
-
-                    let progressBlock: @convention(c) (UnsafeMutableRawPointer?, Int64, Int64) -> Void = { context, current, totalBytes in
-                        guard let ctxPtr = context else { return }
-                        let ctx = Unmanaged<ExtractProgressContext>.fromOpaque(ctxPtr).takeUnretainedValue()
-                        guard let service = ctx.service else { return }
+                    let progress: (Int64, Int64) -> Void = { current, totalBytes in
                         let fileProgress = totalBytes > 0 ? Double(current) / Double(totalBytes) : 0
-                        let overallProgress = (Double(ctx.fileIndex) + fileProgress) / Double(ctx.totalFiles)
+                        let overallProgress = (Double(index) + fileProgress) / Double(total)
                         Task { @MainActor in
-                            service.progress = overallProgress
+                            self.progress = overallProgress
                         }
                     }
 
-                    let result = handle.extractFile(
-                        std.string(sanitizedPath),
-                        std.string(destPath),
-                        progressBlock,
-                        rawContext
+                    let result = extractor.extractFile(
+                        cascPath: sanitizedPath,
+                        destPath: destPath,
+                        progress: progress
                     )
                     continuation.resume(returning: result)
                 }
@@ -179,7 +177,6 @@ final class CASCExtractService: ObservableObject {
         case .CDNConfigError: return .cdnConfigError
         case .DecodingError: return .decodingError
         case .NotImplemented: return .notImplemented
-        case .Cancelled: return .cancelled
         case .None: return .unknown
         @unknown default: return .unknown
         }

@@ -166,14 +166,19 @@ struct SearchTagSystem {
 // MARK: - Search Service
 
 class CASCSearchService {
-    private var handle: CascBridge.CascStorageHandle
+    private let reader: CASCFileReader
     private let maxContentReadSize = 10 * 1024 * 1024 // 10MB cap per file
     private let maxConcurrentSearches = ProcessInfo.processInfo.processorCount
     /// Serial queue for file reads to avoid concurrent access to the underlying CascLib handle.
     private static let readQueue = DispatchQueue(label: "casc.search.read", qos: .userInitiated)
 
-    init(handle: CascBridge.CascStorageHandle) {
-        self.handle = handle
+    init(reader: CASCFileReader) {
+        self.reader = reader
+    }
+
+    /// Convenience init for callers that still have a raw CascStorageHandle.
+    convenience init(handle: CascBridge.CascStorageHandle) {
+        self.init(reader: CascStorageHandleAdapter(handle: handle))
     }
 
     func search(_ request: SearchRequest, allEntries: [CASCFileEntry], entries: [CASCFileEntry], currentPath: String) async -> [SearchMatch] {
@@ -282,7 +287,7 @@ class CASCSearchService {
         let searchText = request.caseSensitive ? query : query.lowercased()
         let caseSensitive = request.caseSensitive
         let maxRead: UInt64 = 64 * 1024  // Only read first 64KB - most text matches are in the header
-        var localHandle = handle
+        let reader = self.reader
 
         return await withTaskGroup(of: SearchMatch?.self) { group in
             var results: [SearchMatch] = []
@@ -301,14 +306,8 @@ class CASCSearchService {
 
                     let searchSpace = await withCheckedContinuation { (continuation: CheckedContinuation<Data, Never>) in
                         Self.readQueue.async {
-                            var error = CascBridge.CascError.None
-                            let buffer = localHandle.readFilePartial(
-                                std.string(entry.normalizedPath),
-                                0,
-                                maxRead,
-                                &error
-                            )
-                            continuation.resume(returning: error == .None ? Data(buffer) : Data())
+                            let data = reader.readFilePartial(path: entry.normalizedPath, offset: 0, length: maxRead)
+                            continuation.resume(returning: data ?? Data())
                         }
                     }
 
@@ -382,7 +381,7 @@ class CASCSearchService {
         let targetFiles = filteredByType.filter { !$0.isDirectory && $0.size > 0 && $0.isLocal }
 
         let maxRead = maxContentReadSize
-        var localHandle = handle
+        let reader = self.reader
 
         return await withTaskGroup(of: SearchMatch?.self) { group in
             var results: [SearchMatch] = []
@@ -401,14 +400,8 @@ class CASCSearchService {
 
                     let searchSpace = await withCheckedContinuation { (continuation: CheckedContinuation<Data, Never>) in
                         Self.readQueue.async {
-                            var error = CascBridge.CascError.None
-                            let buffer = localHandle.readFilePartial(
-                                std.string(entry.normalizedPath),
-                                0,
-                                UInt64(maxRead),
-                                &error
-                            )
-                            continuation.resume(returning: error == .None ? Data(buffer) : Data())
+                            let data = reader.readFilePartial(path: entry.normalizedPath, offset: 0, length: UInt64(maxRead))
+                            continuation.resume(returning: data ?? Data())
                         }
                     }
 

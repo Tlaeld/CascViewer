@@ -151,6 +151,13 @@ final class CASCStorageService: ObservableObject {
         localHandle.setOpenProgressCallback(nil, nil)
         progressContext = nil
         Unmanaged<CASCStorageService>.fromOpaque(ctx).release()
+        // Cooperative cancellation: if the task was cancelled while opening,
+        // don't proceed to load entries and don't overwrite error state.
+        guard !Task.isCancelled else {
+            isLoading = false
+            loadProgressMessage = ""
+            return
+        }
         // Keep the final progress from CascLib (likely 1.0) instead of resetting to 0
         if result != .None {
             loadProgressMessage = ""
@@ -158,7 +165,17 @@ final class CASCStorageService: ObservableObject {
             self.error = mapError(result)
         } else {
             await refreshStorageInfo()
+            guard !Task.isCancelled else {
+                isLoading = false
+                loadProgressMessage = ""
+                return
+            }
             await loadRootEntries()
+            guard !Task.isCancelled else {
+                isLoading = false
+                loadProgressMessage = ""
+                return
+            }
             await loadTags()
             isLoading = false
             loadProgressMessage = ""
@@ -255,6 +272,7 @@ final class CASCStorageService: ObservableObject {
     }
 
     private func loadTags() async {
+        guard !Task.isCancelled else { return }
         let rawTags: [CascTag] = await runOnQueue {
             let tags = self.handle.getTags()
             return (0..<tags.size()).map { i in
@@ -267,6 +285,7 @@ final class CASCStorageService: ObservableObject {
     /// Load root entries once from C++ and cache them. All heavy work is done on background queue.
     /// Note: caller is responsible for setting/clearing `isLoading`.
     func loadInstallManifest() async -> (tags: [InstallManifestTag], entries: [InstallManifestEntry])? {
+        guard !Task.isCancelled else { return nil }
         return await runOnQueue {
             let result = self.handle.parseInstallManifest()
             let tags = (0..<result.first.size()).map { i in
@@ -291,6 +310,7 @@ final class CASCStorageService: ObservableObject {
     }
 
     private func loadRootEntries() async {
+        guard !Task.isCancelled else { return }
         loadProgressMessage = L("building_children_map")
         // Reset progress to 0 so the overlay shows an indeterminate spinner
         // instead of a stuck progress bar during this phase.
@@ -717,6 +737,7 @@ final class CASCStorageService: ObservableObject {
     }
 
     func readFileData(forPath path: String) async -> Data? {
+        guard !Task.isCancelled else { return nil }
         var localHandle = handle
         return await runOnQueue {
             var error = CascBridge.CascError.None
@@ -745,6 +766,7 @@ final class CASCStorageService: ObservableObject {
     }
 
     private func refreshStorageInfo() async {
+        guard !Task.isCancelled else { return }
         var localHandle = handle
         let (info, err) = await runOnQueue {
             var error = CascBridge.CascError.None
