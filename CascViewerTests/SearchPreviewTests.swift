@@ -11,7 +11,7 @@ final class SearchPreviewTests: XCTestCase {
         let preview = CASCSearchService.makePreview(data: data, matchRange: matchRange, queryLength: 5)
 
         XCTAssertEqual(preview.match, "World")
-        XCTAssertTrue(preview.prefix.contains("Hello"))
+        XCTAssertEqual(preview.prefix, "Hello ")
     }
 
     func testMakePreviewMultibyteUTF8() {
@@ -21,10 +21,10 @@ final class SearchPreviewTests: XCTestCase {
         let searchText = "世界"
         let matchRange = data.range(of: Data(searchText.utf8))!
 
-        let preview = CASCSearchService.makePreview(data: data, matchRange: matchRange, queryLength: searchText.count)
+        let preview = CASCSearchService.makePreview(data: data, matchRange: matchRange, queryLength: Data(searchText.utf8).count)
 
         XCTAssertEqual(preview.match, "世界")
-        XCTAssertTrue(preview.prefix.contains("你好"))
+        XCTAssertEqual(preview.prefix, "你好")
     }
 
     func testMakePreviewTruncation() {

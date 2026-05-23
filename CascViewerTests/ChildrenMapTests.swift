@@ -107,4 +107,36 @@ final class ChildrenMapTests: XCTestCase {
         XCTAssertNotNil(conflictNodes.first?.children)
     }
 
+    func testBuildChildrenMapUnknownVirtualFolder() {
+        let entries = [
+            CASCFileEntry(name: "FILE00166360.dat", fullPath: "FILE00166360.dat", type: .file, size: 10, encodingKey: "", nameType: .dataId),
+            CASCFileEntry(name: "real.txt", fullPath: "real.txt", type: .file, size: 10, encodingKey: "", nameType: .full)
+        ]
+
+        let (childrenMap, _) = CASCStorageService.buildChildrenMap(from: entries)
+
+        XCTAssertTrue(childrenMap[""]?.contains(where: { $0.name == "UNKNOWN" }) ?? false)
+        XCTAssertEqual(childrenMap["UNKNOWN"]?.count, 1)
+        XCTAssertEqual(childrenMap["UNKNOWN"]?.first?.name, "FILE00166360.dat")
+    }
+
+    func testBuildChildrenMapParallelPath() {
+        // Generate >4096 entries to trigger parallel path
+        var entries: [CASCFileEntry] = []
+        for i in 0..<5000 {
+            entries.append(CASCFileEntry(
+                name: "file\(i).txt",
+                fullPath: "dir\(i % 100)/file\(i).txt",
+                type: .file,
+                size: 10,
+                encodingKey: ""
+            ))
+        }
+
+        let (childrenMap, entriesByPath) = CASCStorageService.buildChildrenMap(from: entries)
+
+        XCTAssertEqual(entriesByPath.count, 5000)
+        XCTAssertEqual(childrenMap[""]?.count, 100)
+        XCTAssertEqual(childrenMap["dir0"]?.count, 50)
+    }
 }

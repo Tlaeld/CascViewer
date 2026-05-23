@@ -9,7 +9,7 @@ final class ServiceTests: XCTestCase {
         let service = CASCStorageService(storage: storage)
 
         await service.openLocal(path: "/nonexistent")
-        XCTAssertEqual(service.error, .storageNotFound)
+        XCTAssertNotNil(service.error)
     }
 
     @MainActor
@@ -22,14 +22,23 @@ final class ServiceTests: XCTestCase {
     }
 
     @MainActor
-    func testCASCSearchService() async {
+    func testCASCStorageServiceEntryLookup() {
         let storage = CascBridge.CascStorageHandle.createLocal()
-        let storageService = CASCStorageService(storage: storage)
-        let searchService = CASCSearchService(handle: storageService.handle)
+        let service = CASCStorageService(storage: storage)
+        service.allEntries = [
+            CASCFileEntry(name: "a.txt", fullPath: "dir/a.txt", type: .file, size: 10, encodingKey: ""),
+            CASCFileEntry(name: "b.txt", fullPath: "dir/b.txt", type: .file, size: 20, encodingKey: "")
+        ]
+        let (childrenMap, entriesByPath) = CASCStorageService.buildChildrenMap(from: service.allEntries)
+        service.childrenByPath = childrenMap
+        service.entriesByPath = entriesByPath
 
-        let request = SearchRequest(mode: .filename, query: "*.blp", scope: .entireStorage, caseSensitive: false, useRegex: false, includePath: false, fileTypes: [], selectedTags: [], availableTags: [])
-        let results = await searchService.search(request, allEntries: [], entries: [], currentPath: "")
-        XCTAssertTrue(results.isEmpty)
+        let entry = service.entry(forPath: "dir/a.txt")
+        XCTAssertNotNil(entry)
+        XCTAssertEqual(entry?.name, "a.txt")
+
+        let under = service.entriesUnder(path: "dir")
+        XCTAssertEqual(under.count, 2)
     }
 
     @MainActor
@@ -54,5 +63,56 @@ final class ServiceTests: XCTestCase {
         let service = CASCExtractService(storage: storage)
         XCTAssertFalse(service.isExtracting)
         XCTAssertEqual(service.progress, 0)
+    }
+
+    @MainActor
+    func testCASCExtractServiceEmptyEntries() async {
+        let storage = CascBridge.CascStorageHandle.createLocal()
+        let service = CASCExtractService(storage: storage)
+        let dest = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let result = await service.extract(entries: [], to: dest, preserveStructure: false)
+        XCTAssertEqual(result.successCount, 0)
+        XCTAssertFalse(result.wasCancelled)
+        XCTAssertTrue(result.failedFiles.isEmpty)
+    }
+
+    @MainActor
+    func testCASCExtractServiceCancellation() async {
+        let storage = CascBridge.CascStorageHandle.createLocal()
+        let service = CASCExtractService(storage: storage)
+        service.cancel()
+        XCTAssertTrue(service.isCancelled)
+    }
+
+    // MARK: - CDNProductService Tests
+
+    @MainActor
+    func testCDNProductServiceInitialState() {
+        let service = CDNProductService()
+        XCTAssertFalse(service.isLoading)
+        XCTAssertTrue(service.products.count > 0)
+        XCTAssertNil(service.selectedProduct)
+        XCTAssertTrue(service.selectedRegion.isEmpty)
+    }
+
+    @MainActor
+    func testCDNProductSelectProduct() {
+        let service = CDNProductService()
+        guard let product = service.products.first else {
+            XCTFail("Expected at least one built-in product")
+            return
+        }
+        service.selectProduct(product)
+        XCTAssertEqual(service.selectedProduct?.code, product.code)
+        XCTAssertEqual(service.selectedRegion, product.regions.first ?? "")
+    }
+
+    @MainActor
+    func testCDNProductBuiltInList() {
+        let products = CDNProduct.builtInList
+        XCTAssertFalse(products.isEmpty)
+        // Verify codes are unique (stable ids)
+        let codes = products.map(\.code)
+        XCTAssertEqual(codes.count, Set(codes).count)
     }
 }

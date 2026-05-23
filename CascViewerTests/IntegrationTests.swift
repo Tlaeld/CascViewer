@@ -22,10 +22,11 @@ final class IntegrationTests: XCTestCase {
         let searchService = CASCSearchService(handle: service.handle)
         let request = SearchRequest(mode: .filename, query: "*.blp", scope: .entireStorage, caseSensitive: false, useRegex: false, includePath: false, fileTypes: [], selectedTags: [], availableTags: [])
         let results = await searchService.search(request, allEntries: service.entries, entries: service.entries, currentPath: "")
+        appState.searchResults = results
 
         // Verify results propagate back through AppState
-        XCTAssertEqual(results.count, 2)
-        XCTAssertTrue(results.allSatisfy { $0.entry.name.hasSuffix(".blp") })
+        XCTAssertEqual(appState.searchResults.count, 2)
+        XCTAssertTrue(appState.searchResults.allSatisfy { $0.entry.name.hasSuffix(".blp") })
     }
 
     @MainActor

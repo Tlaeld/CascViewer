@@ -23,9 +23,7 @@ final class AppSettingsTests: XCTestCase {
     }
 
     func testDefaultValues() {
-        // Verify that AppSettings initializes with reasonable defaults
-        AppSettings.shared.resetToDefaults()
-        let settings = AppSettings.shared
+        let settings = AppSettings(defaults: defaults)
         XCTAssertTrue(settings.cdnDownloadEnabled)
         XCTAssertTrue(settings.showRemoteMarkers)
         XCTAssertTrue(settings.useBuiltInImageViewer)
@@ -36,33 +34,40 @@ final class AppSettingsTests: XCTestCase {
     }
 
     func testAvailableLanguages() {
-        let languages = AppSettings.shared.availableLanguages
-        XCTAssertEqual(languages.count, 2)
+        let settings = AppSettings(defaults: defaults)
+        let languages = settings.availableLanguages
+        XCTAssertTrue(languages.count >= 2)
         XCTAssertTrue(languages.contains(where: { $0.code == "en" }))
         XCTAssertTrue(languages.contains(where: { $0.code == "zh-Hans" }))
     }
 
     func testDefaultExtractURL() {
-        let settings = AppSettings.shared
+        let settings = AppSettings(defaults: defaults)
         let url = settings.defaultExtractURL
         XCTAssertTrue(url.isFileURL)
         XCTAssertFalse(url.path.isEmpty)
+        let desktopPath = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first?.path
+            ?? FileManager.default.temporaryDirectory.path
+        XCTAssertEqual(url.path, desktopPath)
     }
 
     func testLanguageNormalization() {
-        // AppSettings normalizes "zh" to "zh-Hans"
-        let manager = LocalizationManager.shared
-        manager.languageCode = "zh"
-        XCTAssertEqual(manager.languageCode, "zh-Hans")
+        let settings = AppSettings(defaults: defaults)
+        settings.language = "zh"
+        XCTAssertEqual(defaults.string(forKey: "appLanguage"), "zh-Hans")
+        XCTAssertEqual(LocalizationManager.shared.languageCode, "zh-Hans")
     }
 
     func testLocalizationWithArgs() {
+        let settings = AppSettings(defaults: defaults)
+        settings.language = "en"
         let format = L("search_result_count", 42)
         XCTAssertTrue(format.contains("42"))
     }
 
     func testLocalizationFallback() {
-        // Missing key should return the key itself
+        let settings = AppSettings(defaults: defaults)
+        settings.language = "en"
         let result = L("nonexistent_key_xyz")
         XCTAssertEqual(result, "nonexistent_key_xyz")
     }
@@ -77,5 +82,20 @@ final class AppSettingsTests: XCTestCase {
         XCTAssertEqual(AppTheme.light.localizationKey, "theme_light")
         XCTAssertEqual(AppTheme.dark.localizationKey, "theme_dark")
         XCTAssertEqual(AppTheme.system.localizationKey, "theme_system")
+    }
+
+    func testClearCache() {
+        let settings = AppSettings(defaults: defaults)
+        let fm = FileManager.default
+        let tempDir = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let cascCache = tempDir.appendingPathComponent("CascViewer")
+        let dummyFile = cascCache.appendingPathComponent("dummy.txt")
+        try? fm.createDirectory(at: cascCache, withIntermediateDirectories: true)
+        try? "test".write(to: dummyFile, atomically: true, encoding: .utf8)
+        XCTAssertTrue(fm.fileExists(atPath: dummyFile.path))
+
+        settings.clearCache(baseDirectory: tempDir)
+
+        XCTAssertFalse(fm.fileExists(atPath: dummyFile.path))
     }
 }

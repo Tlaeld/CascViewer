@@ -35,6 +35,17 @@ final class SearchParserTests: XCTestCase {
         XCTAssertNil(HexPatternParser.parse("   "))
     }
 
+    func testHexPatternParserEdgeCases() {
+        // Leading wildcard in continuous string
+        XCTAssertEqual(HexPatternParser.parse("?48"), [nil, 0x48])
+        // Trailing wildcard in continuous string
+        XCTAssertEqual(HexPatternParser.parse("48?"), [0x48, nil])
+        // Odd-length string should fail
+        XCTAssertNil(HexPatternParser.parse("486"))
+        // Single wildcard only
+        XCTAssertEqual(HexPatternParser.parse("?"), [nil])
+    }
+
     func testHexPatternParserSingleByte() {
         XCTAssertEqual(HexPatternParser.parse("FF"), [0xFF])
     }
@@ -94,6 +105,7 @@ final class SearchParserTests: XCTestCase {
         XCTAssertFalse(CASCStorageService.isSafeRegexPattern("(a*)*"))
         XCTAssertFalse(CASCStorageService.isSafeRegexPattern("(a+)*"))
         XCTAssertFalse(CASCStorageService.isSafeRegexPattern("(a*)+"))
+        XCTAssertFalse(CASCStorageService.isSafeRegexPattern("((a+)?)+"))
     }
 
     func testRegexPatternLengthLimit() {
@@ -146,6 +158,17 @@ final class SearchParserTests: XCTestCase {
         let data = Data("HeLLo WoRLd".utf8)
         let range = CASCSearchService.rangeOfCaseInsensitive("hello", in: data)
         XCTAssertNotNil(range)
+        XCTAssertEqual(range?.lowerBound, 0)
+        XCTAssertEqual(range?.upperBound, 5)
+    }
+
+    func testRangeOfCaseInsensitiveASCIIFallback() {
+        // Invalid UTF-8 data with ASCII needle
+        let data = Data([0xFF, 0x48, 0x65, 0x6C, 0x6C, 0x6F, 0xFE])
+        let range = CASCSearchService.rangeOfCaseInsensitive("hello", in: data)
+        XCTAssertNotNil(range)
+        XCTAssertEqual(range?.lowerBound, 1)
+        XCTAssertEqual(range?.upperBound, 6)
     }
 
     // MARK: - filterByTypes
@@ -211,5 +234,31 @@ final class SearchParserTests: XCTestCase {
         let service = CASCSearchService(handle: CascBridge.CascStorageHandle.createLocal())
         let candidates = service.getCandidates(scope: .entireStorage, allEntries: [], entries: entries, currentPath: "")
         XCTAssertEqual(candidates.count, 1)
+    }
+
+    // MARK: - Search mode boundary tests (no real storage)
+
+    @MainActor
+    func testSearchContentEmptyQuery() async {
+        let service = CASCSearchService(handle: CascBridge.CascStorageHandle.createLocal())
+        let request = SearchRequest(mode: .content, query: "", scope: .entireStorage, caseSensitive: false, useRegex: false, includePath: false, fileTypes: [], selectedTags: [], availableTags: [])
+        let results = await service.search(request, allEntries: [], entries: [], currentPath: "")
+        XCTAssertTrue(results.isEmpty)
+    }
+
+    @MainActor
+    func testSearchHexInvalidPattern() async {
+        let service = CASCSearchService(handle: CascBridge.CascStorageHandle.createLocal())
+        let request = SearchRequest(mode: .hex, query: "GG HH", scope: .entireStorage, caseSensitive: false, useRegex: false, includePath: false, fileTypes: [], selectedTags: [], availableTags: [])
+        let results = await service.search(request, allEntries: [], entries: [], currentPath: "")
+        XCTAssertTrue(results.isEmpty)
+    }
+
+    @MainActor
+    func testSearchTagNoMatch() async {
+        let service = CASCSearchService(handle: CascBridge.CascStorageHandle.createLocal())
+        let request = SearchRequest(mode: .tag, query: "NonExistent", scope: .entireStorage, caseSensitive: false, useRegex: false, includePath: false, fileTypes: [], selectedTags: [], availableTags: [])
+        let results = await service.search(request, allEntries: [], entries: [], currentPath: "")
+        XCTAssertTrue(results.isEmpty)
     }
 }
