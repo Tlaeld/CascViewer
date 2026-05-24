@@ -82,6 +82,7 @@ struct BLPViewerWindow: View {
             if let monitor = keyboardMonitor {
                 NSEvent.removeMonitor(monitor)
             }
+            viewModel.stopAnimation()
         }
     }
 
@@ -92,15 +93,20 @@ struct BLPViewerWindow: View {
         let defaultName = (fileName as NSString).deletingPathExtension + ".png"
         panel.nameFieldStringValue = defaultName
 
-        panel.beginSheetModal(for: NSApp.keyWindow ?? NSWindow()) { [weak viewModel] result in
+        guard let window = NSApp.keyWindow ?? NSApp.mainWindow else { return }
+        panel.beginSheetModal(for: window) { [weak viewModel] result in
             guard result == .OK, let url = panel.url else { return }
             guard let destination = CGImageDestinationCreateWithURL(url as CFURL, UTType.png.identifier as CFString, 1, nil) else {
-                viewModel?.errorMessage = L("export_failed")
+                Task { @MainActor in
+                    viewModel?.errorMessage = L("export_failed")
+                }
                 return
             }
             CGImageDestinationAddImage(destination, cgImage, nil)
             if !CGImageDestinationFinalize(destination) {
-                viewModel?.errorMessage = L("export_failed")
+                Task { @MainActor in
+                    viewModel?.errorMessage = L("export_failed")
+                }
             }
         }
     }
@@ -130,11 +136,16 @@ class BLPViewerViewModel: ObservableObject {
 
     private var decodedResult: ImageDecodeResult?
     private var displayLink: CVDisplayLink?
+    private var displayLinkContext: UnsafeMutableRawPointer?
 
     deinit {
-        // Directly stop the display link; deinit cannot call actor-isolated methods.
-        if let link = displayLink {
-            CVDisplayLinkStop(link)
+        // Inline cleanup to avoid deinit calling an actor-isolated method.
+        if let displayLink = displayLink {
+            CVDisplayLinkStop(displayLink)
+            CVDisplayLinkSetOutputCallback(displayLink, nil, nil)
+        }
+        if let context = displayLinkContext {
+            Unmanaged<BLPViewerViewModel>.fromOpaque(context).release()
         }
     }
 
@@ -169,27 +180,36 @@ class BLPViewerViewModel: ObservableObject {
     func stepFrame(delta: Int) {
         guard let result = decodedResult else { return }
         let frameCount = Int(result.frameCount)
+        guard frameCount > 0 else { return }
         currentFrameIndex = (currentFrameIndex + delta + frameCount) % frameCount
         updateCurrentFrame()
     }
 
     private func updateCurrentFrame() {
-        guard let result = decodedResult else { return }
+        guard let result = decodedResult, !result.frames.isEmpty else {
+            currentFrame = nil
+            return
+        }
 
         // If no mipmaps, use the main frame directly
         if result.mipMaps.isEmpty {
             let frame = min(currentFrameIndex, result.frames.count - 1)
-            if frame >= 0 {
-                currentFrame = result.frames[frame].cgImage
-            }
+            currentFrame = result.frames[frame].cgImage
             return
         }
 
         let level = min(Int(currentMipLevel), result.mipMaps.count - 1)
-        let frame = min(currentFrameIndex, result.mipMaps[level].count - 1)
-        if level >= 0, frame >= 0 {
-            currentFrame = result.mipMaps[level][frame].cgImage
+        guard level >= 0, level < result.mipMaps.count else {
+            currentFrame = nil
+            return
         }
+        let frames = result.mipMaps[level]
+        guard !frames.isEmpty else {
+            currentFrame = nil
+            return
+        }
+        let frame = min(currentFrameIndex, frames.count - 1)
+        currentFrame = frames[frame].cgImage
     }
 
     private func startAnimation() {
@@ -197,15 +217,23 @@ class BLPViewerViewModel: ObservableObject {
         var link: CVDisplayLink?
         let status = CVDisplayLinkCreateWithActiveCGDisplays(&link)
         guard status == kCVReturnSuccess, let displayLink = link else { return }
-        let context = Unmanaged.passUnretained(self).toOpaque()
+        // Use passRetained so the callback holds a strong reference.
+        // stopAnimation will balance with a release().
+        let context = Unmanaged.passRetained(self).toOpaque()
+        displayLinkContext = context
         CVDisplayLinkSetOutputCallback(displayLink, blpDisplayLinkCallback, context)
         CVDisplayLinkStart(displayLink)
         self.displayLink = displayLink
     }
 
-    private func stopAnimation() {
+    func stopAnimation() {
         if let displayLink = displayLink {
             CVDisplayLinkStop(displayLink)
+            CVDisplayLinkSetOutputCallback(displayLink, nil, nil)
+        }
+        if let context = displayLinkContext {
+            Unmanaged<BLPViewerViewModel>.fromOpaque(context).release()
+            displayLinkContext = nil
         }
         displayLink = nil
     }
@@ -228,6 +256,7 @@ final class ImageViewerWindowController: NSWindowController, NSWindowDelegate {
         window.title = fileName
         window.setContentSize(NSSize(width: 800, height: 600))
         window.setFrameAutosaveName("CascViewerImageWindow")
+        window.isRestorable = false
         window.center()
         super.init(window: window)
         window.delegate = self
@@ -246,6 +275,7 @@ final class ImageViewerWindowController: NSWindowController, NSWindowDelegate {
     func windowWillClose(_ notification: Notification) {
         // Break the NSHostingView <-> NSWindow retain cycle and allow SwiftUI state to tear down cleanly
         window?.contentView = nil
+        window?.delegate = nil
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
             Self.lock.lock()
