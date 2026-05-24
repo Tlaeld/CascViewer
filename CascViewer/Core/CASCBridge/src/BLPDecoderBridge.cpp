@@ -519,17 +519,21 @@ static bool decodeJPEGData(const uint8_t* jpegData, size_t jpegLen,
     CFRelease(cfData);
     if (!source) return false;
 
-    CGImageRef image = CGImageSourceCreateImageAtIndex(source, 0, NULL);
+    CGImageRef rawImage = CGImageSourceCreateImageAtIndex(source, 0, NULL);
     CFRelease(source);
-    if (!image) return false;
+    if (!rawImage) return false;
+    struct CGImageGuard {
+        CGImageRef img;
+        explicit CGImageGuard(CGImageRef i) : img(i) {}
+        ~CGImageGuard() { if (img) CGImageRelease(img); }
+    } imageGuard(rawImage);
 
-    outW = static_cast<uint32_t>(CGImageGetWidth(image));
-    outH = static_cast<uint32_t>(CGImageGetHeight(image));
+    outW = static_cast<uint32_t>(CGImageGetWidth(rawImage));
+    outH = static_cast<uint32_t>(CGImageGetHeight(rawImage));
 
     constexpr uint32_t MAX_DIMENSION = 16384;
     constexpr uint64_t MAX_PIXELS = static_cast<uint64_t>(MAX_DIMENSION) * MAX_DIMENSION;
     if (outW > MAX_DIMENSION || outH > MAX_DIMENSION || static_cast<uint64_t>(outW) * outH > MAX_PIXELS) {
-        CGImageRelease(image);
         return false;
     }
 
@@ -545,13 +549,11 @@ static bool decodeJPEGData(const uint8_t* jpegData, size_t jpegLen,
     CGColorSpaceRelease(colorSpace);
 
     if (!context) {
-        CGImageRelease(image);
         return false;
     }
 
-    CGContextDrawImage(context, CGRectMake(0, 0, width, height), image);
+    CGContextDrawImage(context, CGRectMake(0, 0, width, height), rawImage);
     CGContextRelease(context);
-    CGImageRelease(image);
 
     // Convert premultiplied alpha to straight alpha
     for (size_t i = 0; i < width * height; ++i) {

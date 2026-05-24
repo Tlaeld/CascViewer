@@ -10,6 +10,25 @@
 
 namespace CascBridge {
 
+/// RAII guard for CascLib file handles (exception-safe).
+struct CascFileGuard {
+    HANDLE hFile = nullptr;
+    explicit CascFileGuard(HANDLE h = nullptr) : hFile(h) {}
+    ~CascFileGuard() { if (hFile) CascCloseFile(hFile); }
+    CascFileGuard(const CascFileGuard&) = delete;
+    CascFileGuard& operator=(const CascFileGuard&) = delete;
+    CascFileGuard(CascFileGuard&& other) noexcept : hFile(other.hFile) { other.hFile = nullptr; }
+    CascFileGuard& operator=(CascFileGuard&& other) noexcept {
+        if (this != &other) {
+            if (hFile) CascCloseFile(hFile);
+            hFile = other.hFile;
+            other.hFile = nullptr;
+        }
+        return *this;
+    }
+    HANDLE release() { HANDLE h = hFile; hFile = nullptr; return h; }
+};
+
 // Windows error codes that may be returned by CascLib
 #ifndef ERROR_CRC
 #define ERROR_CRC 23
@@ -156,7 +175,7 @@ void LocalCascStorage::invokeProgressCallback(const char* message, int current, 
 }
 
 void LocalCascStorage::requestCancelExtraction() {
-    cancelGeneration.fetch_add(1, std::memory_order_relaxed);
+    cancelGeneration.fetch_add(1, std::memory_order_release);
 }
 
 CascError LocalCascStorage::open(const std::string& localPath)
@@ -379,8 +398,14 @@ std::vector<uint8_t> LocalCascStorage::readFile(const std::string& cascPath, Cas
                 }
                 break;
             }
-            buffer.insert(buffer.end(), chunk.begin(), chunk.begin() + bytesRead);
-            totalRead += bytesRead;
+            try {
+                buffer.insert(buffer.end(), chunk.begin(), chunk.begin() + bytesRead);
+                totalRead += bytesRead;
+            } catch (const std::bad_alloc&) {
+                CascCloseFile(hFile);
+                error = CascError::ReadError;
+                return {};
+            }
         }
 
         CascCloseFile(hFile);
@@ -492,7 +517,13 @@ CascError LocalCascStorage::extractFile(const std::string& cascPath,
     {
         size_t lastSep = destPath.find_last_of("/\\");
         if (lastSep != std::string::npos) {
-            std::string dir = destPath.substr(0, lastSep);
+            std::string dir;
+            try {
+                dir = destPath.substr(0, lastSep);
+            } catch (const std::bad_alloc&) {
+                CascCloseFile(hFile);
+                return CascError::ReadError;
+            }
             std::error_code ec;
             std::filesystem::create_directories(dir, ec);
             if (ec) {
@@ -512,7 +543,7 @@ CascError LocalCascStorage::extractFile(const std::string& cascPath,
     bool hasKnownSize = CascGetFileSize64(hFile, &fileSize64);
 
     uint64_t totalRead = 0;
-    const uint64_t startCancelGen = cancelGeneration.load(std::memory_order_relaxed);
+    const uint64_t startCancelGen = cancelGeneration.load(std::memory_order_acquire);
 
     if (hasKnownSize && fileSize64 > 0) {
         if (fileSize64 > MAX_EXTRACT_SIZE) {
@@ -523,7 +554,7 @@ CascError LocalCascStorage::extractFile(const std::string& cascPath,
         }
         while (totalRead < fileSize64) {
             // Check cancellation after each chunk
-            if (cancelGeneration.load(std::memory_order_relaxed) != startCancelGen) {
+            if (cancelGeneration.load(std::memory_order_acquire) != startCancelGen) {
                 CascCloseFile(hFile);
                 std::fclose(fp);
                 std::remove(destPath.c_str());
@@ -558,7 +589,7 @@ CascError LocalCascStorage::extractFile(const std::string& cascPath,
                 return CascError::ReadError;
             }
             // Check cancellation after each chunk
-            if (cancelGeneration.load(std::memory_order_relaxed) != startCancelGen) {
+            if (cancelGeneration.load(std::memory_order_acquire) != startCancelGen) {
                 CascCloseFile(hFile);
                 std::fclose(fp);
                 std::remove(destPath.c_str());
@@ -686,7 +717,13 @@ std::pair<std::vector<InstallManifestTag>, std::vector<InstallManifestEntry>> Lo
     }
 
     size_t fileSize = static_cast<size_t>(fileSize64);
-    std::vector<uint8_t> data(fileSize);
+    std::vector<uint8_t> data;
+    try {
+        data.resize(fileSize);
+    } catch (const std::bad_alloc&) {
+        CascCloseFile(hFile);
+        return {};
+    }
     DWORD bytesRead = 0;
     if (!CascReadFile(hFile, data.data(), static_cast<DWORD>(fileSize), &bytesRead) || bytesRead != fileSize) {
         CascCloseFile(hFile);
