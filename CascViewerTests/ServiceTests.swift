@@ -70,6 +70,9 @@ final class ServiceTests: XCTestCase {
         let storage = CascBridge.CascStorageHandle.createLocal()
         let service = CASCExtractService(storage: storage)
         let dest = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        addTeardownBlock {
+            try? FileManager.default.removeItem(at: dest)
+        }
         let result = await service.extract(entries: [], to: dest, preserveStructure: false)
         XCTAssertEqual(result.successCount, 0)
         XCTAssertFalse(result.wasCancelled)
@@ -169,6 +172,9 @@ final class ServiceTests: XCTestCase {
             CASCFileEntry(name: "test.txt", fullPath: "a/test.txt", type: .file, size: 11, encodingKey: "")
         ]
         let dest = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        addTeardownBlock {
+            try? FileManager.default.removeItem(at: dest)
+        }
 
         let result = await service.extract(entries: entries, to: dest, preserveStructure: false)
         XCTAssertEqual(result.successCount, 1)
@@ -187,6 +193,9 @@ final class ServiceTests: XCTestCase {
             CASCFileEntry(name: "test.txt", fullPath: "a/test.txt", type: .file, size: 11, encodingKey: "")
         ]
         let dest = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        addTeardownBlock {
+            try? FileManager.default.removeItem(at: dest)
+        }
 
         let result = await service.extract(entries: entries, to: dest, preserveStructure: false)
         XCTAssertEqual(result.successCount, 0)
