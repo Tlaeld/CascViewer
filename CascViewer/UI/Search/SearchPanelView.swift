@@ -2,7 +2,7 @@ import SwiftUI
 
 struct SearchPanelView: View {
     @ObservedObject var appState: AppState
-    @StateObject private var settings = AppSettings.shared
+    @ObservedObject private var settings = AppSettings.shared
 
     @State private var searchTask: Task<Void, Never>? = nil
     @State private var selectedMatchId: String? = nil
@@ -269,6 +269,8 @@ struct SearchPanelView: View {
         }
         .onDisappear {
             searchTask?.cancel()
+            sortTask?.cancel()
+            activeExtractService?.cancel()
             appState.searchIsSearching = false
         }
         .onChange(of: appState.currentStorage?.allEntriesCount) { _ in
@@ -278,11 +280,9 @@ struct SearchPanelView: View {
             sortedMatches = []
         }
         .sheet(isPresented: $showingExtractSheet) {
-            if appState.currentStorage != nil {
-                ExtractDialogView(entries: extractEntries) { destination, preserveStructure, overwriteExisting, openAfterExtract in
-                    Task {
-                        await performExtraction(to: destination, preserveStructure: preserveStructure, overwriteExisting: overwriteExisting, openAfterExtract: openAfterExtract)
-                    }
+            ExtractDialogView(entries: extractEntries) { destination, preserveStructure, overwriteExisting, openAfterExtract in
+                Task {
+                    await performExtraction(to: destination, preserveStructure: preserveStructure, overwriteExisting: overwriteExisting, openAfterExtract: openAfterExtract)
                 }
             }
         }
@@ -297,7 +297,7 @@ struct SearchPanelView: View {
                         ProgressView(value: service.progress, total: 1.0)
                             .progressViewStyle(LinearProgressViewStyle())
                             .frame(width: 200)
-                        Text("\(Int(service.progress * 100))%")
+                        Text("\(Int(max(0, min(service.progress, 1)) * 100))%")
                             .font(.system(size: 11))
                             .foregroundColor(.secondary)
                             .monospacedDigit()
@@ -313,7 +313,6 @@ struct SearchPanelView: View {
                 }
             }
         }
-        .id(settings.language)
     }
 
     private var canSearch: Bool {
@@ -328,7 +327,7 @@ struct SearchPanelView: View {
         let results = appState.searchResults
         let sortBy = appState.searchSortBy
         let ascending = appState.searchSortAscending
-        sortTask = Task {
+        sortTask = Task { @MainActor in
             let sorted = await Task.detached(priority: .userInitiated) {
                 let sorted: [SearchMatch]
                 switch sortBy {
@@ -357,6 +356,7 @@ struct SearchPanelView: View {
         }
     }
 
+    @MainActor
     private func performSearch() {
         guard let storage = appState.currentStorage else { return }
         searchTask?.cancel()
@@ -386,11 +386,9 @@ struct SearchPanelView: View {
 
             guard !Task.isCancelled else { return }
 
-            await MainActor.run {
-                appState.searchResults = searchResults
-                appState.searchIsSearching = false
-                // applySorting() is triggered by .onChange(of: appState.searchResults)
-            }
+            appState.searchResults = searchResults
+            appState.searchIsSearching = false
+            // applySorting() is triggered by .onChange(of: appState.searchResults)
         }
     }
 
@@ -402,22 +400,17 @@ struct SearchPanelView: View {
             .reduce(into: Set<String>()) { $0.insert($1) }
     }
 
+    @MainActor
     private func performExtraction(to destination: URL, preserveStructure: Bool, overwriteExisting: Bool, openAfterExtract: Bool) async {
         guard let storageService = appState.currentStorage else { return }
         let extractService = CASCExtractService(storage: storageService.handle)
-        await MainActor.run {
-            activeExtractService = extractService
-        }
+        activeExtractService = extractService
         let result = await extractService.extract(entries: extractEntries, to: destination, preserveStructure: preserveStructure, overwriteExisting: overwriteExisting)
-        await MainActor.run {
-            activeExtractService = nil
-        }
+        activeExtractService = nil
         if result.failedFiles.isEmpty {
             appState.errorMessage = L("extract_success", result.successCount)
             if openAfterExtract {
-                _ = await MainActor.run {
-                    NSWorkspace.shared.open(destination)
-                }
+                NSWorkspace.shared.open(destination)
             }
         } else {
             let failedList = result.failedFiles.prefix(10).map {

@@ -95,33 +95,32 @@ struct ToolbarView: View {
             allowedContentTypes: [.folder],
             allowsMultipleSelection: false
         ) { result in
-            switch result {
-            case .success(let urls):
-                if let url = urls.first {
-                    appState.openStorageTask = Task {
-                        let didStartAccessing = url.startAccessingSecurityScopedResource()
-                        defer {
-                            if didStartAccessing {
-                                url.stopAccessingSecurityScopedResource()
+            Task { @MainActor in
+                switch result {
+                case .success(let urls):
+                    if let url = urls.first {
+                        appState.openStorageTask?.cancel()
+                        appState.openStorageTask = Task {
+                            let didStartAccessing = url.startAccessingSecurityScopedResource()
+                            defer {
+                                if didStartAccessing {
+                                    url.stopAccessingSecurityScopedResource()
+                                }
                             }
-                        }
-                        let storage = CascBridge.CascStorageHandle.createLocal()
-                        let service = CASCStorageService(storage: storage)
-                        await MainActor.run {
+                            let storage = CascBridge.CascStorageHandle.createLocal()
+                            let service = CASCStorageService(storage: storage)
                             appState.currentStorage?.close()
                             appState.currentStorage = service
-                        }
-                        await service.openLocal(path: url.path)
-                        if service.error != nil {
-                            await MainActor.run {
+                            await service.openLocal(path: url.path)
+                            if service.error != nil {
                                 appState.errorMessage = service.error?.localizedDescription
                             }
+                            appState.openStorageTask = nil
                         }
-                        appState.openStorageTask = nil
                     }
+                case .failure(let error):
+                    appState.errorMessage = error.localizedDescription
                 }
-            case .failure(let error):
-                appState.errorMessage = error.localizedDescription
             }
         }
 
@@ -129,7 +128,7 @@ struct ToolbarView: View {
 }
 
 struct SettingsView: View {
-    @StateObject private var settings = AppSettings.shared
+    @ObservedObject private var settings = AppSettings.shared
     @State private var showingClearCacheAlert = false
     @State private var cacheClearedSize = ""
     @Environment(\.dismiss) private var dismiss
@@ -266,7 +265,9 @@ struct SettingsView: View {
         guard let window = NSApp.keyWindow else { return }
         panel.beginSheetModal(for: window) { result in
             if result == .OK, let url = panel.url {
-                self.settings.defaultExtractPath = url.path
+                Task { @MainActor in
+                    self.settings.defaultExtractPath = url.path
+                }
             }
         }
     }
@@ -281,7 +282,9 @@ struct SettingsView: View {
         guard let window = NSApp.keyWindow else { return }
         panel.beginSheetModal(for: window) { result in
             if result == .OK, let url = panel.url {
-                self.settings.cdnCachePath = url.path
+                Task { @MainActor in
+                    self.settings.cdnCachePath = url.path
+                }
             }
         }
     }
@@ -323,6 +326,9 @@ struct ListFileButton: View {
                         }
                     }
                 }
+            }
+            .onDisappear {
+                pendingPromptTask?.cancel()
             }
         }
     }
@@ -369,14 +375,12 @@ struct ListFileButton: View {
                         url.stopAccessingSecurityScopedResource()
                     }
                 }
-                storage.listFilePath = url.path
-                var handle = storage.handle
-                handle.setListFilePath(std.string(url.path))
-                Task {
+                Task { @MainActor in
+                    storage.listFilePath = url.path
+                    var handle = storage.handle
+                    handle.setListFilePath(std.string(url.path))
                     await storage.refreshCurrentStorage()
-                    await MainActor.run {
-                        storage.needsListFile = false
-                    }
+                    storage.needsListFile = false
                 }
             }
         }

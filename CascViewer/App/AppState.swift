@@ -47,7 +47,7 @@ extension AppState {
             cancelBox.setCancelled()
         }
 
-        Task { [weak self] in
+        Task { @MainActor [weak self] in
             let manifest = await storage.loadInstallManifest()
             guard let self = self else { return }
             guard !cancelBox.isCancelled else { return }
@@ -69,7 +69,7 @@ extension AppState {
 }
 
 /// Thread-safe cancellation flag for sheet dismissal tracking.
-private final class CancelBox {
+private final class CancelBox: @unchecked Sendable {
     private let lock = NSLock()
     private var _isCancelled = false
 

@@ -6,6 +6,7 @@ struct FilePreviewPanel: View {
     @EnvironmentObject var appState: AppState
     @State private var selectedEntry: CASCFileEntry? = nil
     @State private var isOpeningImage = false
+    @State private var openFileTask: Task<Void, Never>? = nil
 
     private func refreshSelectedEntry() {
         guard let storage = appState.currentStorage, !appState.selectedPath.isEmpty else {
@@ -57,7 +58,7 @@ struct FilePreviewPanel: View {
                     if isImageFile(entry.name) {
                         Button(action: {
                             isOpeningImage = true
-                            Task {
+                            openFileTask = Task {
                                 await openImageFile(entry: entry)
                                 isOpeningImage = false
                             }
@@ -101,6 +102,9 @@ struct FilePreviewPanel: View {
         .onChange(of: appState.selectedPath) { _ in
             refreshSelectedEntry()
         }
+        .onDisappear {
+            openFileTask?.cancel()
+        }
         // Removed watcher on allEntriesCount; selectedPath changes are sufficient.
         // This avoids redundant refreshes during bulk loading.
     }
@@ -112,6 +116,7 @@ struct FilePreviewPanel: View {
         return imageExts.contains { ext.hasSuffix($0) }
     }
 
+    @MainActor
     private func openImageFile(entry: CASCFileEntry) async {
         guard let storageService = appState.currentStorage else { return }
 
@@ -125,7 +130,12 @@ struct FilePreviewPanel: View {
         let sessionDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("CascViewer/Open", isDirectory: true)
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
-        try? FileManager.default.createDirectory(at: sessionDir, withIntermediateDirectories: true)
+        do {
+            try FileManager.default.createDirectory(at: sessionDir, withIntermediateDirectories: true)
+        } catch {
+            appState.errorMessage = L("create_temp_dir_failed", error.localizedDescription)
+            return
+        }
 
         let safeName = entry.name
             .components(separatedBy: "/")
@@ -145,9 +155,7 @@ struct FilePreviewPanel: View {
         if result.wasCancelled {
             return
         } else if result.failedFiles.isEmpty {
-            await MainActor.run {
-                NSWorkspace.shared.open(destURL)
-            }
+            NSWorkspace.shared.open(destURL)
         } else {
             let reason = result.failedFiles.first?.error.localizedDescription ?? L("unknown_error")
             appState.errorMessage = L("open_failed", safeName, reason)
