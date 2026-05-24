@@ -1,5 +1,4 @@
 import Foundation
-import Combine
 import SwiftUI
 
 import CascBridge
@@ -10,9 +9,8 @@ final class AppState: ObservableObject {
     @Published var selectedPath: String = ""
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
+    var openStorageTask: Task<Void, Never>? = nil
 
-    // Search mode (integrated into main UI, persistent state)
-    @Published var isSearchMode: Bool = false
     @Published var searchQuery: String = ""
     @Published var searchMode: SearchMode = .filename
     @Published var searchScope: SearchScope = .entireStorage
@@ -44,26 +42,46 @@ extension AppState {
         alert.accessoryView = indicator
         alert.addButton(withTitle: L("cancel"))
 
-        var wasCancelled = false
+        let cancelBox = CancelBox()
         alert.beginSheetModal(for: window) { _ in
-            wasCancelled = true
+            cancelBox.setCancelled()
         }
 
-        Task {
+        Task { [weak self] in
             let manifest = await storage.loadInstallManifest()
-            await MainActor.run {
-                guard !wasCancelled else { return }
+            guard let self = self else { return }
+            guard !cancelBox.isCancelled else { return }
+            // Only endSheet if the alert is still visible (not already dismissed by Cancel)
+            if alert.window.isVisible {
                 alert.window.sheetParent?.endSheet(alert.window)
-                if let manifest = manifest {
-                    InstallManifestWindowController.show(
-                        tags: manifest.tags,
-                        entries: manifest.entries,
-                        storageService: storage
-                    )
-                } else {
-                    self.errorMessage = L("install_manifest_not_found")
-                }
+            }
+            if let manifest = manifest {
+                InstallManifestWindowController.show(
+                    tags: manifest.tags,
+                    entries: manifest.entries,
+                    storageService: storage
+                )
+            } else {
+                self.errorMessage = L("install_manifest_not_found")
             }
         }
+    }
+}
+
+/// Thread-safe cancellation flag for sheet dismissal tracking.
+private final class CancelBox {
+    private let lock = NSLock()
+    private var _isCancelled = false
+
+    var isCancelled: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return _isCancelled
+    }
+
+    func setCancelled() {
+        lock.lock()
+        _isCancelled = true
+        lock.unlock()
     }
 }

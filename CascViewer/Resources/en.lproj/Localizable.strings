@@ -25,7 +25,7 @@
 "overwrite_existing" = "Overwrite existing files";
 "open_after_extract" = "Open destination after extraction";
 "show_remote_markers" = "Show remote file markers";
-"show_remote_markers_help" = "Mark files not present locally in red with an asterisk";
+"show_remote_markers_help" = "Highlight files not present locally in red";
 "use_builtin_image_viewer" = "Use Built-in Image Viewer";
 "use_builtin_image_viewer_help" = "Open BLP/DDS files with the built-in viewer instead of the system default";
 "theme" = "Theme";
@@ -100,6 +100,7 @@
 "browse" = "Browse...";
 "extract_success" = "Extracted %d file(s) successfully";
 "extract_partial" = "Extracted %d file(s), %d failed";
+"extracting_files" = "Extracting %@...";
 "copy_path" = "Copy Path";
 
 /* Download / Open */
@@ -113,9 +114,18 @@
 "file_not_found" = "File Not Found";
 "read_error" = "Read Error";
 "unknown_error" = "Unknown Error";
+"error_invalid_path" = "Invalid path";
+"error_storage_not_found" = "Storage not found";
+"error_storage_corrupted" = "Storage corrupted";
+"error_network" = "Network error";
+"error_cdn_config" = "CDN configuration error";
+"error_decoding" = "Decoding error";
+"error_not_implemented" = "Not implemented";
+"error_cancelled" = "Cancelled";
 "loading_storage" = "Loading storage...";
 "loading_listfile" = "Applying listfile...";
 "no_storage_open" = "No Storage Open";
+"folder_empty" = "This folder is empty";
 
 /* Search */
 "search_mode_filename" = "Filename";
@@ -135,6 +145,7 @@
 "search_include_path" = "Search in Path";
 "search_file_type" = "FILE TYPE";
 "search_tags" = "TAGS";
+"search_no_tags" = "No tags available";
 "search_custom_ext" = "Custom:";
 "search_custom_ext_placeholder" = "ext1,ext2";
 "search_sort_by" = "Sort";
@@ -165,12 +176,18 @@
 
 /* Status Bar */
 "status_files" = "Files: %d";
+"status_current_folder" = "Current: %d";
+"status_selected" = "Selected: %@";
 "status_storage" = "Storage: %@ %@";
 "status_ready" = "Ready";
 
 /* Loading Progress */
 "loading_file" = "Loading file";
-"loading_indexes" = "Loading indexes";
+"progress_loading_file" = "Loading file";
+"progress_loading_manifest" = "Loading manifest";
+"progress_downloading_file" = "Downloading file";
+"progress_loading_indexes" = "Loading indexes";
+"progress_downloading_archive_indexes" = "Downloading archive indexes";
 "loading_manifest_encoding" = "Loading manifest: ENCODING";
 "loading_manifest_download" = "Loading manifest: DOWNLOAD";
 "loading_manifest_root" = "Loading manifest: ROOT";
@@ -202,6 +219,8 @@
 "please_wait" = "Please wait...";
 "local_storage_cannot_download" = "%d file(s) could not be downloaded from local storage. Please open with online storage and try again.";
 "load_listfile" = "Load Listfile";
+"export_result_title" = "Export Result";
+"extract_skipped" = "%d skipped (not found)";
 
 /* Listfile Prompt */
 "listfile_prompt_title" = "Missing Filename Mapping";
