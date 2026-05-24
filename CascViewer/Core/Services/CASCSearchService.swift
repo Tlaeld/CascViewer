@@ -40,7 +40,7 @@ enum SearchScope: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
-struct SearchRequest {
+struct SearchRequest: Sendable {
     let mode: SearchMode
     let query: String
     let scope: SearchScope
@@ -52,13 +52,13 @@ struct SearchRequest {
     let availableTags: [CascTag]
 }
 
-struct SearchMatchPreview: Equatable {
+struct SearchMatchPreview: Equatable, Sendable {
     let prefix: String
     let match: String
     let suffix: String
 }
 
-struct SearchMatch: Identifiable, Equatable {
+struct SearchMatch: Identifiable, Equatable, Sendable {
     let entry: CASCFileEntry
     let preview: SearchMatchPreview?
     let offset: Int?

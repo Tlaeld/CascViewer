@@ -157,10 +157,15 @@ final class CASCStorageService: ObservableObject {
 
     deinit {
         handle.setOpenProgressCallback(nil, nil)
-        // Wait for all pending queue operations to finish before closing the
-        // handle so background work never touches a destroyed C++ object.
-        group.wait()
-        handle.close()
+        // Offload the blocking wait to a detached task to avoid deadlocking
+        // the main thread if background work is also trying to dispatch here.
+        let h = handle
+        let g = group
+        Task.detached {
+            g.wait()
+            var localHandle = h
+            localHandle.close()
+        }
     }
 
     /// Run work on the serial background queue, tracking it with a DispatchGroup
@@ -246,7 +251,14 @@ final class CASCStorageService: ObservableObject {
         // Use product-specific subfolder to avoid cache conflicts between different products
         let cachePath = (baseCachePath as NSString).appendingPathComponent(product)
         // Ensure cache directory exists before opening
-        try? FileManager.default.createDirectory(atPath: cachePath, withIntermediateDirectories: true)
+        do {
+            try FileManager.default.createDirectory(atPath: cachePath, withIntermediateDirectories: true)
+        } catch {
+            self.error = .unknown
+            loadProgressMessage = L("cache_directory_failed", error.localizedDescription)
+            isLoading = false
+            return
+        }
         let config = "\(cachePath)*\(product)*\(region)"
 
         let result = await openWithConfig(config: config)
@@ -595,7 +607,7 @@ final class CASCStorageService: ObservableObject {
     }
 
     private nonisolated static func buildChildrenMapParallel(from entries: [CASCFileEntry]) -> (children: [String: [DirectoryNode]], entriesByPath: [String: CASCFileEntry]) {
-        let processorCount = ProcessInfo.processInfo.processorCount
+        let processorCount = max(ProcessInfo.processInfo.processorCount, 1)
         let chunkSize = max(entries.count / processorCount, 4096)
         let chunkCount = (entries.count + chunkSize - 1) / chunkSize
 

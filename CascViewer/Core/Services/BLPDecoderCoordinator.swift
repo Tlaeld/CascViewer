@@ -10,13 +10,13 @@ actor BLPDecoderCoordinator {
 
         // Try native C++ decoder first (BLP, DDS)
         var error = CascBridge.CascError.None
-        let cppResult = data.withUnsafeBytes { rawBuffer in
+        let cppResult: CascBridge.ImageDecodeResult? = data.withUnsafeBytes { rawBuffer -> CascBridge.ImageDecodeResult? in
             guard let ptr = rawBuffer.bindMemory(to: UInt8.self).baseAddress else {
-                return CascBridge.ImageDecodeResult()
+                return nil
             }
             return decoder.decode(ptr, data.count, &error)
         }
-        if error == .None {
+        if let cppResult = cppResult, error == .None {
             return ImageDecodeResult(cppResult: cppResult)
         }
 
@@ -37,10 +37,13 @@ actor BLPDecoderCoordinator {
         guard width > 0 && height > 0 else { return nil }
 
         let bytesPerPixel = 4
-        let bytesPerRow = width * bytesPerPixel
-        let totalBytes = height * bytesPerRow
+        let width64 = Int64(width)
+        let height64 = Int64(height)
+        let bytesPerRow64 = width64 * Int64(bytesPerPixel)
+        let totalBytes64 = height64 * bytesPerRow64
+        guard totalBytes64 <= Int64(Int.max) else { return nil }
 
-        var rgbaData = Data(count: totalBytes)
+        var rgbaData = Data(count: Int(totalBytes64))
         guard let colorSpace = CGColorSpace(name: CGColorSpace.sRGB) else { return nil }
 
         let success = rgbaData.withUnsafeMutableBytes { rawBuffer -> Bool in
@@ -50,7 +53,7 @@ actor BLPDecoderCoordinator {
                 width: width,
                 height: height,
                 bitsPerComponent: 8,
-                bytesPerRow: bytesPerRow,
+                bytesPerRow: Int(bytesPerRow64),
                 space: colorSpace,
                 bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue | CGBitmapInfo.byteOrder32Big.rawValue
             ) else { return false }
@@ -77,7 +80,7 @@ actor BLPDecoderCoordinator {
     }
 }
 
-struct ImageDecodeResult {
+struct ImageDecodeResult: Sendable {
     let format: BLPImageInfo.ImageFormat
     let width: UInt32
     let height: UInt32
@@ -87,7 +90,7 @@ struct ImageDecodeResult {
     let frames: [ImageFrame]
     let mipMaps: [[ImageFrame]]
 
-    struct ImageFrame {
+    struct ImageFrame: Sendable {
         let width: UInt32
         let height: UInt32
         let imageData: Data  // RGBA8888

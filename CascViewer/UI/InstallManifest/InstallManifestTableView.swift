@@ -3,9 +3,10 @@ import AppKit
 
 // MARK: - NSTableView Bridge
 
+@MainActor
 final class InstallManifestTableViewController: NSViewController {
-    private var tableView: NSTableView!
-    private var scrollView: NSScrollView!
+    private var tableView: NSTableView?
+    private var scrollView: NSScrollView?
 
     var entries: [InstallManifestEntry] = []
     var tags: [InstallManifestTag] = []
@@ -27,13 +28,13 @@ final class InstallManifestTableViewController: NSViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        scrollView = NSScrollView()
+        let scrollView = NSScrollView()
         scrollView.hasVerticalScroller = true
         scrollView.hasHorizontalScroller = true
         scrollView.autohidesScrollers = true
         scrollView.translatesAutoresizingMaskIntoConstraints = false
 
-        tableView = NSTableView()
+        let tableView = NSTableView()
         tableView.allowsMultipleSelection = true
         tableView.usesAlternatingRowBackgroundColors = true
         tableView.columnAutoresizingStyle = .uniformColumnAutoresizingStyle
@@ -84,6 +85,9 @@ final class InstallManifestTableViewController: NSViewController {
         let menu = NSMenu()
         menu.delegate = self
         tableView.menu = menu
+
+        self.scrollView = scrollView
+        self.tableView = tableView
     }
 
     func reload(entries: [InstallManifestEntry], tags: [InstallManifestTag], selectedIDs: Set<String>, sortColumn: InstallManifestView.SortColumn, sortAscending: Bool) {
@@ -91,6 +95,8 @@ final class InstallManifestTableViewController: NSViewController {
         let tagsChanged = self.tags.count != tags.count
         let sortChanged = self.sortColumn != sortColumn || self.sortAscending != sortAscending
         let selectionChanged = self.selectedIDs != selectedIDs
+
+        guard let tableView = tableView else { return }
 
         if entriesChanged || tagsChanged {
             self.entries = entries
@@ -159,6 +165,7 @@ final class InstallManifestTableViewController: NSViewController {
     }
 
     @objc private func handleDoubleClick() {
+        guard let tableView = tableView else { return }
         let row = tableView.clickedRow
         guard row >= 0, row < entries.count else { return }
         onDoubleClick?(entries[row])
@@ -184,6 +191,7 @@ final class InstallManifestTableViewController: NSViewController {
 extension InstallManifestTableViewController: NSMenuDelegate {
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
+        guard let tableView = tableView else { return }
         let clickedRow = tableView.clickedRow
         guard clickedRow >= 0, clickedRow < entries.count else { return }
 
