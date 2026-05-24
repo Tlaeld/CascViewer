@@ -290,6 +290,9 @@ static ImageDecodeResult decodeDDS(const uint8_t* data, size_t length, CascError
 
     ImageCompression compression = ImageCompression::Unknown;
     bool hasAlpha = false;
+    bool isUncompressed = false;
+    bool is24Bit = false;
+    bool needsBGRASwap = false;
 
     if (header.pfFlags & 0x4) { // DDPF_FOURCC
         if (fourccMatch(header.pfFourCC, "DXT1")) {
@@ -306,58 +309,197 @@ static ImageDecodeResult decodeDDS(const uint8_t* data, size_t length, CascError
             error = CascError::DecodingError;
             return result;
         }
+    } else if ((header.pfFlags & 0x40) == 0x40) { // DDPF_RGB
+        if (header.pfRGBBitCount == 32) {
+            isUncompressed = true;
+            hasAlpha = (header.pfFlags & 0x1) != 0; // DDPF_ALPHAPIXELS
+            // Detect BGRA vs RGBA based on masks
+            if (header.pfRBitMask == 0x00FF0000 && header.pfBBitMask == 0x000000FF) {
+                needsBGRASwap = true; // Standard Windows BGRA
+            } else if (header.pfRBitMask == 0x000000FF && header.pfBBitMask == 0x00FF0000) {
+                needsBGRASwap = false; // RGBA
+            } else if (header.pfRBitMask == 0xFF000000) {
+                // Some exporters use ARGB ordering with masks shifted; treat as BGRA if B is low
+                needsBGRASwap = (header.pfBBitMask == 0x0000FF00);
+            } else {
+                error = CascError::DecodingError;
+                return result;
+            }
+        } else if (header.pfRGBBitCount == 24) {
+            isUncompressed = true;
+            is24Bit = true;
+            hasAlpha = false;
+            if (header.pfRBitMask == 0x00FF0000 && header.pfBBitMask == 0x000000FF) {
+                needsBGRASwap = true; // BGR
+            } else if (header.pfRBitMask == 0x000000FF && header.pfBBitMask == 0x00FF0000) {
+                needsBGRASwap = false; // RGB
+            } else {
+                error = CascError::DecodingError;
+                return result;
+            }
+        }
     }
 
-    if (compression == ImageCompression::Unknown) {
+    if (compression == ImageCompression::Unknown && !isUncompressed) {
         error = CascError::DecodingError;
         return result;
     }
 
-    result.compression = compression;
+    result.compression = isUncompressed ? ImageCompression::Raw : compression;
     result.hasAlpha = hasAlpha;
 
     size_t dataOffset = sizeof(DDSHeader);
-    size_t blockSize = (compression == ImageCompression::DXTC1) ? 8 : 16;
-    size_t blockCountX = (width + 3) / 4;
-    size_t blockCountY = (height + 3) / 4;
-    size_t mainLevelSize = blockCountX * blockCountY * blockSize;
-
-    if (dataOffset + mainLevelSize > length) {
-        error = CascError::DecodingError;
-        return result;
-    }
 
     // Decode main image
     BLPFrame frame;
     frame.width = width;
     frame.height = height;
-    if (!decompressDXT(width, height, data + dataOffset, mainLevelSize, compression, frame.rgbaData)) {
-        error = CascError::DecodingError;
-        return result;
+    frame.rgbaData.resize(width * height * 4);
+
+    if (isUncompressed) {
+        size_t bytesPerPixel = is24Bit ? 3 : 4;
+        size_t minRowPitch = width * bytesPerPixel;
+        size_t rowPitch = minRowPitch;
+        if ((header.dwFlags & 0x8) && header.dwPitchOrLinearSize > 0 && header.dwPitchOrLinearSize < minRowPitch * height) {
+            rowPitch = header.dwPitchOrLinearSize;
+        }
+        size_t mainLevelSize = rowPitch * height;
+        if (dataOffset + mainLevelSize > length) {
+            error = CascError::DecodingError;
+            return result;
+        }
+
+        for (uint32_t y = 0; y < height; ++y) {
+            const uint8_t* src = data + dataOffset + y * rowPitch;
+            uint8_t* dst = frame.rgbaData.data() + y * width * 4;
+            if (is24Bit) {
+                if (needsBGRASwap) {
+                    for (uint32_t x = 0; x < width; ++x) {
+                        dst[x*4+0] = src[x*3+2]; // R
+                        dst[x*4+1] = src[x*3+1]; // G
+                        dst[x*4+2] = src[x*3+0]; // B
+                        dst[x*4+3] = 0xFF;       // A
+                    }
+                } else {
+                    for (uint32_t x = 0; x < width; ++x) {
+                        dst[x*4+0] = src[x*3+0]; // R
+                        dst[x*4+1] = src[x*3+1]; // G
+                        dst[x*4+2] = src[x*3+2]; // B
+                        dst[x*4+3] = 0xFF;       // A
+                    }
+                }
+            } else {
+                if (needsBGRASwap) {
+                    for (uint32_t x = 0; x < width; ++x) {
+                        dst[x*4+0] = src[x*4+2]; // R
+                        dst[x*4+1] = src[x*4+1]; // G
+                        dst[x*4+2] = src[x*4+0]; // B
+                        dst[x*4+3] = src[x*4+3]; // A
+                    }
+                } else {
+                    std::memcpy(dst, src, width * 4);
+                }
+            }
+        }
+    } else {
+        size_t blockSize = (compression == ImageCompression::DXTC1) ? 8 : 16;
+        size_t blockCountX = (width + 3) / 4;
+        size_t blockCountY = (height + 3) / 4;
+        size_t mainLevelSize = blockCountX * blockCountY * blockSize;
+
+        if (dataOffset + mainLevelSize > length) {
+            error = CascError::DecodingError;
+            return result;
+        }
+
+        if (!decompressDXT(width, height, data + dataOffset, mainLevelSize, compression, frame.rgbaData)) {
+            error = CascError::DecodingError;
+            return result;
+        }
     }
+
     result.frames.push_back(frame);
 
     // Decode mipmaps
-    size_t mipOffset = dataOffset + mainLevelSize;
+    size_t mipOffset = dataOffset;
+    if (isUncompressed) {
+        size_t bytesPerPixel = is24Bit ? 3 : 4;
+        size_t rowPitch = width * bytesPerPixel;
+        if ((header.dwFlags & 0x8) && header.dwPitchOrLinearSize > 0 && header.dwPitchOrLinearSize < rowPitch * height) {
+            rowPitch = header.dwPitchOrLinearSize;
+        }
+        mipOffset += rowPitch * height;
+    } else {
+        size_t blockSize = (compression == ImageCompression::DXTC1) ? 8 : 16;
+        size_t blockCountX = (width + 3) / 4;
+        size_t blockCountY = (height + 3) / 4;
+        mipOffset += blockCountX * blockCountY * blockSize;
+    }
+
     result.mipMaps.resize(result.mipLevels);
     result.mipMaps[0].push_back(frame);
 
     for (uint32_t mip = 1; mip < result.mipLevels; mip++) {
         uint32_t mipW = std::max(1U, width >> mip);
         uint32_t mipH = std::max(1U, height >> mip);
-        size_t mipBlockX = (mipW + 3) / 4;
-        size_t mipBlockY = (mipH + 3) / 4;
-        size_t mipSize = mipBlockX * mipBlockY * blockSize;
-
-        if (mipOffset + mipSize > length) break;
 
         BLPFrame mipFrame;
         mipFrame.width = mipW;
         mipFrame.height = mipH;
-        if (decompressDXT(mipW, mipH, data + mipOffset, mipSize, compression, mipFrame.rgbaData)) {
-            result.mipMaps[mip].push_back(mipFrame);
+        mipFrame.rgbaData.resize(mipW * mipH * 4);
+
+        if (isUncompressed) {
+            size_t bytesPerPixel = is24Bit ? 3 : 4;
+            size_t mipRowPitch = mipW * bytesPerPixel;
+            size_t mipSize = mipRowPitch * mipH;
+            if (mipOffset + mipSize > length) break;
+
+            for (uint32_t y = 0; y < mipH; ++y) {
+                const uint8_t* src = data + mipOffset + y * mipRowPitch;
+                uint8_t* dst = mipFrame.rgbaData.data() + y * mipW * 4;
+                if (is24Bit) {
+                    if (needsBGRASwap) {
+                        for (uint32_t x = 0; x < mipW; ++x) {
+                            dst[x*4+0] = src[x*3+2];
+                            dst[x*4+1] = src[x*3+1];
+                            dst[x*4+2] = src[x*3+0];
+                            dst[x*4+3] = 0xFF;
+                        }
+                    } else {
+                        for (uint32_t x = 0; x < mipW; ++x) {
+                            dst[x*4+0] = src[x*3+0];
+                            dst[x*4+1] = src[x*3+1];
+                            dst[x*4+2] = src[x*3+2];
+                            dst[x*4+3] = 0xFF;
+                        }
+                    }
+                } else {
+                    if (needsBGRASwap) {
+                        for (uint32_t x = 0; x < mipW; ++x) {
+                            dst[x*4+0] = src[x*4+2];
+                            dst[x*4+1] = src[x*4+1];
+                            dst[x*4+2] = src[x*4+0];
+                            dst[x*4+3] = src[x*4+3];
+                        }
+                    } else {
+                        std::memcpy(dst, src, mipW * 4);
+                    }
+                }
+            }
+            mipOffset += mipSize;
+        } else {
+            size_t blockSize = (compression == ImageCompression::DXTC1) ? 8 : 16;
+            size_t mipBlockX = (mipW + 3) / 4;
+            size_t mipBlockY = (mipH + 3) / 4;
+            size_t mipSize = mipBlockX * mipBlockY * blockSize;
+
+            if (mipOffset + mipSize > length) break;
+
+            if (decompressDXT(mipW, mipH, data + mipOffset, mipSize, compression, mipFrame.rgbaData)) {
+                result.mipMaps[mip].push_back(mipFrame);
+            }
+            mipOffset += mipSize;
         }
-        mipOffset += mipSize;
     }
 
     return result;

@@ -4,10 +4,15 @@ import CascBridge
 
 struct FilePreviewPanel: View {
     @EnvironmentObject var appState: AppState
+    @State private var selectedEntry: CASCFileEntry? = nil
+    @State private var isOpeningImage = false
 
-    private var selectedEntry: CASCFileEntry? {
-        guard let storage = appState.currentStorage, !appState.selectedPath.isEmpty else { return nil }
-        return storage.entry(forPath: appState.selectedPath)
+    private func refreshSelectedEntry() {
+        guard let storage = appState.currentStorage, !appState.selectedPath.isEmpty else {
+            selectedEntry = nil
+            return
+        }
+        selectedEntry = storage.entry(forPath: appState.selectedPath)
     }
 
     var body: some View {
@@ -50,14 +55,25 @@ struct FilePreviewPanel: View {
                     InfoRow(label: L("encoding_key_label"), value: entry.encodingKey)
 
                     if isImageFile(entry.name) {
-                        Button(L("open_image_viewer")) {
+                        Button(action: {
+                            isOpeningImage = true
                             Task {
                                 await openImageFile(entry: entry)
+                                isOpeningImage = false
+                            }
+                        }) {
+                            if isOpeningImage {
+                                ProgressView()
+                                    .scaleEffect(0.6)
+                                    .frame(width: 14, height: 14)
+                            } else {
+                                Text(L("open_image_viewer"))
                             }
                         }
                         .buttonStyle(.borderedProminent)
                         .controlSize(.small)
                         .padding(.top, 4)
+                        .disabled(isOpeningImage)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -79,11 +95,21 @@ struct FilePreviewPanel: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(Color(NSColor.controlBackgroundColor))
+        .onAppear {
+            refreshSelectedEntry()
+        }
+        .onChange(of: appState.selectedPath) { _ in
+            refreshSelectedEntry()
+        }
+        // Removed watcher on allEntriesCount; selectedPath changes are sufficient.
+        // This avoids redundant refreshes during bulk loading.
     }
 
     private func isImageFile(_ name: String) -> Bool {
         let ext = name.lowercased()
-        return ext.hasSuffix(".blp") || ext.hasSuffix(".dds")
+        let imageExts = [".blp", ".dds", ".png", ".jpg", ".jpeg", ".gif",
+                         ".webp", ".bmp", ".tga", ".tiff", ".tif", ".ico"]
+        return imageExts.contains { ext.hasSuffix($0) }
     }
 
     private func openImageFile(entry: CASCFileEntry) async {

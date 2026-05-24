@@ -12,5 +12,6 @@ struct BLPImageInfo: Sendable {
         case blp1
         case blp2
         case dds
+        case other
     }
 }

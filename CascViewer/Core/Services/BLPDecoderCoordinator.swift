@@ -7,17 +7,73 @@ actor BLPDecoderCoordinator {
 
     func decode(data: Data) async throws -> ImageDecodeResult {
         guard !data.isEmpty else { throw CASCError.decodingError }
+
+        // Try native C++ decoder first (BLP, DDS)
         var error = CascBridge.CascError.None
-        let result = data.withUnsafeBytes { rawBuffer in
+        let cppResult = data.withUnsafeBytes { rawBuffer in
             guard let ptr = rawBuffer.bindMemory(to: UInt8.self).baseAddress else {
                 return CascBridge.ImageDecodeResult()
             }
             return decoder.decode(ptr, data.count, &error)
         }
-        if error != .None {
-            throw CASCError.decodingError
+        if error == .None {
+            return ImageDecodeResult(cppResult: cppResult)
         }
-        return ImageDecodeResult(cppResult: result)
+
+        // Fallback to system ImageIO for PNG, JPEG, GIF, BMP, TGA, etc.
+        if let ioResult = decodeViaImageIO(data: data) {
+            return ioResult
+        }
+
+        throw CASCError.decodingError
+    }
+
+    private func decodeViaImageIO(data: Data) -> ImageDecodeResult? {
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil) else { return nil }
+        guard let cgImage = CGImageSourceCreateImageAtIndex(source, 0, nil) else { return nil }
+
+        let width = cgImage.width
+        let height = cgImage.height
+        guard width > 0 && height > 0 else { return nil }
+
+        let bytesPerPixel = 4
+        let bytesPerRow = width * bytesPerPixel
+        let totalBytes = height * bytesPerRow
+
+        var rgbaData = Data(count: totalBytes)
+        guard let colorSpace = CGColorSpace(name: CGColorSpace.sRGB) else { return nil }
+
+        let success = rgbaData.withUnsafeMutableBytes { rawBuffer -> Bool in
+            guard let ptr = rawBuffer.bindMemory(to: UInt8.self).baseAddress else { return false }
+            guard let context = CGContext(
+                data: ptr,
+                width: width,
+                height: height,
+                bitsPerComponent: 8,
+                bytesPerRow: bytesPerRow,
+                space: colorSpace,
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue | CGBitmapInfo.byteOrder32Big.rawValue
+            ) else { return false }
+            context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
+            return true
+        }
+        guard success else { return nil }
+
+        let frame = ImageDecodeResult.ImageFrame(
+            width: UInt32(width),
+            height: UInt32(height),
+            imageData: rgbaData
+        )
+        return ImageDecodeResult(
+            format: .other,
+            width: UInt32(width),
+            height: UInt32(height),
+            mipLevels: 1,
+            frameCount: 1,
+            hasAlpha: cgImage.alphaInfo != .none,
+            frames: [frame],
+            mipMaps: [[frame]]
+        )
     }
 }
 
@@ -90,5 +146,23 @@ struct ImageDecodeResult {
                 )
             }
         }
+    }
+
+    init(format: BLPImageInfo.ImageFormat,
+         width: UInt32,
+         height: UInt32,
+         mipLevels: UInt32,
+         frameCount: UInt32,
+         hasAlpha: Bool,
+         frames: [ImageFrame],
+         mipMaps: [[ImageFrame]]) {
+        self.format = format
+        self.width = width
+        self.height = height
+        self.mipLevels = mipLevels
+        self.frameCount = frameCount
+        self.hasAlpha = hasAlpha
+        self.frames = frames
+        self.mipMaps = mipMaps
     }
 }
