@@ -99,6 +99,7 @@ final class AppSettings: ObservableObject {
                 do {
                     try fileManager.removeItem(at: cascCache)
                 } catch {
+                    print("Failed to remove cache at \(cascCache.path): \(error)")
                     overallSuccess = false
                 }
             }
@@ -109,6 +110,7 @@ final class AppSettings: ObservableObject {
                 do {
                     try fileManager.removeItem(at: cascCache)
                 } catch {
+                    print("Failed to remove cache at \(cascCache.path): \(error)")
                     overallSuccess = false
                 }
             }

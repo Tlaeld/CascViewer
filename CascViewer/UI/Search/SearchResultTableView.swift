@@ -1,9 +1,10 @@
 import SwiftUI
 import AppKit
 
+@MainActor
 final class SearchResultTableViewController: NSViewController {
-    private var tableView: NSTableView!
-    private var scrollView: NSScrollView!
+    private var tableView: NSTableView?
+    private var scrollView: NSScrollView?
 
     var matches: [SearchMatch] = []
     var selectedMatchId: String? = nil {
@@ -26,13 +27,13 @@ final class SearchResultTableViewController: NSViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        scrollView = NSScrollView()
+        let scrollView = NSScrollView()
         scrollView.hasVerticalScroller = true
         scrollView.hasHorizontalScroller = true
         scrollView.autohidesScrollers = true
         scrollView.translatesAutoresizingMaskIntoConstraints = false
 
-        tableView = NSTableView()
+        let tableView = NSTableView()
         tableView.allowsMultipleSelection = false
         tableView.usesAlternatingRowBackgroundColors = true
         tableView.columnAutoresizingStyle = .sequentialColumnAutoresizingStyle
@@ -80,11 +81,15 @@ final class SearchResultTableViewController: NSViewController {
         let menu = NSMenu()
         menu.delegate = self
         tableView.menu = menu
+
+        self.scrollView = scrollView
+        self.tableView = tableView
     }
 
     override func viewDidLayout() {
         super.viewDidLayout()
         guard let scrollView = scrollView else { return }
+        guard let tableView = tableView else { return }
         let newWidth = scrollView.bounds.width
         var frame = tableView.frame
         if abs(frame.size.width - newWidth) > 0.5 {
@@ -97,14 +102,15 @@ final class SearchResultTableViewController: NSViewController {
         self.matches = matches
         self.searchMode = mode
         Task { @MainActor [weak self] in
-            self?.tableView.reloadData()
-            self?.updateSelection()
+            guard let self = self else { return }
+            guard let tableView = tableView else { return }
+            tableView.reloadData()
+            updateSelection()
             // Ensure width matches container after data reload
-            if let scrollView = self?.scrollView {
-                var frame = self?.tableView.frame ?? .zero
-                frame.size.width = scrollView.bounds.width
-                self?.tableView.frame = frame
-            }
+            guard let scrollView = scrollView else { return }
+            var frame = tableView.frame
+            frame.size.width = scrollView.bounds.width
+            tableView.frame = frame
         }
     }
 
@@ -123,6 +129,7 @@ final class SearchResultTableViewController: NSViewController {
     }
 
     @objc private func handleDoubleClick() {
+        guard let tableView = tableView else { return }
         let row = tableView.clickedRow
         guard row >= 0, row < matches.count else { return }
         onDoubleClick?(matches[row])
@@ -132,6 +139,7 @@ final class SearchResultTableViewController: NSViewController {
 extension SearchResultTableViewController: NSMenuDelegate {
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
+        guard let tableView = tableView else { return }
         let clickedRow = tableView.clickedRow
         guard clickedRow >= 0, clickedRow < matches.count else { return }
 

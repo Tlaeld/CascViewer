@@ -96,7 +96,8 @@ final class CDNProductService: ObservableObject {
             try fm.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
             try data.write(to: url, options: .atomic)
         } catch {
-            // Cache save failed; best-effort, log silently in production
+            // Cache save failed; best-effort, log for debugging
+            print("Failed to save CDN product cache: \(error)")
         }
     }
 
