@@ -2,6 +2,7 @@ import SwiftUI
 
 struct LoadingOverlay: View {
     @ObservedObject var storage: CASCStorageService
+    @ObservedObject var appState: AppState
 
     var body: some View {
         if storage.isLoading {
@@ -17,24 +18,30 @@ struct LoadingOverlay: View {
                         ProgressView()
                             .scaleEffect(1.2)
                     }
-                    
+
                     Text(L("loading_storage"))
                         .font(.system(size: 14, weight: .semibold))
                         .foregroundColor(.primary)
-                    
+
                     if !storage.loadProgressMessage.isEmpty {
                         Text(storage.loadProgressMessage)
                             .font(.system(size: 11))
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)
                     }
-                    
+
                     if storage.loadProgress > 0 {
                         Text("\(Int(storage.loadProgress * 100))%")
                             .font(.system(size: 11, weight: .medium))
                             .foregroundColor(.secondary)
                             .monospacedDigit()
                     }
+
+                    Button(L("cancel")) {
+                        appState.openStorageTask?.cancel()
+                        appState.openStorageTask = nil
+                    }
+                    .buttonStyle(.bordered)
                 }
                 .padding(24)
                 .background(Color(NSColor.controlBackgroundColor))
@@ -53,10 +60,12 @@ struct MainWindowView: View {
     // Horizontal split (left sidebar vs right content)
     @AppStorage("mainWindow.leftWidth") private var leftWidth: Double = 220
     @State private var hDragStartWidth: Double = 220
+    @State private var leftWidthDuringDrag: Double = 220
 
     // Vertical split (file list vs preview panel)
     @AppStorage("mainWindow.topRatio") private var topRatio: Double = 0.5
     @State private var vDragStartRatio: Double = 0.5
+    @State private var topRatioDuringDrag: Double = 0.5
 
     var body: some View {
         ZStack {
@@ -69,7 +78,7 @@ struct MainWindowView: View {
                     let totalHeight = geo.size.height
                     let minLeftW: CGFloat = 180
                     let maxLeftW: CGFloat = 400
-                    let leftW = CGFloat(min(max(leftWidth, minLeftW), maxLeftW))
+                    let leftW = CGFloat(min(max(leftWidthDuringDrag, minLeftW), maxLeftW))
                     let rightW = totalWidth - leftW
 
                     HStack(spacing: 0) {
@@ -109,7 +118,7 @@ struct MainWindowView: View {
                         let minBottomH: CGFloat = 160
                         let minRatio = Double(minH / totalHeight)
                         let maxRatio = Double(max(totalHeight - minBottomH, minH) / totalHeight)
-                        let listHeight = totalHeight * CGFloat(min(max(topRatio, minRatio), maxRatio))
+                        let listHeight = totalHeight * CGFloat(min(max(topRatioDuringDrag, minRatio), maxRatio))
 
                         VStack(spacing: 0) {
                             FileListView()
@@ -131,10 +140,11 @@ struct MainWindowView: View {
                                         let pixelDelta = Double(value.translation.height)
                                         let ratioDelta = pixelDelta / Double(totalHeight)
                                         let newRatio = vDragStartRatio + ratioDelta
-                                        topRatio = min(max(newRatio, minRatio), maxRatio)
+                                        topRatioDuringDrag = min(max(newRatio, minRatio), maxRatio)
                                     }
                                     .onEnded { _ in
-                                        vDragStartRatio = topRatio
+                                        topRatio = topRatioDuringDrag
+                                        vDragStartRatio = topRatioDuringDrag
                                     }
                             )
                             .onHover { isHovering in
@@ -157,7 +167,7 @@ struct MainWindowView: View {
             }
 
             if let storage = appState.currentStorage {
-                LoadingOverlay(storage: storage)
+                LoadingOverlay(storage: storage, appState: appState)
             }
         }
         .frame(minWidth: 900, minHeight: 600)

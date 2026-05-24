@@ -15,6 +15,7 @@ class InstallManifestWindowController: NSWindowController, NSWindowDelegate {
         )
         window.title = L("install_manifest_title")
         window.minSize = NSSize(width: 600, height: 400)
+        window.setFrameAutosaveName("CascViewerInstallManifestWindow")
         window.center()
 
         let hostingView = NSHostingView(rootView:

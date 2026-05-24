@@ -23,6 +23,7 @@ class SearchWindowController: NSWindowController, NSWindowDelegate {
         )
         window.title = L("advanced_search")
         window.minSize = NSSize(width: 900, height: 400)
+        window.setFrameAutosaveName("CascViewerSearchWindow")
         window.center()
 
         let hostingView = NSHostingView(rootView: SearchPanelView(appState: appState).frame(minWidth: 700, minHeight: 400))

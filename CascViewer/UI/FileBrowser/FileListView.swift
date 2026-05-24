@@ -40,25 +40,22 @@ struct FileListContent: View {
     @ObservedObject var appState: AppState
     @State private var extractEntries: [CASCFileEntry] = []
     @State private var showingExtractSheet = false
-    @State private var searchTask: Task<Void, Never>? = nil
     @State private var pendingOpenNode: DirectoryNode? = nil
     @State private var showingDownloadConfirm = false
     @State private var activeExtractService: CASCExtractService? = nil
+    @State private var displayedItems: [DirectoryNode] = []
 
-    private var displayedItems: [DirectoryNode] {
-        if appState.isSearchMode {
-            return appState.searchResults.map { DirectoryNode(from: $0.entry) }
+    private func rebuildDisplayedItems() {
+        let newItems = storage.currentChildren
+        // Avoid redundant SwiftUI updates if the content is identical
+        if newItems.count != displayedItems.count || zip(newItems, displayedItems).contains(where: { $0.id != $1.id }) {
+            displayedItems = newItems
         }
-        return storage.currentChildren
     }
 
     var body: some View {
         VStack(spacing: 0) {
-            if appState.isSearchMode {
-                searchStatusBar
-            } else {
-                pathBar
-            }
+            pathBar
             Divider()
             FileTableView(
                 items: displayedItems,
@@ -66,15 +63,7 @@ struct FileListContent: View {
                     appState.selectedPath = path
                 },
                 onDoubleClick: { path in
-                    if appState.isSearchMode {
-                        // In search mode, double-click navigates to the file's parent directory
-                        let parentPath = (path as NSString).deletingLastPathComponent
-                        appState.isSearchMode = false
-                        storage.navigate(to: parentPath)
-                        appState.selectedPath = path
-                    } else {
-                        storage.navigate(to: path)
-                    }
+                    storage.navigate(to: path)
                 },
                 onOpenFile: { node in
                     if node.isLocal {
@@ -109,17 +98,14 @@ struct FileListContent: View {
         } message: { node in
             Text(L("download_required_message", node.name, node.formattedSize))
         }
+        .onAppear {
+            rebuildDisplayedItems()
+        }
         .onChange(of: storage.currentPath) { _ in
             appState.selectedPath = ""
         }
-        .onChange(of: appState.isSearchMode) { newValue in
-            if newValue {
-                performSearch()
-            } else {
-                searchTask?.cancel()
-                appState.searchResults = []
-                appState.searchIsSearching = false
-            }
+        .onChange(of: storage.currentChildren) { _ in
+            rebuildDisplayedItems()
         }
         .sheet(isPresented: $showingExtractSheet) {
             ExtractDialogView(entries: extractEntries) { destination, preserveStructure, overwriteExisting, openAfterExtract in
@@ -207,53 +193,16 @@ struct FileListContent: View {
         }
     }
 
-    private func performSearch() {
-        guard let storageService = appState.currentStorage else { return }
-        searchTask?.cancel()
-        appState.searchIsSearching = true
-        appState.searchResults = []
-
-        let query = appState.searchQuery
-        let mode = appState.searchMode
-        let scope = appState.searchScope
-        let caseSensitive = appState.searchCaseSensitive
-        let useRegex = appState.searchUseRegex
-        let includePath = appState.searchIncludePath
-        var fileTypes = appState.searchSelectedTypes
-        if !appState.searchCustomExtension.isEmpty {
-            fileTypes.insert(appState.searchCustomExtension.uppercased())
-        }
-        let selectedTags = appState.searchSelectedTags
-        let availableTags = storageService.tags
-
-        searchTask = Task {
-            let searchService = CASCSearchService(handle: storageService.handle)
-            let request = SearchRequest(
-                mode: mode,
-                query: query,
-                scope: scope,
-                caseSensitive: caseSensitive,
-                useRegex: useRegex,
-                includePath: includePath,
-                fileTypes: fileTypes,
-                selectedTags: selectedTags,
-                availableTags: availableTags
-            )
-            let results = await searchService.search(request, allEntries: storageService.allEntries, entries: storageService.entries, currentPath: storageService.currentPath)
-
-            guard !Task.isCancelled else { return }
-
-            await MainActor.run {
-                appState.searchResults = results
-                appState.searchIsSearching = false
-            }
-        }
-    }
-
     private func performExtraction(to destination: URL, preserveStructure: Bool, overwriteExisting: Bool, openAfterExtract: Bool) async {
         guard let storageService = appState.currentStorage else { return }
         let extractService = CASCExtractService(storage: storageService.handle)
+        await MainActor.run {
+            activeExtractService = extractService
+        }
         let result = await extractService.extract(entries: extractEntries, to: destination, preserveStructure: preserveStructure, overwriteExisting: overwriteExisting)
+        await MainActor.run {
+            activeExtractService = nil
+        }
         if result.failedFiles.isEmpty {
             appState.errorMessage = L("extract_success", result.successCount)
             if openAfterExtract {
@@ -314,42 +263,6 @@ struct FileListContent: View {
         .transaction { $0.animation = nil }
     }
 
-    @ViewBuilder
-    private var searchStatusBar: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "magnifyingglass")
-                .foregroundColor(.accentColor)
-                .font(.system(size: 11))
-
-            Text("\(L("search_status_prefix")) \"\(appState.searchQuery)\"")
-                .font(.system(size: 11))
-                .lineLimit(1)
-
-            if appState.searchIsSearching {
-                ProgressView()
-                    .scaleEffect(0.6)
-                    .frame(width: 14, height: 14)
-            }
-
-            Spacer()
-
-            if !appState.searchIsSearching {
-                Text("\(appState.searchResults.count) \(L("search_status_results"))")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-
-            Button(L("cancel")) {
-                appState.isSearchMode = false
-            }
-            .font(.system(size: 11))
-            .buttonStyle(.borderless)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
-        .background(Color(NSColor.controlBackgroundColor))
-        .transaction { $0.animation = nil }
-    }
 }
 
 // MARK: - NSTableView Bridge (fast flat list, no tree indexing overhead)
@@ -357,9 +270,12 @@ struct FileListContent: View {
 final class FileTableViewController: NSViewController {
     private var tableView: NSTableView!
     private var scrollView: NSScrollView!
+    private var emptyStateLabel: NSTextField!
 
     var items: [DirectoryNode] = []
     private var unsortedItems: [DirectoryNode] = []
+    private var sortTask: Task<Void, Never>? = nil
+    private var lastSelectedPaths: Set<String> = []
     var onSelect: ((String) -> Void)?
     var onDoubleClick: ((String) -> Void)?
     var onOpenFile: ((DirectoryNode) -> Void)?
@@ -388,30 +304,39 @@ final class FileTableViewController: NSViewController {
         nameCol.title = L("name_column")
         nameCol.width = 300
         nameCol.minWidth = 100
+        nameCol.resizingMask = [.autoresizingMask, .userResizingMask]
         nameCol.sortDescriptorPrototype = NSSortDescriptor(key: "name", ascending: true, comparator: { _, _ in .orderedSame })
         tableView.addTableColumn(nameCol)
 
         let pathCol = NSTableColumn(identifier: .init("path"))
         pathCol.title = L("path_column")
         pathCol.width = 300
+        pathCol.minWidth = 80
+        pathCol.resizingMask = [.autoresizingMask, .userResizingMask]
         pathCol.sortDescriptorPrototype = NSSortDescriptor(key: "path", ascending: true, comparator: { _, _ in .orderedSame })
         tableView.addTableColumn(pathCol)
 
         let sizeCol = NSTableColumn(identifier: .init("size"))
         sizeCol.title = L("size_column")
         sizeCol.width = 80
+        sizeCol.minWidth = 60
+        sizeCol.resizingMask = .userResizingMask
         sizeCol.sortDescriptorPrototype = NSSortDescriptor(key: "size", ascending: true, comparator: { _, _ in .orderedSame })
         tableView.addTableColumn(sizeCol)
 
         let typeCol = NSTableColumn(identifier: .init("type"))
         typeCol.title = L("type_column")
         typeCol.width = 60
+        typeCol.minWidth = 50
+        typeCol.resizingMask = .userResizingMask
         typeCol.sortDescriptorPrototype = NSSortDescriptor(key: "type", ascending: true, comparator: { _, _ in .orderedSame })
         tableView.addTableColumn(typeCol)
 
         let localCol = NSTableColumn(identifier: .init("local"))
         localCol.title = L("local_column")
-        localCol.width = 50
+        localCol.width = 60
+        localCol.minWidth = 50
+        localCol.resizingMask = .userResizingMask
         localCol.sortDescriptorPrototype = NSSortDescriptor(key: "local", ascending: true, comparator: { _, _ in .orderedSame })
         tableView.addTableColumn(localCol)
 
@@ -431,9 +356,25 @@ final class FileTableViewController: NSViewController {
         tableView.target = self
         tableView.doubleAction = #selector(handleDoubleClick)
 
+        // Default sort: name ascending (directories first via applySorting)
+        tableView.sortDescriptors = [NSSortDescriptor(key: "name", ascending: true)]
+
         let menu = NSMenu()
         menu.delegate = self
         tableView.menu = menu
+
+        // Empty state label
+        emptyStateLabel = NSTextField(labelWithString: L("folder_empty"))
+        emptyStateLabel.alignment = .center
+        emptyStateLabel.textColor = .secondaryLabelColor
+        emptyStateLabel.font = NSFont.systemFont(ofSize: 13)
+        emptyStateLabel.translatesAutoresizingMaskIntoConstraints = false
+        emptyStateLabel.isHidden = true
+        view.addSubview(emptyStateLabel)
+        NSLayoutConstraint.activate([
+            emptyStateLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
+            emptyStateLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor)
+        ])
     }
 
     func reload(items: [DirectoryNode]) {
@@ -442,6 +383,7 @@ final class FileTableViewController: NSViewController {
     }
 
     private func applySorting() {
+        sortTask?.cancel()
         guard let sortDescriptor = tableView.sortDescriptors.first else {
             self.items = unsortedItems
             reloadTable()
@@ -449,40 +391,108 @@ final class FileTableViewController: NSViewController {
         }
 
         let ascending = sortDescriptor.ascending
-        self.items = unsortedItems.sorted { a, b in
-            // Directories first, then sort by selected column
-            let aDir = a.children != nil
-            let bDir = b.children != nil
-            if aDir != bDir { return aDir && !bDir }
-
-            switch sortDescriptor.key {
-            case "name":
-                return ascending ? a.name.localizedStandardCompare(b.name) == .orderedAscending
-                                 : a.name.localizedStandardCompare(b.name) == .orderedDescending
-            case "path":
-                return ascending ? a.path.localizedStandardCompare(b.path) == .orderedAscending
-                                 : a.path.localizedStandardCompare(b.path) == .orderedDescending
-            case "size":
-                return ascending ? a.size < b.size : a.size > b.size
-            case "type":
-                return ascending ? a.name.localizedStandardCompare(b.name) == .orderedAscending
-                                 : a.name.localizedStandardCompare(b.name) == .orderedDescending
-            case "local":
-                return ascending ? !a.isLocal && b.isLocal : a.isLocal && !b.isLocal
-            default:
-                return false
+        let key = sortDescriptor.key
+        let items = unsortedItems
+        sortTask = Task { [weak self] in
+            let sorted = await Task.detached(priority: .userInitiated) {
+                return items.sorted { a, b in
+                    let aDir = a.children != nil
+                    let bDir = b.children != nil
+                    if aDir != bDir { return aDir && !bDir }
+                    switch key {
+                    case "name":
+                        return ascending ? a.name.localizedStandardCompare(b.name) == .orderedAscending
+                                         : a.name.localizedStandardCompare(b.name) == .orderedDescending
+                    case "path":
+                        return ascending ? a.path.localizedStandardCompare(b.path) == .orderedAscending
+                                         : a.path.localizedStandardCompare(b.path) == .orderedDescending
+                    case "size":
+                        return ascending ? a.size < b.size : a.size > b.size
+                    case "type":
+                        return ascending ? a.name.localizedStandardCompare(b.name) == .orderedAscending
+                                         : a.name.localizedStandardCompare(b.name) == .orderedDescending
+                    case "local":
+                        return ascending ? !a.isLocal && b.isLocal : a.isLocal && !b.isLocal
+                    default:
+                        return false
+                    }
+                }
+            }.value
+            guard let self = self, !Task.isCancelled else { return }
+            // Preserve selection before replacing items
+            let selectedPaths = self.tableView.selectedRowIndexes.compactMap { idx -> String? in
+                idx < self.items.count ? self.items[idx].path : nil
             }
+            self.lastSelectedPaths = Set(selectedPaths)
+            self.items = sorted
+            self.reloadTable()
         }
-
-        reloadTable()
     }
 
     private func reloadTable() {
         Task { @MainActor [weak self] in
             guard let self = self else { return }
+            let scrollRow = self.tableView.rows(in: self.scrollView.contentView.visibleRect).location
+            self.updatePathColumnVisibility()
             self.tableView.reloadData()
+            self.updateEmptyState()
             self.view.needsLayout = true
+
+            // Restore selection if the same paths still exist
+            if !self.lastSelectedPaths.isEmpty {
+                var indexes = IndexSet()
+                for (idx, item) in self.items.enumerated() {
+                    if self.lastSelectedPaths.contains(item.path) {
+                        indexes.insert(idx)
+                    }
+                }
+                if !indexes.isEmpty {
+                    self.tableView.selectRowIndexes(indexes, byExtendingSelection: false)
+                    if let first = indexes.first {
+                        self.tableView.scrollRowToVisible(first)
+                    }
+                }
+                self.lastSelectedPaths.removeAll()
+            } else if scrollRow >= 0, scrollRow < self.items.count {
+                self.tableView.scrollRowToVisible(scrollRow)
+            }
         }
+    }
+
+    private func updateEmptyState() {
+        emptyStateLabel.isHidden = !items.isEmpty
+    }
+
+    private func updatePathColumnVisibility() {
+        guard let pathCol = tableView.tableColumns.first(where: { $0.identifier.rawValue == "path" }) else { return }
+        let shouldShow: Bool
+        if items.isEmpty {
+            shouldShow = true
+        } else {
+            let parents = Set(items.map { ($0.path as NSString).deletingLastPathComponent })
+            shouldShow = parents.count > 1
+        }
+        let isVisible = tableView.tableColumns.contains(pathCol)
+        if shouldShow && !isVisible {
+            tableView.addTableColumn(pathCol)
+        } else if !shouldShow && isVisible {
+            tableView.removeTableColumn(pathCol)
+        }
+    }
+
+    override func keyDown(with event: NSEvent) {
+        if event.keyCode == 36, // Return
+           let firstRow = tableView.selectedRowIndexes.first,
+           firstRow >= 0, firstRow < items.count {
+            let item = items[firstRow]
+            if item.children != nil {
+                onDoubleClick?(item.path)
+            } else {
+                onOpenFile?(item)
+            }
+            return
+        }
+        super.keyDown(with: event)
     }
 
     override func viewDidLayout() {
@@ -493,35 +503,6 @@ final class FileTableViewController: NSViewController {
         let targetHeight = visibleBounds.height > 0 ? max(contentHeight, visibleBounds.height) : contentHeight
         tableView.setFrameSize(NSSize(width: visibleBounds.width, height: targetHeight))
         scrollView.reflectScrolledClipView(scrollView.contentView)
-    }
-
-    private func fileIconName(for item: DirectoryNode) -> String {
-        guard item.children == nil else { return "folder.fill" }
-        let ext = (item.name as NSString).pathExtension.lowercased()
-        switch ext {
-        case "txt", "strings", "json", "xml", "html", "csv":
-            return "doc.text"
-        case "blp", "dds", "tga", "png", "jpg", "jpeg":
-            return "photo"
-        case "mp3", "ogg", "wav", "flac":
-            return "music.note"
-        case "mp4", "avi", "mov", "mkv":
-            return "film"
-        case "zip", "rar", "7z", "tar", "gz":
-            return "archivebox"
-        case "exe", "dll", "so", "dylib":
-            return "terminal"
-        case "sc2data", "sc2assets", "sc2mod", "sc2campaign", "sc2components":
-            return "cube.box"
-        case "version":
-            return "number"
-        case "pdf":
-            return "doc.richtext"
-        case "lua", "js", "ts", "swift", "cpp", "h", "hpp", "c":
-            return "curlybraces"
-        default:
-            return "doc"
-        }
     }
 
     @objc private func handleDoubleClick() {
@@ -630,13 +611,15 @@ extension FileTableViewController: NSTableViewDelegate {
         let colID = tableColumn?.identifier.rawValue ?? ""
         switch colID {
         case "name":
-            let showMarkers = AppSettings.shared.showRemoteMarkers
-            cell?.textField?.stringValue = (showMarkers && !item.isLocal) ? "* " + item.name : item.name
-            cell?.textField?.textColor = (showMarkers && !item.isLocal) ? .systemRed : .labelColor
-            let iconName = fileIconName(for: item)
-            cell?.imageView?.image = NSImage(systemSymbolName: iconName, accessibilityDescription: nil)
+            cell?.textField?.stringValue = item.name
+            cell?.textField?.textColor = .labelColor
+            cell?.imageView?.image = NSImage(systemSymbolName: item.iconName, accessibilityDescription: nil)
             cell?.imageView?.contentTintColor = item.children != nil ? .controlAccentColor : .secondaryLabelColor
             cell?.imageView?.isHidden = false
+            // Remote indicator: subtle opacity instead of "* " prefix
+            if AppSettings.shared.showRemoteMarkers && !item.isLocal {
+                cell?.textField?.textColor = .systemRed
+            }
         case "path":
             cell?.textField?.stringValue = item.path
             cell?.imageView?.isHidden = true

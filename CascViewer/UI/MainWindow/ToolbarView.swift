@@ -98,7 +98,7 @@ struct ToolbarView: View {
             switch result {
             case .success(let urls):
                 if let url = urls.first {
-                    Task {
+                    appState.openStorageTask = Task {
                         let didStartAccessing = url.startAccessingSecurityScopedResource()
                         defer {
                             if didStartAccessing {
@@ -117,6 +117,7 @@ struct ToolbarView: View {
                                 appState.errorMessage = service.error?.localizedDescription
                             }
                         }
+                        appState.openStorageTask = nil
                     }
                 }
             case .failure(let error):
@@ -239,6 +240,10 @@ struct SettingsView: View {
                 Spacer()
                 Button(L("done")) { dismiss() }
                     .keyboardShortcut(.defaultAction)
+                Button("") { dismiss() }
+                    .keyboardShortcut(.escape, modifiers: [])
+                    .opacity(0)
+                    .frame(width: 0, height: 0)
             }
             .padding()
             .background(Color(NSColor.controlBackgroundColor))
@@ -291,6 +296,7 @@ struct SettingsView: View {
 struct ListFileButton: View {
     @ObservedObject var storage: CASCStorageService
     @State private var hasAutoShown = false
+    @State private var pendingPromptTask: Task<Void, Never>? = nil
 
     var body: some View {
         if storage.needsListFile {
@@ -308,9 +314,10 @@ struct ListFileButton: View {
             }
             .onReceive(storage.$needsListFile) { needsListFile in
                 if needsListFile && !hasAutoShown {
-                    Task { @MainActor in
+                    pendingPromptTask?.cancel()
+                    pendingPromptTask = Task { @MainActor in
                         try? await Task.sleep(nanoseconds: 300_000_000)
-                        if !hasAutoShown {
+                        if !hasAutoShown, !Task.isCancelled {
                             hasAutoShown = true
                             showPrompt()
                         }

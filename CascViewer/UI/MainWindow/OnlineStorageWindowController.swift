@@ -18,21 +18,23 @@ class OnlineStorageWindowController: NSWindowController, NSWindowDelegate {
 
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 720, height: 540),
-            styleMask: [.titled, .closable],
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
         )
         window.title = L("open_online_storage")
         window.minSize = NSSize(width: 600, height: 400)
+        window.setFrameAutosaveName("CascViewerOnlineStorageWindow")
         window.center()
 
         let hostingView = NSHostingView(rootView:
             OnlineStorageView(
                 onOpen: { product, region in
-                    Task {
+                    appState.openStorageTask = Task {
                         let shouldProceed = await Self.confirmCacheAction(product: product, region: region)
                         guard shouldProceed else {
                             await MainActor.run { Self.closeWindow() }
+                            appState.openStorageTask = nil
                             return
                         }
                         let storage = CascBridge.CascStorageHandle.createLocal()
@@ -48,6 +50,7 @@ class OnlineStorageWindowController: NSWindowController, NSWindowDelegate {
                             }
                         }
                         await MainActor.run { Self.closeWindow() }
+                        appState.openStorageTask = nil
                     }
                 },
                 onCancel: {
@@ -113,8 +116,14 @@ class OnlineStorageWindowController: NSWindowController, NSWindowDelegate {
         case .alertFirstButtonReturn:
             return true
         case .alertSecondButtonReturn:
-            try? fm.removeItem(atPath: cachePath)
-            try? fm.createDirectory(atPath: cachePath, withIntermediateDirectories: true)
+            do {
+                if fm.fileExists(atPath: cachePath) {
+                    try fm.removeItem(atPath: cachePath)
+                }
+                try fm.createDirectory(atPath: cachePath, withIntermediateDirectories: true)
+            } catch {
+                return false
+            }
             return true
         default:
             return false

@@ -43,6 +43,7 @@ struct ExtractDialogView: View {
             HStack {
                 Spacer()
                 Button(L("cancel")) { dismiss() }
+                    .keyboardShortcut(.escape, modifiers: [])
                 Button(L("extract")) {
                     onExtract(destination, preserveStructure, overwriteExisting, openAfterExtract)
                     dismiss()

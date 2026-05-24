@@ -1,9 +1,12 @@
 import SwiftUI
+import UniformTypeIdentifiers
+import CoreVideo
 
 struct BLPViewerWindow: View {
     let fileName: String
     let imageData: Data
     @StateObject private var viewModel = BLPViewerViewModel()
+    @State private var keyboardMonitor: Any? = nil
     var body: some View {
         VStack(spacing: 0) {
             HStack {
@@ -37,6 +40,7 @@ struct BLPViewerWindow: View {
                         switch info.format {
                         case .blp2: return "BLP2"
                         case .dds: return "DDS"
+                        case .other: return "Image"
                         default: return "BLP1"
                         }
                     }()
@@ -56,6 +60,29 @@ struct BLPViewerWindow: View {
         .task {
             await viewModel.loadFile(data: imageData)
         }
+        .onAppear {
+            let monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [viewModel] event in
+                switch event.keyCode {
+                case 49: // Space
+                    viewModel.togglePlayback()
+                    return nil
+                case 123: // Left arrow
+                    viewModel.stepFrame(delta: -1)
+                    return nil
+                case 124: // Right arrow
+                    viewModel.stepFrame(delta: 1)
+                    return nil
+                default:
+                    return event
+                }
+            }
+            keyboardMonitor = monitor
+        }
+        .onDisappear {
+            if let monitor = keyboardMonitor {
+                NSEvent.removeMonitor(monitor)
+            }
+        }
     }
 
     private func exportCurrentFrame() {
@@ -67,15 +94,25 @@ struct BLPViewerWindow: View {
 
         panel.beginSheetModal(for: NSApp.keyWindow ?? NSWindow()) { [weak viewModel] result in
             guard result == .OK, let url = panel.url else { return }
-            guard let destination = CGImageDestinationCreateWithURL(url as CFURL, "public.png" as CFString, 1, nil) else {
+            guard let destination = CGImageDestinationCreateWithURL(url as CFURL, UTType.png.identifier as CFString, 1, nil) else {
+                viewModel?.errorMessage = L("export_failed")
                 return
             }
             CGImageDestinationAddImage(destination, cgImage, nil)
             if !CGImageDestinationFinalize(destination) {
-                viewModel?.errorMessage = "Export failed"
+                viewModel?.errorMessage = L("export_failed")
             }
         }
     }
+}
+
+private let blpDisplayLinkCallback: CVDisplayLinkOutputCallback = { _, _, _, _, _, context -> CVReturn in
+    guard let context = context else { return kCVReturnError }
+    let viewModel = Unmanaged<BLPViewerViewModel>.fromOpaque(context).takeUnretainedValue()
+    Task { @MainActor in
+        viewModel.stepFrame(delta: 1)
+    }
+    return kCVReturnSuccess
 }
 
 @MainActor
@@ -92,10 +129,13 @@ class BLPViewerViewModel: ObservableObject {
     @Published var errorMessage: String?
 
     private var decodedResult: ImageDecodeResult?
-    private var playbackTimer: Timer?
+    private var displayLink: CVDisplayLink?
 
     deinit {
-        playbackTimer?.invalidate()
+        // Directly stop the display link; deinit cannot call actor-isolated methods.
+        if let link = displayLink {
+            CVDisplayLinkStop(link)
+        }
     }
 
     func loadFile(data: Data) async {
@@ -153,17 +193,21 @@ class BLPViewerViewModel: ObservableObject {
     }
 
     private func startAnimation() {
-        playbackTimer?.invalidate()
-        playbackTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
-            Task { @MainActor in
-                self?.stepFrame(delta: 1)
-            }
-        }
+        stopAnimation()
+        var link: CVDisplayLink?
+        let status = CVDisplayLinkCreateWithActiveCGDisplays(&link)
+        guard status == kCVReturnSuccess, let displayLink = link else { return }
+        let context = Unmanaged.passUnretained(self).toOpaque()
+        CVDisplayLinkSetOutputCallback(displayLink, blpDisplayLinkCallback, context)
+        CVDisplayLinkStart(displayLink)
+        self.displayLink = displayLink
     }
 
     private func stopAnimation() {
-        playbackTimer?.invalidate()
-        playbackTimer = nil
+        if let displayLink = displayLink {
+            CVDisplayLinkStop(displayLink)
+        }
+        displayLink = nil
     }
 }
 
@@ -183,6 +227,7 @@ final class ImageViewerWindowController: NSWindowController, NSWindowDelegate {
         )
         window.title = fileName
         window.setContentSize(NSSize(width: 800, height: 600))
+        window.setFrameAutosaveName("CascViewerImageWindow")
         window.center()
         super.init(window: window)
         window.delegate = self
@@ -191,6 +236,7 @@ final class ImageViewerWindowController: NSWindowController, NSWindowDelegate {
         Self.controllers.append(self)
         Self.lock.unlock()
         window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
     }
 
     required init?(coder: NSCoder) {

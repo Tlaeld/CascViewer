@@ -13,7 +13,9 @@ struct FileTreeView: View {
 
     var body: some View {
         if let storage = appState.currentStorage {
-            FileTreeContent(storage: storage)
+            FileTreeContent(storage: storage) { errorMessage in
+                appState.errorMessage = errorMessage
+            }
         } else {
             VStack(spacing: 0) {
                 Text(L("directories"))
@@ -39,12 +41,14 @@ struct FileTreeView: View {
 
 struct FileTreeContent: View {
     @ObservedObject var storage: CASCStorageService
-    @EnvironmentObject var appState: AppState
     @State private var expandedPaths: Set<String> = []
     @State private var extractEntries: [CASCFileEntry] = []
     @State private var showingExtractSheet = false
+    @State private var displayRows: [TreeRow] = []
+    @State private var activeExtractService: CASCExtractService? = nil
+    var onError: (String) -> Void
 
-    private var displayRows: [TreeRow] {
+    private func rebuildDisplayRows() {
         func build(path: String, depth: Int) -> [TreeRow] {
             let children = storage.childrenByPath[path, default: []]
             let dirs = children.filter { $0.children != nil }.sorted { $0.name < $1.name }
@@ -59,7 +63,7 @@ struct FileTreeContent: View {
             }
             return rows
         }
-        return build(path: "", depth: 0)
+        displayRows = build(path: "", depth: 0)
     }
 
     var body: some View {
@@ -87,6 +91,7 @@ struct FileTreeContent: View {
                     } else {
                         expandedPaths.insert(path)
                     }
+                    // rebuildDisplayRows() is triggered by .onChange(of: expandedPaths)
                 },
                 onExtract: { path in
                     extractEntries = storage.entriesUnder(path: path)
@@ -105,14 +110,63 @@ struct FileTreeContent: View {
                 }
             }
         }
-        .onChange(of: storage.allEntriesCount) { _ in
+        .overlay {
+            if let service = activeExtractService, service.isExtracting {
+                ZStack {
+                    Color.black.opacity(0.4)
+                        .ignoresSafeArea()
+                    VStack(spacing: 16) {
+                        Text(L("extracting_files", service.currentFile))
+                            .font(.headline)
+                            .foregroundColor(.primary)
+                        ProgressView(value: service.progress)
+                            .frame(width: 280)
+                        Button(L("cancel")) {
+                            service.cancel()
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                    .padding(24)
+                    .frame(width: 340)
+                    .background(Color(NSColor.controlBackgroundColor))
+                    .cornerRadius(12)
+                    .shadow(radius: 20)
+                }
+                .onReceive(service.objectWillChange) { _ in }
+            }
+        }
+        .onAppear {
+            rebuildDisplayRows()
+        }
+        .onChange(of: expandedPaths) { _ in
+            rebuildDisplayRows()
+        }
+        .onChange(of: storage.childrenByPath) { _ in
             expandedPaths.removeAll()
+            rebuildDisplayRows()
+        }
+        .onChange(of: storage.currentPath) { newPath in
+            // Auto-expand ancestor directories to reveal the current path
+            var path = newPath
+            while !path.isEmpty {
+                if !expandedPaths.contains(path) {
+                    expandedPaths.insert(path)
+                }
+                path = (path as NSString).deletingLastPathComponent
+            }
+            rebuildDisplayRows()
         }
     }
 
     private func performExtraction(to destination: URL, preserveStructure: Bool, overwriteExisting: Bool, openAfterExtract: Bool) async {
         let extractService = CASCExtractService(storage: storage.handle)
+        await MainActor.run {
+            activeExtractService = extractService
+        }
         let result = await extractService.extract(entries: extractEntries, to: destination, preserveStructure: preserveStructure, overwriteExisting: overwriteExisting)
+        await MainActor.run {
+            activeExtractService = nil
+        }
         if result.wasCancelled {
             // Silently ignore cancelled extractions
         } else if result.failedFiles.isEmpty {
@@ -127,9 +181,8 @@ struct FileTreeContent: View {
                 return "\($0.path)\n  ↳ \(reason)"
             }.joined(separator: "\n")
             let more = result.failedFiles.count > 10 ? "\n... \(result.failedFiles.count - 10) more" : ""
-            await MainActor.run {
-                appState.errorMessage = L("extract_partial", result.successCount, result.failedFiles.count) + "\n\n" + failedList + more
-            }
+            let message = L("extract_partial", result.successCount, result.failedFiles.count) + "\n\n" + failedList + more
+            onError(message)
         }
     }
 }
@@ -157,7 +210,7 @@ final class TreeTableViewController: NSViewController {
 
         scrollView = NSScrollView()
         scrollView.hasVerticalScroller = true
-        scrollView.hasHorizontalScroller = false
+        scrollView.hasHorizontalScroller = true
         scrollView.autohidesScrollers = true
         scrollView.translatesAutoresizingMaskIntoConstraints = false
 
@@ -309,9 +362,11 @@ extension TreeTableViewController: NSTableViewDelegate {
         icon?.contentTintColor = .controlAccentColor
 
         // Update text
-        let showMarkers = AppSettings.shared.showRemoteMarkers
-        cell?.textField?.stringValue = (showMarkers && !rowItem.node.isLocal) ? "* " + rowItem.node.name : rowItem.node.name
-        cell?.textField?.textColor = (showMarkers && !rowItem.node.isLocal) ? .systemRed : .labelColor
+        cell?.textField?.stringValue = rowItem.node.name
+        cell?.textField?.textColor = .labelColor
+        if AppSettings.shared.showRemoteMarkers && !rowItem.node.isLocal {
+            cell?.textField?.textColor = .systemRed
+        }
 
         return cell
     }

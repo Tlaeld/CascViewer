@@ -16,6 +16,8 @@ final class SearchResultTableViewController: NSViewController {
     var onSelect: ((SearchMatch) -> Void)?
     var onDoubleClick: ((SearchMatch) -> Void)?
     var onCopyPath: ((String) -> Void)?
+    var onOpenFile: ((SearchMatch) -> Void)?
+    var onExtract: ((SearchMatch) -> Void)?
 
     override func loadView() {
         view = NSView()
@@ -133,26 +135,54 @@ extension SearchResultTableViewController: NSMenuDelegate {
         let clickedRow = tableView.clickedRow
         guard clickedRow >= 0, clickedRow < matches.count else { return }
 
+        let selectedRows = tableView.selectedRowIndexes
+        let targetRows = selectedRows.contains(clickedRow) ? selectedRows : IndexSet(integer: clickedRow)
+        let targetMatches = targetRows.compactMap { $0 < matches.count ? matches[$0] : nil }
+        guard !targetMatches.isEmpty else { return }
+
         let goItem = NSMenuItem(title: L("search_go_to_location"), action: #selector(handleMenuGoTo(_:)), keyEquivalent: "")
         goItem.target = self
-        goItem.representedObject = clickedRow
+        goItem.representedObject = targetMatches
         menu.addItem(goItem)
+
+        let openItem = NSMenuItem(title: L("open"), action: #selector(handleMenuOpen(_:)), keyEquivalent: "")
+        openItem.target = self
+        openItem.representedObject = targetMatches
+        menu.addItem(openItem)
+
+        let extractTitle = targetMatches.count == 1 ? L("extract") : L("extract_title", targetMatches.count)
+        let extractItem = NSMenuItem(title: extractTitle, action: #selector(handleMenuExtract(_:)), keyEquivalent: "")
+        extractItem.target = self
+        extractItem.representedObject = targetMatches
+        menu.addItem(extractItem)
+
+        menu.addItem(NSMenuItem.separator())
 
         let copyItem = NSMenuItem(title: L("copy_path"), action: #selector(handleMenuCopyPath(_:)), keyEquivalent: "")
         copyItem.target = self
-        copyItem.representedObject = clickedRow
+        copyItem.representedObject = targetMatches
         menu.addItem(copyItem)
     }
 
     @objc private func handleMenuGoTo(_ sender: NSMenuItem) {
-        guard let row = sender.representedObject as? Int, row < matches.count else { return }
-        onDoubleClick?(matches[row])
+        guard let targetMatches = sender.representedObject as? [SearchMatch], let first = targetMatches.first else { return }
+        onDoubleClick?(first)
+    }
+
+    @objc private func handleMenuOpen(_ sender: NSMenuItem) {
+        guard let targetMatches = sender.representedObject as? [SearchMatch], let first = targetMatches.first else { return }
+        onOpenFile?(first)
+    }
+
+    @objc private func handleMenuExtract(_ sender: NSMenuItem) {
+        guard let targetMatches = sender.representedObject as? [SearchMatch], let first = targetMatches.first else { return }
+        onExtract?(first)
     }
 
     @objc private func handleMenuCopyPath(_ sender: NSMenuItem) {
-        guard let row = sender.representedObject as? Int, row < matches.count else { return }
-        let path = matches[row].entry.fullPath.replacingOccurrences(of: "\\", with: "/")
-        onCopyPath?(path)
+        guard let targetMatches = sender.representedObject as? [SearchMatch] else { return }
+        let paths = targetMatches.map { $0.entry.fullPath.replacingOccurrences(of: "\\", with: "/") }.joined(separator: "\n")
+        onCopyPath?(paths)
     }
 }
 
@@ -205,9 +235,11 @@ extension SearchResultTableViewController: NSTableViewDelegate {
             cell?.imageView?.image = NSImage(systemSymbolName: iconName, accessibilityDescription: nil)
             cell?.imageView?.contentTintColor = match.entry.isDirectory ? .controlAccentColor : .secondaryLabelColor
             cell?.imageView?.isHidden = false
+            if AppSettings.shared.showRemoteMarkers && !match.entry.isLocal {
+                cell?.textField?.textColor = .systemRed
+            }
         case "path":
-            let displayPath = match.entry.fullPath.replacingOccurrences(of: "\\", with: "/")
-            cell?.textField?.stringValue = displayPath
+            cell?.textField?.stringValue = match.entry.normalizedPath
             cell?.textField?.textColor = .secondaryLabelColor
             cell?.imageView?.isHidden = true
         case "size":
@@ -236,6 +268,8 @@ struct SearchResultTableView: NSViewControllerRepresentable {
     var onSelect: ((SearchMatch) -> Void)?
     var onDoubleClick: ((SearchMatch) -> Void)?
     var onCopyPath: ((String) -> Void)?
+    var onOpenFile: ((SearchMatch) -> Void)?
+    var onExtract: ((SearchMatch) -> Void)?
 
     func makeNSViewController(context: Context) -> SearchResultTableViewController {
         let vc = SearchResultTableViewController()
@@ -245,17 +279,26 @@ struct SearchResultTableView: NSViewControllerRepresentable {
         vc.onSelect = onSelect
         vc.onDoubleClick = onDoubleClick
         vc.onCopyPath = onCopyPath
+        vc.onOpenFile = onOpenFile
+        vc.onExtract = onExtract
         return vc
     }
 
     func updateNSViewController(_ vc: SearchResultTableViewController, context: Context) {
         guard vc.isViewLoaded else { return }
-        // Avoid O(n) identity comparison on 50K+ rows.
-        // Reload when: count changed, first element changed, or last element changed.
-        let countChanged = vc.matches.count != matches.count
-        let firstChanged = vc.matches.first != matches.first
-        let lastChanged = vc.matches.last != matches.last
-        if countChanged || firstChanged || lastChanged {
+        // For small datasets, do a full comparison to catch middle-row mutations.
+        // For large datasets, use a heuristic to avoid O(n) cost.
+        let shouldReload: Bool
+        if vc.matches.count != matches.count {
+            shouldReload = true
+        } else if matches.count < 1000 {
+            shouldReload = vc.matches != matches
+        } else {
+            let firstChanged = vc.matches.first != matches.first
+            let lastChanged = vc.matches.last != matches.last
+            shouldReload = firstChanged || lastChanged
+        }
+        if shouldReload {
             vc.reload(matches: matches, mode: searchMode)
         }
         vc.selectedMatchId = selectedMatchId

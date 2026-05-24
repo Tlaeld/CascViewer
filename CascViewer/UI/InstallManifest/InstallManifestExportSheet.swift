@@ -51,14 +51,20 @@ final class InstallManifestExtractService: ObservableObject {
             }
 
             let parentDir = URL(fileURLWithPath: destPath).deletingLastPathComponent().path
-            try? FileManager.default.createDirectory(at: URL(fileURLWithPath: parentDir), withIntermediateDirectories: true)
+            do {
+                try FileManager.default.createDirectory(at: URL(fileURLWithPath: parentDir), withIntermediateDirectories: true)
+            } catch {
+                failed.append("\(entry.fileName): \(error.localizedDescription)")
+                continue
+            }
 
             var handle = storageService.handle
 
             let error: CascBridge.CascError = await withCheckedContinuation { continuation in
                 DispatchQueue.global(qos: .userInitiated).async {
                     let progressCtx = ProgressContext(service: self, fileIndex: index, totalFiles: total)
-                    let rawContext = Unmanaged.passUnretained(progressCtx).toOpaque()
+                    let rawContext = Unmanaged.passRetained(progressCtx).toOpaque()
+                    defer { Unmanaged<ProgressContext>.fromOpaque(rawContext).release() }
 
                     let progressBlock: @convention(c) (UnsafeMutableRawPointer?, Int64, Int64) -> Void = { context, current, totalBytes in
                         guard let ctxPtr = context else { return }
@@ -67,7 +73,6 @@ final class InstallManifestExtractService: ObservableObject {
                         guard let service = ctx.service else { return }
                         let fileProgress = Double(current) / Double(totalBytes)
                         let overallProgress = (Double(ctx.fileIndex) + fileProgress) / Double(ctx.totalFiles)
-                        // Throttled progress logging removed
                         Task { @MainActor in
                             service.progress = overallProgress
                         }
@@ -185,7 +190,7 @@ struct InstallManifestExportSheet: View {
             Button(L("cancel"), role: .cancel) { }
         } message: { entries in
             let totalSize = entries.reduce(0) { $0 + Int64($1.fileSize) }
-            let sizeStr = ByteCountFormatter().string(fromByteCount: totalSize)
+            let sizeStr = InstallManifestEntry.byteFormatter.string(fromByteCount: totalSize)
             Text(L("download_required_export_message", entries.count, sizeStr))
         }
     }

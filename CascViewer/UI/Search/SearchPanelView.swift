@@ -8,6 +8,9 @@ struct SearchPanelView: View {
     @State private var selectedMatchId: String? = nil
     @State private var sortedMatches: [SearchMatch] = []
     @State private var sortTask: Task<Void, Never>? = nil
+    @State private var showingExtractSheet = false
+    @State private var extractEntries: [CASCFileEntry] = []
+    @State private var activeExtractService: CASCExtractService? = nil
 
     let builtInTypes = ["BLP", "DDS", "MDX", "MP3", "WAV", "TXT", "DBC", "M2", "OGG", "TGA", "PNG", "JPG", "JSON", "XML", "LUA"]
 
@@ -134,29 +137,31 @@ struct SearchPanelView: View {
 
                     Divider()
 
-                    // Tags (always visible, independent of search mode)
-                    Group {
-                        Text(L("search_tags"))
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-
-                        let tags = appState.currentStorage?.tags ?? []
-                        if tags.isEmpty {
-                            Text(L("search_no_tags"))
+                    // Tags (only relevant in tag search mode)
+                    if appState.searchMode == .tag {
+                        Group {
+                            Text(L("search_tags"))
                                 .font(.caption)
                                 .foregroundColor(.secondary)
-                        } else {
-                            let columns = Array(repeating: GridItem(.flexible(), spacing: 8), count: 4)
-                            LazyVGrid(columns: columns, spacing: 6) {
-                                ForEach(tags, id: \.name) { tag in
-                                    TagCheckbox(
-                                        label: tag.name,
-                                        isSelected: appState.searchSelectedTags.contains(tag.name)
-                                    ) {
-                                        if appState.searchSelectedTags.contains(tag.name) {
-                                            appState.searchSelectedTags.remove(tag.name)
-                                        } else {
-                                            appState.searchSelectedTags.insert(tag.name)
+
+                            let tags = appState.currentStorage?.tags ?? []
+                            if tags.isEmpty {
+                                Text(L("search_no_tags"))
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            } else {
+                                let columns = Array(repeating: GridItem(.flexible(), spacing: 8), count: 4)
+                                LazyVGrid(columns: columns, spacing: 6) {
+                                    ForEach(tags, id: \.name) { tag in
+                                        TagCheckbox(
+                                            label: tag.name,
+                                            isSelected: appState.searchSelectedTags.contains(tag.name)
+                                        ) {
+                                            if appState.searchSelectedTags.contains(tag.name) {
+                                                appState.searchSelectedTags.remove(tag.name)
+                                            } else {
+                                                appState.searchSelectedTags.insert(tag.name)
+                                            }
                                         }
                                     }
                                 }
@@ -242,6 +247,13 @@ struct SearchPanelView: View {
                             onCopyPath: { path in
                                 NSPasteboard.general.clearContents()
                                 NSPasteboard.general.setString(path, forType: .string)
+                            },
+                            onOpenFile: { match in
+                                navigateToEntry(match.entry)
+                            },
+                            onExtract: { match in
+                                extractEntries = [match.entry]
+                                showingExtractSheet = true
                             }
                         )
                     }
@@ -265,6 +277,42 @@ struct SearchPanelView: View {
             appState.searchResults = []
             sortedMatches = []
         }
+        .sheet(isPresented: $showingExtractSheet) {
+            if appState.currentStorage != nil {
+                ExtractDialogView(entries: extractEntries) { destination, preserveStructure, overwriteExisting, openAfterExtract in
+                    Task {
+                        await performExtraction(to: destination, preserveStructure: preserveStructure, overwriteExisting: overwriteExisting, openAfterExtract: openAfterExtract)
+                    }
+                }
+            }
+        }
+        .overlay {
+            if let service = activeExtractService, service.isExtracting {
+                ZStack {
+                    Color.black.opacity(0.4)
+                        .ignoresSafeArea()
+                    VStack(spacing: 16) {
+                        Text(L("downloading_file", service.currentFile))
+                            .font(.system(size: 14, weight: .semibold))
+                        ProgressView(value: service.progress, total: 1.0)
+                            .progressViewStyle(LinearProgressViewStyle())
+                            .frame(width: 200)
+                        Text("\(Int(service.progress * 100))%")
+                            .font(.system(size: 11))
+                            .foregroundColor(.secondary)
+                            .monospacedDigit()
+                        Button(L("cancel")) {
+                            activeExtractService?.cancel()
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                    .padding(24)
+                    .background(Color(NSColor.controlBackgroundColor))
+                    .cornerRadius(12)
+                    .shadow(radius: 8)
+                }
+            }
+        }
         .id(settings.language)
     }
 
@@ -281,19 +329,20 @@ struct SearchPanelView: View {
         let sortBy = appState.searchSortBy
         let ascending = appState.searchSortAscending
         sortTask = Task {
-            let sorted: [SearchMatch]
-            switch sortBy {
-            case .name:
-                sorted = results.sorted { ascending ? $0.entry.name < $1.entry.name : $0.entry.name > $1.entry.name }
-            case .size:
-                sorted = results.sorted { ascending ? $0.entry.size < $1.entry.size : $0.entry.size > $1.entry.size }
-            case .path:
-                sorted = results.sorted { ascending ? $0.entry.fullPath < $1.entry.fullPath : $0.entry.fullPath > $1.entry.fullPath }
-            }
+            let sorted = await Task.detached(priority: .userInitiated) {
+                let sorted: [SearchMatch]
+                switch sortBy {
+                case .name:
+                    sorted = results.sorted { ascending ? $0.entry.name < $1.entry.name : $0.entry.name > $1.entry.name }
+                case .size:
+                    sorted = results.sorted { ascending ? $0.entry.size < $1.entry.size : $0.entry.size > $1.entry.size }
+                case .path:
+                    sorted = results.sorted { ascending ? $0.entry.fullPath < $1.entry.fullPath : $0.entry.fullPath > $1.entry.fullPath }
+                }
+                return sorted
+            }.value
             guard !Task.isCancelled else { return }
-            await MainActor.run {
-                self.sortedMatches = sorted
-            }
+            self.sortedMatches = sorted
         }
     }
 
@@ -340,7 +389,7 @@ struct SearchPanelView: View {
             await MainActor.run {
                 appState.searchResults = searchResults
                 appState.searchIsSearching = false
-                applySorting()
+                // applySorting() is triggered by .onChange(of: appState.searchResults)
             }
         }
     }
@@ -351,6 +400,33 @@ struct SearchPanelView: View {
             .map { $0.trimmingCharacters(in: .whitespaces).uppercased() }
             .filter { !$0.isEmpty }
             .reduce(into: Set<String>()) { $0.insert($1) }
+    }
+
+    private func performExtraction(to destination: URL, preserveStructure: Bool, overwriteExisting: Bool, openAfterExtract: Bool) async {
+        guard let storageService = appState.currentStorage else { return }
+        let extractService = CASCExtractService(storage: storageService.handle)
+        await MainActor.run {
+            activeExtractService = extractService
+        }
+        let result = await extractService.extract(entries: extractEntries, to: destination, preserveStructure: preserveStructure, overwriteExisting: overwriteExisting)
+        await MainActor.run {
+            activeExtractService = nil
+        }
+        if result.failedFiles.isEmpty {
+            appState.errorMessage = L("extract_success", result.successCount)
+            if openAfterExtract {
+                _ = await MainActor.run {
+                    NSWorkspace.shared.open(destination)
+                }
+            }
+        } else {
+            let failedList = result.failedFiles.prefix(10).map {
+                let reason = $0.error.localizedDescription
+                return "\($0.path)\n  ↳ \(reason)"
+            }.joined(separator: "\n")
+            let more = result.failedFiles.count > 10 ? "\n... \(result.failedFiles.count - 10) more" : ""
+            appState.errorMessage = L("extract_partial", result.successCount, result.failedFiles.count) + "\n\n" + failedList + more
+        }
     }
 
     private func navigateToEntry(_ entry: CASCFileEntry) {
