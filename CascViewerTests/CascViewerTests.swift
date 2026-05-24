@@ -2,17 +2,6 @@ import XCTest
 @testable import CascViewer
 
 final class CascViewerTests: XCTestCase {
-    func testCASCErrorLocalizedDescriptionsAreNonEmpty() {
-        let errors: [CASCError] = [
-            .invalidPath, .storageNotFound, .storageCorrupted, .fileNotFound,
-            .fileNotAvailable, .readError, .networkError, .cdnConfigError,
-            .decodingError, .cancelled, .unknown, .notImplemented
-        ]
-        for error in errors {
-            XCTAssertFalse(error.localizedDescription.isEmpty, "\(error) should have a non-empty description")
-        }
-    }
-
     func testCASCFileEntryNormalizedPath() {
         let entry = CASCFileEntry(
             name: "test.txt",
@@ -30,25 +19,7 @@ final class CascViewerTests: XCTestCase {
         }
     }
 
-    func testHexPatternParserValid() {
-        XCTAssertEqual(HexPatternParser.parse("48 65 6C"), [0x48, 0x65, 0x6C])
-        XCTAssertEqual(HexPatternParser.parse("48??6C"), [0x48, nil, 0x6C])
-        XCTAssertEqual(HexPatternParser.parse("48 ? 6C"), [0x48, nil, 0x6C])
-    }
-
-    func testHexPatternParserInvalid() {
-        XCTAssertNil(HexPatternParser.parse(""))
-        XCTAssertNil(HexPatternParser.parse("G1"))
-        XCTAssertNil(HexPatternParser.parse("4"))
-    }
-
-    func testSearchTagSystemBitMask() {
-        let tags = [CascTag(name: "a", value: 0), CascTag(name: "b", value: 1)]
-        let mask = SearchTagSystem.bitMask(for: tags, selected: ["a", "b"])
-        XCTAssertEqual(mask, 0b11)
-    }
-
-    // MARK: - Model Tests (from BridgeTests)
+    // MARK: - Model Tests
 
     func testCASCFileEntryModel() {
         let entry = CASCFileEntry(

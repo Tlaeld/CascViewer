@@ -179,7 +179,7 @@ final class SearchParserTests: XCTestCase {
             CASCFileEntry(name: "tex2.dds", fullPath: "a/tex2.dds", type: .file, size: 100, encodingKey: ""),
             CASCFileEntry(name: "model.mdx", fullPath: "a/model.mdx", type: .file, size: 100, encodingKey: "")
         ]
-        let service = CASCSearchService(handle: CascBridge.CascStorageHandle.createLocal())
+        let service = CASCSearchService(reader: MockFileReader())
         let filtered = service.filterByTypes(entries, ["BLP", "DDS"])
         XCTAssertEqual(filtered.count, 2)
         XCTAssertTrue(filtered.allSatisfy { $0.name.hasSuffix(".blp") || $0.name.hasSuffix(".dds") })
@@ -189,7 +189,7 @@ final class SearchParserTests: XCTestCase {
         let entries = [
             CASCFileEntry(name: "file.txt", fullPath: "file.txt", type: .file, size: 100, encodingKey: "")
         ]
-        let service = CASCSearchService(handle: CascBridge.CascStorageHandle.createLocal())
+        let service = CASCSearchService(reader: MockFileReader())
         let filtered = service.filterByTypes(entries, [])
         XCTAssertEqual(filtered.count, 1)
     }
@@ -201,7 +201,7 @@ final class SearchParserTests: XCTestCase {
             CASCFileEntry(name: "a.txt", fullPath: "a.txt", type: .file, size: 100, encodingKey: ""),
             CASCFileEntry(name: "b.txt", fullPath: "dir/b.txt", type: .file, size: 100, encodingKey: "")
         ]
-        let service = CASCSearchService(handle: CascBridge.CascStorageHandle.createLocal())
+        let service = CASCSearchService(reader: MockFileReader())
         let candidates = service.getCandidates(scope: .entireStorage, allEntries: entries, entries: [], currentPath: "")
         XCTAssertEqual(candidates.count, 2)
     }
@@ -211,7 +211,7 @@ final class SearchParserTests: XCTestCase {
             CASCFileEntry(name: "a.txt", fullPath: "dir/a.txt", type: .file, size: 100, encodingKey: ""),
             CASCFileEntry(name: "b.txt", fullPath: "other/b.txt", type: .file, size: 100, encodingKey: "")
         ]
-        let service = CASCSearchService(handle: CascBridge.CascStorageHandle.createLocal())
+        let service = CASCSearchService(reader: MockFileReader())
         let candidates = service.getCandidates(scope: .currentDirectory, allEntries: entries, entries: [], currentPath: "dir")
         XCTAssertEqual(candidates.count, 1)
         XCTAssertEqual(candidates.first?.name, "a.txt")
@@ -222,7 +222,7 @@ final class SearchParserTests: XCTestCase {
             CASCFileEntry(name: "a.txt", fullPath: "a.txt", type: .file, size: 100, encodingKey: ""),
             CASCFileEntry(name: "b.txt", fullPath: "dir/b.txt", type: .file, size: 100, encodingKey: "")
         ]
-        let service = CASCSearchService(handle: CascBridge.CascStorageHandle.createLocal())
+        let service = CASCSearchService(reader: MockFileReader())
         let candidates = service.getCandidates(scope: .currentDirectory, allEntries: entries, entries: [], currentPath: "")
         XCTAssertEqual(candidates.count, 2)
     }
@@ -231,7 +231,7 @@ final class SearchParserTests: XCTestCase {
         let entries = [
             CASCFileEntry(name: "a.txt", fullPath: "a.txt", type: .file, size: 100, encodingKey: "")
         ]
-        let service = CASCSearchService(handle: CascBridge.CascStorageHandle.createLocal())
+        let service = CASCSearchService(reader: MockFileReader())
         let candidates = service.getCandidates(scope: .entireStorage, allEntries: [], entries: entries, currentPath: "")
         XCTAssertEqual(candidates.count, 1)
     }
@@ -240,7 +240,7 @@ final class SearchParserTests: XCTestCase {
 
     @MainActor
     func testSearchContentEmptyQuery() async {
-        let service = CASCSearchService(handle: CascBridge.CascStorageHandle.createLocal())
+        let service = CASCSearchService(reader: MockFileReader())
         let request = SearchRequest(mode: .content, query: "", scope: .entireStorage, caseSensitive: false, useRegex: false, includePath: false, fileTypes: [], selectedTags: [], availableTags: [])
         let results = await service.search(request, allEntries: [], entries: [], currentPath: "")
         XCTAssertTrue(results.isEmpty)
@@ -248,7 +248,7 @@ final class SearchParserTests: XCTestCase {
 
     @MainActor
     func testSearchHexInvalidPattern() async {
-        let service = CASCSearchService(handle: CascBridge.CascStorageHandle.createLocal())
+        let service = CASCSearchService(reader: MockFileReader())
         let request = SearchRequest(mode: .hex, query: "GG HH", scope: .entireStorage, caseSensitive: false, useRegex: false, includePath: false, fileTypes: [], selectedTags: [], availableTags: [])
         let results = await service.search(request, allEntries: [], entries: [], currentPath: "")
         XCTAssertTrue(results.isEmpty)
@@ -256,7 +256,7 @@ final class SearchParserTests: XCTestCase {
 
     @MainActor
     func testSearchTagNoMatch() async {
-        let service = CASCSearchService(handle: CascBridge.CascStorageHandle.createLocal())
+        let service = CASCSearchService(reader: MockFileReader())
         let request = SearchRequest(mode: .tag, query: "NonExistent", scope: .entireStorage, caseSensitive: false, useRegex: false, includePath: false, fileTypes: [], selectedTags: [], availableTags: [])
         let results = await service.search(request, allEntries: [], entries: [], currentPath: "")
         XCTAssertTrue(results.isEmpty)
