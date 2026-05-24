@@ -1,6 +1,7 @@
 {
     "_description": "简体中文语言覆盖。将此文件放到 ~/Library/Application Support/CascViewer/Lang/zh.json 即可自定义翻译。",
     "app_name": "CascViewer",
+    "new_window": "新建窗口",
     "settings_title": "设置",
     "settings_storage": "存储",
     "settings_extraction": "提取",
