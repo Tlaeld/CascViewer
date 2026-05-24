@@ -89,34 +89,43 @@ final class InstallManifestTableViewController: NSViewController {
     func reload(entries: [InstallManifestEntry], tags: [InstallManifestTag], selectedIDs: Set<String>, sortColumn: InstallManifestView.SortColumn, sortAscending: Bool) {
         let entriesChanged = self.entries.count != entries.count || zip(self.entries, entries).contains(where: { $0.id != $1.id })
         let tagsChanged = self.tags.count != tags.count
+        let sortChanged = self.sortColumn != sortColumn || self.sortAscending != sortAscending
+        let selectionChanged = self.selectedIDs != selectedIDs
 
         if entriesChanged || tagsChanged {
             self.entries = entries
             self.tags = tags
-            rebuildTagCache()
+            tagTextCache.removeAll(keepingCapacity: true)
             tableView.reloadData()
         }
 
         self.sortColumn = sortColumn
         self.sortAscending = sortAscending
         self.selectedIDs = selectedIDs
-        updateSelection()
-        updateSortIndicators()
+
+        if selectionChanged {
+            updateSelection()
+        }
+        if sortChanged {
+            updateSortIndicators()
+        }
     }
 
-    private func rebuildTagCache() {
-        tagTextCache.removeAll(keepingCapacity: true)
-        tagTextCache.reserveCapacity(entries.count)
-        for entry in entries {
-            let owned = tags.enumerated().compactMap { index, tag -> String? in
-                entry.hasTag(at: index) ? tag.name : nil
-            }
-            if owned.count <= 3 {
-                tagTextCache[entry.id] = owned.joined(separator: ", ")
-            } else {
-                tagTextCache[entry.id] = owned.prefix(3).joined(separator: ", ") + " (+\(owned.count - 3))"
-            }
+    private func tagText(for entry: InstallManifestEntry) -> String {
+        if let cached = tagTextCache[entry.id] {
+            return cached
         }
+        let owned = tags.enumerated().compactMap { index, tag -> String? in
+            entry.hasTag(at: index) ? tag.name : nil
+        }
+        let result: String
+        if owned.count <= 3 {
+            result = owned.joined(separator: ", ")
+        } else {
+            result = owned.prefix(3).joined(separator: ", ") + " (+\(owned.count - 3))"
+        }
+        tagTextCache[entry.id] = result
+        return result
     }
 
     private func updateSelection() {
@@ -242,7 +251,7 @@ extension InstallManifestTableViewController: NSTableViewDelegate {
             cell?.textField?.font = NSFont.monospacedSystemFont(ofSize: NSFont.smallSystemFontSize, weight: .regular)
             cell?.textField?.textColor = .secondaryLabelColor
         case "tags":
-            cell?.textField?.stringValue = tagTextCache[entry.id] ?? ""
+            cell?.textField?.stringValue = tagText(for: entry)
             cell?.textField?.font = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize)
         default:
             break

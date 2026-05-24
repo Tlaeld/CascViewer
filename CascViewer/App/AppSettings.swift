@@ -1,5 +1,4 @@
 import Foundation
-import Combine
 import SwiftUI
 
 @MainActor
@@ -73,8 +72,9 @@ final class AppSettings: ObservableObject {
     func resetToDefaults() {
         let desktopPath = FileManager.default.urls(for: .desktopDirectory, in: .userDomainMask).first?.path
             ?? FileManager.default.temporaryDirectory.path
+        let cachePath = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first?.appendingPathComponent("CascViewer").path
         cdnDownloadEnabled = true
-        cdnCachePath = ""
+        cdnCachePath = cachePath ?? ""
         defaultExtractPath = desktopPath
         preserveStructure = true
         overwriteExisting = false
@@ -87,22 +87,33 @@ final class AppSettings: ObservableObject {
         LocalizationManager.shared.languageCode = lang
     }
 
-    func clearCache(baseDirectory: URL? = nil) {
+    @discardableResult
+    func clearCache(baseDirectory: URL? = nil) -> Bool {
         let fileManager = FileManager.default
+        var overallSuccess = true
         // Only remove CascViewer's own cache directories, not the entire system cache
         let cachesDir = baseDirectory ?? fileManager.urls(for: .cachesDirectory, in: .userDomainMask).first
         if let cachesDir = cachesDir {
             let cascCache = cachesDir.appendingPathComponent("CascViewer")
             if fileManager.fileExists(atPath: cascCache.path) {
-                try? fileManager.removeItem(at: cascCache)
+                do {
+                    try fileManager.removeItem(at: cascCache)
+                } catch {
+                    overallSuccess = false
+                }
             }
         }
         if let appSupport = baseDirectory == nil ? fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first : nil {
             let cascCache = appSupport.appendingPathComponent("CascViewer/Cache")
             if fileManager.fileExists(atPath: cascCache.path) {
-                try? fileManager.removeItem(at: cascCache)
+                do {
+                    try fileManager.removeItem(at: cascCache)
+                } catch {
+                    overallSuccess = false
+                }
             }
         }
+        return overallSuccess
     }
 
     var availableLanguages: [(code: String, name: String)] {

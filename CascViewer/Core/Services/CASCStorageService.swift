@@ -14,14 +14,30 @@ private func localizedProgressMessage(_ cMessage: UnsafePointer<CChar>) -> Strin
     }
 }
 
+/// Thread-safe box passed as the C++ progress callback context.
+/// Holds the service reference and a non-actor-isolated throttle timestamp
+/// so the callback can avoid creating a Task on every invocation.
+private final class ProgressCallbackContext: @unchecked Sendable {
+    let service: CASCStorageService
+    var lastUpdate: Date = .distantPast
+    init(service: CASCStorageService) {
+        self.service = service
+    }
+}
+
 // C-style callback thunk for C++ progress callback
 private let progressCallbackThunk: @convention(c) (UnsafeMutableRawPointer?, UnsafePointer<CChar>?, CInt, CInt) -> Void = { context, message, current, total in
     guard let ctx = context, let msg = message else { return }
-    let service = Unmanaged<CASCStorageService>.fromOpaque(ctx).takeUnretainedValue()
+    let box = Unmanaged<ProgressCallbackContext>.fromOpaque(ctx).takeUnretainedValue()
+    let service = box.service
     let localizedMsg = localizedProgressMessage(msg)
-    Task { @MainActor in
-        if Date().timeIntervalSince(service.lastProgressUpdate) > 0.05 {
-            service.lastProgressUpdate = Date()
+
+    // Throttle on the callback thread before dispatching to MainActor.
+    // safe because the C++ callback is serial on one background thread.
+    let now = Date()
+    if now.timeIntervalSince(box.lastUpdate) > 0.05 {
+        box.lastUpdate = now
+        Task { @MainActor in
             service.loadProgressMessage = localizedMsg
             if total > 0 {
                 service.loadProgress = Double(current) / Double(total)
@@ -39,6 +55,7 @@ public struct DirectoryNode: Identifiable, Hashable, Sendable {
     public var children: [DirectoryNode]? = nil
     public let isLocal: Bool
     public let size: UInt64
+    public let iconName: String
 
     private static let byteFormatter: ByteCountFormatter = {
         let f = ByteCountFormatter()
@@ -57,14 +74,17 @@ public struct DirectoryNode: Identifiable, Hashable, Sendable {
         self.children = children
         self.isLocal = isLocal
         self.size = size
+        self.iconName = Self.computeIconName(name: name, isDirectory: children != nil)
     }
 
     init(from entry: CASCFileEntry) {
         self.name = entry.name
         self.path = entry.fullPath
-        self.children = entry.isDirectory ? [] : nil
+        let isDir = entry.isDirectory
+        self.children = isDir ? [] : nil
         self.isLocal = entry.isLocal
         self.size = entry.size
+        self.iconName = Self.computeIconName(name: entry.name, isDirectory: isDir)
     }
 
     public static func == (lhs: DirectoryNode, rhs: DirectoryNode) -> Bool {
@@ -73,6 +93,35 @@ public struct DirectoryNode: Identifiable, Hashable, Sendable {
 
     public func hash(into hasher: inout Hasher) {
         hasher.combine(path)
+    }
+
+    private static func computeIconName(name: String, isDirectory: Bool) -> String {
+        guard !isDirectory else { return "folder.fill" }
+        let ext = (name as NSString).pathExtension.lowercased()
+        switch ext {
+        case "txt", "strings", "json", "xml", "html", "csv":
+            return "doc.text"
+        case "blp", "dds", "tga", "png", "jpg", "jpeg":
+            return "photo"
+        case "mp3", "ogg", "wav", "flac":
+            return "music.note"
+        case "mp4", "avi", "mov", "mkv":
+            return "film"
+        case "zip", "rar", "7z", "tar", "gz":
+            return "archivebox"
+        case "exe", "dll", "so", "dylib":
+            return "terminal"
+        case "sc2data", "sc2assets", "sc2mod", "sc2campaign", "sc2components":
+            return "cube.box"
+        case "version":
+            return "number"
+        case "pdf":
+            return "doc.richtext"
+        case "lua", "js", "ts", "swift", "cpp", "h", "hpp", "c":
+            return "curlybraces"
+        default:
+            return "doc"
+        }
     }
 }
 
@@ -86,7 +135,8 @@ final class CASCStorageService: ObservableObject {
     @Published var loadProgress: Double = 0
     @Published var loadProgressMessage: String = ""
     @Published var error: CASCError?
-    var lastProgressUpdate: Date = Date.distantPast
+    // Throttle state lives in ProgressCallbackContext (non-actor-isolated)
+    // to avoid Task creation overhead on every C++ progress callback.
     @Published var isOnlineStorage: Bool = false
     @Published var needsListFile: Bool = false
 
@@ -142,15 +192,16 @@ final class CASCStorageService: ObservableObject {
         if !listFilePath.isEmpty {
             localHandle.setListFilePath(std.string(listFilePath))
         }
-        let ctx = Unmanaged.passRetained(self).toOpaque()
-        progressContext = ctx
-        localHandle.setOpenProgressCallback(progressCallbackThunk, ctx)
+        let ctx = ProgressCallbackContext(service: self)
+        let raw = Unmanaged.passRetained(ctx).toOpaque()
+        progressContext = raw
+        localHandle.setOpenProgressCallback(progressCallbackThunk, raw)
         let result: CascBridge.CascError = await runOnQueue {
             localHandle.open(std.string(path))
         }
         localHandle.setOpenProgressCallback(nil, nil)
         progressContext = nil
-        Unmanaged<CASCStorageService>.fromOpaque(ctx).release()
+        Unmanaged<ProgressCallbackContext>.fromOpaque(raw).release()
         // Cooperative cancellation: if the task was cancelled while opening,
         // don't proceed to load entries and don't overwrite error state.
         guard !Task.isCancelled else {
@@ -259,15 +310,16 @@ final class CASCStorageService: ObservableObject {
 
     private func openWithConfig(config: String) async -> CascBridge.CascError {
         var localHandle = handle
-        let ctx = Unmanaged.passRetained(self).toOpaque()
-        progressContext = ctx
-        localHandle.setOpenProgressCallback(progressCallbackThunk, ctx)
+        let ctx = ProgressCallbackContext(service: self)
+        let raw = Unmanaged.passRetained(ctx).toOpaque()
+        progressContext = raw
+        localHandle.setOpenProgressCallback(progressCallbackThunk, raw)
         let result: CascBridge.CascError = await runOnQueue {
             localHandle.open(std.string(config))
         }
         localHandle.setOpenProgressCallback(nil, nil)
         progressContext = nil
-        Unmanaged<CASCStorageService>.fromOpaque(ctx).release()
+        Unmanaged<ProgressCallbackContext>.fromOpaque(raw).release()
         return result
     }
 
@@ -512,6 +564,16 @@ final class CASCStorageService: ObservableObject {
             map[path] = children
         }
 
+        // Sort every directory's children: directories first, then files, both A-Z
+        for path in map.keys {
+            map[path]?.sort {
+                let aDir = $0.children != nil
+                let bDir = $1.children != nil
+                if aDir != bDir { return aDir && !bDir }
+                return $0.name.localizedStandardCompare($1.name) == .orderedAscending
+            }
+        }
+
         var rootChildren = map[""] ?? []
         if !contentKeyFiles.isEmpty {
             rootChildren.append(DirectoryNode(name: "CONTENT_KEY", path: "CONTENT_KEY", children: [], isLocal: true))
@@ -651,6 +713,16 @@ final class CASCStorageService: ObservableObject {
             map[path] = children
         }
 
+        // Sort every directory's children: directories first, then files, both A-Z
+        for path in map.keys {
+            map[path]?.sort {
+                let aDir = $0.children != nil
+                let bDir = $1.children != nil
+                if aDir != bDir { return aDir && !bDir }
+                return $0.name.localizedStandardCompare($1.name) == .orderedAscending
+            }
+        }
+
         var rootChildren = map[""] ?? []
         if !contentKeyFiles.isEmpty {
             rootChildren.append(DirectoryNode(name: "CONTENT_KEY", path: "CONTENT_KEY", children: [], isLocal: true))
@@ -673,6 +745,7 @@ final class CASCStorageService: ObservableObject {
 
     /// Pure in-memory navigation — O(1) lookup via pre-computed map.
     func navigate(to path: String) {
+        guard self.currentPath != path else { return }
         self.currentPath = path
         self.currentChildren = childrenByPath[path, default: []]
     }
@@ -731,6 +804,25 @@ final class CASCStorageService: ObservableObject {
         }
         if normalized == "UNKNOWN" {
             return allEntries.filter { Self.isUncategorized($0) }
+        }
+        // Use childrenByPath BFS to avoid O(n) linear scan over allEntries
+        if let children = childrenByPath[normalized] {
+            var result: [CASCFileEntry] = []
+            result.reserveCapacity(children.count * 2)
+            var queue = children
+            var index = 0
+            while index < queue.count {
+                let node = queue[index]
+                index += 1
+                if node.children != nil {
+                    if let subChildren = childrenByPath[node.path] {
+                        queue.append(contentsOf: subChildren)
+                    }
+                } else if let entry = entriesByPath[node.path] {
+                    result.append(entry)
+                }
+            }
+            return result
         }
         let prefix = normalized.isEmpty ? "" : normalized + "/"
         return allEntries.filter { $0.normalizedPath.hasPrefix(prefix) }

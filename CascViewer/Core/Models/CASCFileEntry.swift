@@ -34,7 +34,7 @@ public struct InstallManifestEntry: Identifiable, Hashable, Sendable {
         self.tagBits = tagBits
     }
     
-    private static let byteFormatter: ByteCountFormatter = {
+    public static let byteFormatter: ByteCountFormatter = {
         let f = ByteCountFormatter()
         f.countStyle = .file
         return f
@@ -62,7 +62,7 @@ public struct CASCFileEntry: Identifiable, Hashable, Sendable {
 
     public var normalizedPath: String { fullPath.replacingOccurrences(of: "\\", with: "/") }
 
-    private static let byteFormatter: ByteCountFormatter = {
+    public static let byteFormatter: ByteCountFormatter = {
         let f = ByteCountFormatter()
         f.countStyle = .file
         return f

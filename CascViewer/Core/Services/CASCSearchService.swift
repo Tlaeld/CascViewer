@@ -169,8 +169,9 @@ class CASCSearchService {
     private let reader: CASCFileReader
     private let maxContentReadSize = 10 * 1024 * 1024 // 10MB cap per file
     private let maxConcurrentSearches = ProcessInfo.processInfo.processorCount
-    /// Serial queue for file reads to avoid concurrent access to the underlying CascLib handle.
-    private static let readQueue = DispatchQueue(label: "casc.search.read", qos: .userInitiated)
+    /// Concurrent queue for file reads. The underlying C++ CascLib handle is protected by std::mutex,
+    /// so concurrent reads are safe and significantly improve search throughput.
+    private static let readQueue = DispatchQueue(label: "casc.search.read", qos: .userInitiated, attributes: .concurrent)
 
     init(reader: CASCFileReader) {
         self.reader = reader

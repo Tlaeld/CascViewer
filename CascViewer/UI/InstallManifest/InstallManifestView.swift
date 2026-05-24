@@ -3,39 +3,6 @@ import AppKit
 import CascBridge
 import UniformTypeIdentifiers
 
-struct TagCell: View {
-    let entry: InstallManifestEntry
-    let tags: [InstallManifestTag]
-
-    var ownedTags: [(offset: Int, element: InstallManifestTag)] {
-        tags.enumerated().filter { entry.hasTag(at: $0.offset) }
-    }
-
-    var body: some View {
-        HStack(spacing: 4) {
-            let maxVisible = 3
-            let visible = Array(ownedTags.prefix(maxVisible))
-            ForEach(visible, id: \.offset) { item in
-                Text(item.element.name)
-                    .font(.caption2)
-                    .padding(.horizontal, 4)
-                    .padding(.vertical, 1)
-                    .background(Color.accentColor.opacity(0.15))
-                    .cornerRadius(3)
-            }
-            if ownedTags.count > maxVisible {
-                Text("+\(ownedTags.count - maxVisible)")
-                    .font(.caption2)
-                    .padding(.horizontal, 4)
-                    .padding(.vertical, 1)
-                    .background(Color.secondary.opacity(0.15))
-                    .cornerRadius(3)
-            }
-        }
-        .help(ownedTags.map { $0.element.name }.joined(separator: ", "))
-    }
-}
-
 struct InstallManifestView: View {
     let tags: [InstallManifestTag]
     let entries: [InstallManifestEntry]
@@ -52,51 +19,66 @@ struct InstallManifestView: View {
     @State private var showingListExportPanel = false
     @State private var exportResultMessage: String?
     @State private var showingExportResult = false
+    @State private var filteredEntries: [InstallManifestEntry] = []
+    @State private var filterTask: Task<Void, Never>? = nil
+    @State private var csvDocument = CSVDocument(text: "")
 
     enum SortColumn {
         case fileName, fileSize, ckey
     }
 
-    var filteredEntries: [InstallManifestEntry] {
-        var result = entries
+    private func updateFilteredEntries(debounce: Bool = false) {
+        filterTask?.cancel()
+        let localSearchText = searchText
+        let localSelectedTags = selectedTagIndices
+        let localSortColumn = sortColumn
+        let localSortAscending = sortAscending
+        let localEntries = entries
 
-        // Filter by selected tags
-        if !selectedTagIndices.isEmpty {
-            result = result.filter { entry in
-                selectedTagIndices.allSatisfy { index in
-                    entry.hasTag(at: index)
+        filterTask = Task { @MainActor in
+            if debounce, !localSearchText.isEmpty {
+                try? await Task.sleep(nanoseconds: 300_000_000)
+            }
+            guard !Task.isCancelled else { return }
+
+            let result = await Task.detached(priority: .userInitiated) {
+                var result = localEntries
+
+                if !localSelectedTags.isEmpty {
+                    result = result.filter { entry in
+                        localSelectedTags.allSatisfy { index in
+                            entry.hasTag(at: index)
+                        }
+                    }
                 }
-            }
+
+                if !localSearchText.isEmpty {
+                    let lowerQuery = localSearchText.lowercased()
+                    result = result.filter {
+                        $0.fileName.lowercased().contains(lowerQuery) ||
+                        $0.ckey.lowercased().contains(lowerQuery)
+                    }
+                }
+
+                result.sort {
+                    let cmp: Bool
+                    switch localSortColumn {
+                    case .fileName:
+                        cmp = $0.fileName.localizedStandardCompare($1.fileName) == .orderedAscending
+                    case .fileSize:
+                        cmp = $0.fileSize < $1.fileSize
+                    case .ckey:
+                        cmp = $0.ckey < $1.ckey
+                    }
+                    return localSortAscending ? cmp : !cmp
+                }
+
+                return result
+            }.value
+
+            guard !Task.isCancelled else { return }
+            filteredEntries = result
         }
-
-        // Filter by search text
-        if !searchText.isEmpty {
-            let lowerQuery = searchText.lowercased()
-            result = result.filter {
-                $0.fileName.lowercased().contains(lowerQuery) ||
-                $0.ckey.lowercased().contains(lowerQuery)
-            }
-        }
-
-        // Sort
-        result.sort {
-            let cmp: Bool
-            switch sortColumn {
-            case .fileName:
-                cmp = $0.fileName.localizedStandardCompare($1.fileName) == .orderedAscending
-            case .fileSize:
-                cmp = $0.fileSize < $1.fileSize
-            case .ckey:
-                cmp = $0.ckey < $1.ckey
-            }
-            return sortAscending ? cmp : !cmp
-        }
-
-        return result
-    }
-
-    var selectedEntries: [InstallManifestEntry] {
-        filteredEntries.filter { selectedEntryIDs.contains($0.id) }
     }
 
     var body: some View {
@@ -106,6 +88,7 @@ struct InstallManifestView: View {
                 TextField(L("search_placeholder"), text: $searchText)
                     .textFieldStyle(.roundedBorder)
                     .frame(width: 200)
+                    .onChange(of: searchText) { _ in updateFilteredEntries(debounce: true) }
 
                 if !tags.isEmpty {
                     Menu(L("filter_tags")) {
@@ -116,6 +99,7 @@ struct InstallManifestView: View {
                                 } else {
                                     selectedTagIndices.insert(index)
                                 }
+                                updateFilteredEntries(debounce: false)
                             } label: {
                                 HStack {
                                     Image(systemName: selectedTagIndices.contains(index) ? "checkmark.square" : "square")
@@ -135,13 +119,16 @@ struct InstallManifestView: View {
 
                 if !selectedEntryIDs.isEmpty {
                     Button {
-                        exportConfig = ExportSheetConfig(entries: selectedEntries)
+                        let selected = filteredEntries.filter { selectedEntryIDs.contains($0.id) }
+                        exportConfig = ExportSheetConfig(entries: selected)
                     } label: {
                         Label(L("export_selected", selectedEntryIDs.count), systemImage: "arrow.down.doc")
                     }
                 }
 
-                if selectedEntryIDs.count == 1, let entry = selectedEntries.first {
+                if selectedEntryIDs.count == 1,
+                   let id = selectedEntryIDs.first,
+                   let entry = filteredEntries.first(where: { $0.id == id }) {
                     Button {
                         detailEntry = entry
                         showingDetail = true
@@ -181,9 +168,13 @@ struct InstallManifestView: View {
                 onSort: { column, ascending in
                     sortColumn = column
                     sortAscending = ascending
+                    updateFilteredEntries(debounce: false)
                 }
             )
             .frame(maxHeight: .infinity)
+        }
+        .onAppear {
+            updateFilteredEntries(debounce: false)
         }
         .sheet(item: $detailEntry) { entry in
             InstallManifestEntryDetailView(
@@ -206,7 +197,7 @@ struct InstallManifestView: View {
         }
         .fileExporter(
             isPresented: $showingListExportPanel,
-            document: CSVDocument(text: csvContent),
+            document: csvDocument,
             contentType: .commaSeparatedText,
             defaultFilename: "install_manifest.csv"
         ) { result in
@@ -229,8 +220,9 @@ struct InstallManifestView: View {
         return field
     }
 
-    private var csvContent: String {
+    private func buildCSVContent() -> String {
         var lines: [String] = []
+        lines.reserveCapacity(filteredEntries.count + 1)
         lines.append("FileName,Size,CKey,Tags")
         for entry in filteredEntries {
             let tagNames = tags.enumerated().compactMap { index, tag -> String? in
@@ -242,6 +234,7 @@ struct InstallManifestView: View {
     }
 
     private func exportList() {
+        csvDocument = CSVDocument(text: buildCSVContent())
         showingListExportPanel = true
     }
 }

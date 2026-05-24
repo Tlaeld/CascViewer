@@ -62,30 +62,23 @@ struct BLPViewerView: View {
 }
 
 struct CheckerboardView: View {
-    let squareSize: CGFloat = 16
+    private static let patternColor: NSColor = {
+        let size = NSSize(width: 32, height: 32)
+        let image = NSImage(size: size)
+        image.lockFocus()
+        NSColor(white: 0.9, alpha: 1).setFill()
+        NSRect(x: 0, y: 0, width: 16, height: 16).fill()
+        NSRect(x: 16, y: 16, width: 16, height: 16).fill()
+        NSColor(white: 0.7, alpha: 1).setFill()
+        NSRect(x: 16, y: 0, width: 16, height: 16).fill()
+        NSRect(x: 0, y: 16, width: 16, height: 16).fill()
+        image.unlockFocus()
+        return NSColor(patternImage: image)
+    }()
 
     var body: some View {
-        GeometryReader { geometry in
-            let cols = Int(geometry.size.width / squareSize) + 1
-            let rows = Int(geometry.size.height / squareSize) + 1
-
-            Canvas { context, size in
-                for row in 0..<rows {
-                    for col in 0..<cols {
-                        let rect = CGRect(
-                            x: CGFloat(col) * squareSize,
-                            y: CGFloat(row) * squareSize,
-                            width: squareSize,
-                            height: squareSize
-                        )
-                        let isDark = (row + col) % 2 == 0
-                        context.fill(
-                            Path(rect),
-                            with: .color(isDark ? Color(white: 0.9) : Color(white: 0.7))
-                        )
-                    }
-                }
-            }
+        GeometryReader { _ in
+            Color(Self.patternColor)
         }
     }
 }

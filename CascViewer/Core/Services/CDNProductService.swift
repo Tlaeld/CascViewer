@@ -12,7 +12,10 @@ final class CDNProductService: ObservableObject {
 
     private static let cacheFileURL: URL = {
         let fm = FileManager.default
-        let cachesDir = fm.urls(for: .cachesDirectory, in: .userDomainMask).first!
+        guard let cachesDir = fm.urls(for: .cachesDirectory, in: .userDomainMask).first else {
+            // Fallback to temporary directory if caches directory is unavailable
+            return fm.temporaryDirectory.appendingPathComponent("CascViewer/regions_cache.json")
+        }
         return cachesDir.appendingPathComponent("CascViewer/regions_cache.json")
     }()
 
@@ -89,9 +92,11 @@ final class CDNProductService: ObservableObject {
             }
         }
         guard let data = try? JSONEncoder().encode(dict) else { return }
-        try? fm.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-        if let _ = try? data.write(to: url) {
-            // Cache saved
+        do {
+            try fm.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try data.write(to: url, options: .atomic)
+        } catch {
+            // Cache save failed; best-effort, log silently in production
         }
     }
 

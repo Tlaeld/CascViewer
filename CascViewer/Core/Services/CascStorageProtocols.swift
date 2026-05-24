@@ -56,7 +56,8 @@ final class CascStorageHandleAdapter: CASCStorageHandleProtocol, @unchecked Send
         }
 
         let box = ProgressBox(progress: progress)
-        let rawContext = Unmanaged.passUnretained(box).toOpaque()
+        let rawContext = Unmanaged.passRetained(box).toOpaque()
+        defer { Unmanaged<ProgressBox>.fromOpaque(rawContext).release() }
 
         let progressBlock: @convention(c) (UnsafeMutableRawPointer?, Int64, Int64) -> Void = { context, current, total in
             guard let ctx = context else { return }
