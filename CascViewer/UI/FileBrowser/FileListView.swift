@@ -107,6 +107,9 @@ struct FileListContent: View {
         .onChange(of: storage.currentChildren) { _ in
             rebuildDisplayedItems()
         }
+        .onDisappear {
+            activeExtractService?.cancel()
+        }
         .sheet(isPresented: $showingExtractSheet) {
             ExtractDialogView(entries: extractEntries) { destination, preserveStructure, overwriteExisting, openAfterExtract in
                 Task {
@@ -141,6 +144,7 @@ struct FileListContent: View {
         }
     }
 
+    @MainActor
     private func openFile(node: DirectoryNode) async {
         guard let storageService = appState.currentStorage else { return }
         guard let entry = storageService.entry(forPath: node.path) else { return }
@@ -149,7 +153,13 @@ struct FileListContent: View {
         let sessionDir = FileManager.default.temporaryDirectory
             .appendingPathComponent("CascViewer/Open", isDirectory: true)
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
-        try? FileManager.default.createDirectory(at: sessionDir, withIntermediateDirectories: true)
+        do {
+            try FileManager.default.createDirectory(at: sessionDir, withIntermediateDirectories: true)
+        } catch {
+            appState.errorMessage = L("create_temp_dir_failed", error.localizedDescription)
+            await MainActor.run { activeExtractService = nil }
+            return
+        }
 
         let safeName = entry.name
             .components(separatedBy: "/")
@@ -158,13 +168,9 @@ struct FileListContent: View {
         let destURL = sessionDir.appendingPathComponent(safeName)
 
         let service = CASCExtractService(storage: storageService.handle)
-        await MainActor.run {
-            activeExtractService = service
-        }
+        activeExtractService = service
         let result = await service.extract(entries: [entry], to: sessionDir, preserveStructure: false)
-        await MainActor.run {
-            activeExtractService = nil
-        }
+        activeExtractService = nil
 
         // Schedule cleanup regardless of outcome
         Task {
@@ -177,13 +183,9 @@ struct FileListContent: View {
         } else if result.failedFiles.isEmpty {
             let isImage = safeName.lowercased().hasSuffix(".blp") || safeName.lowercased().hasSuffix(".dds")
             if isImage, let data = try? Data(contentsOf: destURL) {
-                await MainActor.run {
-                    openImageViewerWindow(fileName: safeName, imageData: data)
-                }
+                openImageViewerWindow(fileName: safeName, imageData: data)
             } else {
-                await MainActor.run {
-                    NSWorkspace.shared.open(destURL)
-                }
+                NSWorkspace.shared.open(destURL)
             }
         } else {
             await MainActor.run {
@@ -193,22 +195,17 @@ struct FileListContent: View {
         }
     }
 
+    @MainActor
     private func performExtraction(to destination: URL, preserveStructure: Bool, overwriteExisting: Bool, openAfterExtract: Bool) async {
         guard let storageService = appState.currentStorage else { return }
         let extractService = CASCExtractService(storage: storageService.handle)
-        await MainActor.run {
-            activeExtractService = extractService
-        }
+        activeExtractService = extractService
         let result = await extractService.extract(entries: extractEntries, to: destination, preserveStructure: preserveStructure, overwriteExisting: overwriteExisting)
-        await MainActor.run {
-            activeExtractService = nil
-        }
+        activeExtractService = nil
         if result.failedFiles.isEmpty {
             appState.errorMessage = L("extract_success", result.successCount)
             if openAfterExtract {
-                await MainActor.run {
-                    NSWorkspace.shared.open(destination)
-                }
+                NSWorkspace.shared.open(destination)
             }
         } else {
             let failedList = result.failedFiles.prefix(10).map {
@@ -267,10 +264,11 @@ struct FileListContent: View {
 
 // MARK: - NSTableView Bridge (fast flat list, no tree indexing overhead)
 
+@MainActor
 final class FileTableViewController: NSViewController {
-    private var tableView: NSTableView!
-    private var scrollView: NSScrollView!
-    private var emptyStateLabel: NSTextField!
+    private var tableView: NSTableView?
+    private var scrollView: NSScrollView?
+    private var emptyStateLabel: NSTextField?
 
     var items: [DirectoryNode] = []
     private var unsortedItems: [DirectoryNode] = []
@@ -281,6 +279,10 @@ final class FileTableViewController: NSViewController {
     var onOpenFile: ((DirectoryNode) -> Void)?
     var onExtract: (([DirectoryNode]) -> Void)?
 
+    deinit {
+        sortTask?.cancel()
+    }
+
     override func loadView() {
         view = NSView()
     }
@@ -288,13 +290,13 @@ final class FileTableViewController: NSViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        scrollView = NSScrollView()
+        let scrollView = NSScrollView()
         scrollView.hasVerticalScroller = true
         scrollView.hasHorizontalScroller = true
         scrollView.autohidesScrollers = true
         scrollView.translatesAutoresizingMaskIntoConstraints = false
 
-        tableView = NSTableView()
+        let tableView = NSTableView()
         tableView.allowsMultipleSelection = true
         tableView.usesAlternatingRowBackgroundColors = true
         tableView.columnAutoresizingStyle = .uniformColumnAutoresizingStyle
@@ -364,7 +366,7 @@ final class FileTableViewController: NSViewController {
         tableView.menu = menu
 
         // Empty state label
-        emptyStateLabel = NSTextField(labelWithString: L("folder_empty"))
+        let emptyStateLabel = NSTextField(labelWithString: L("folder_empty"))
         emptyStateLabel.alignment = .center
         emptyStateLabel.textColor = .secondaryLabelColor
         emptyStateLabel.font = NSFont.systemFont(ofSize: 13)
@@ -375,6 +377,10 @@ final class FileTableViewController: NSViewController {
             emptyStateLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
             emptyStateLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor)
         ])
+
+        self.scrollView = scrollView
+        self.tableView = tableView
+        self.emptyStateLabel = emptyStateLabel
     }
 
     func reload(items: [DirectoryNode]) {
@@ -384,6 +390,7 @@ final class FileTableViewController: NSViewController {
 
     private func applySorting() {
         sortTask?.cancel()
+        guard let tableView = tableView as NSTableView? else { return }
         guard let sortDescriptor = tableView.sortDescriptors.first else {
             self.items = unsortedItems
             reloadTable()
@@ -393,7 +400,7 @@ final class FileTableViewController: NSViewController {
         let ascending = sortDescriptor.ascending
         let key = sortDescriptor.key
         let items = unsortedItems
-        sortTask = Task { [weak self] in
+        sortTask = Task { @MainActor [weak self] in
             let sorted = await Task.detached(priority: .userInitiated) {
                 return items.sorted { a, b in
                     let aDir = a.children != nil
@@ -420,7 +427,7 @@ final class FileTableViewController: NSViewController {
             }.value
             guard let self = self, !Task.isCancelled else { return }
             // Preserve selection before replacing items
-            let selectedPaths = self.tableView.selectedRowIndexes.compactMap { idx -> String? in
+            let selectedPaths = tableView.selectedRowIndexes.compactMap { idx -> String? in
                 idx < self.items.count ? self.items[idx].path : nil
             }
             self.lastSelectedPaths = Set(selectedPaths)
@@ -432,9 +439,11 @@ final class FileTableViewController: NSViewController {
     private func reloadTable() {
         Task { @MainActor [weak self] in
             guard let self = self else { return }
-            let scrollRow = self.tableView.rows(in: self.scrollView.contentView.visibleRect).location
+            guard let tableView = tableView as NSTableView? else { return }
+            guard let scrollView = scrollView as NSScrollView? else { return }
+            let scrollRow = tableView.rows(in: scrollView.contentView.visibleRect).location
             self.updatePathColumnVisibility()
-            self.tableView.reloadData()
+            tableView.reloadData()
             self.updateEmptyState()
             self.view.needsLayout = true
 
@@ -447,23 +456,25 @@ final class FileTableViewController: NSViewController {
                     }
                 }
                 if !indexes.isEmpty {
-                    self.tableView.selectRowIndexes(indexes, byExtendingSelection: false)
+                    tableView.selectRowIndexes(indexes, byExtendingSelection: false)
                     if let first = indexes.first {
-                        self.tableView.scrollRowToVisible(first)
+                        tableView.scrollRowToVisible(first)
                     }
                 }
                 self.lastSelectedPaths.removeAll()
             } else if scrollRow >= 0, scrollRow < self.items.count {
-                self.tableView.scrollRowToVisible(scrollRow)
+                tableView.scrollRowToVisible(scrollRow)
             }
         }
     }
 
     private func updateEmptyState() {
+        guard let emptyStateLabel = emptyStateLabel as NSTextField? else { return }
         emptyStateLabel.isHidden = !items.isEmpty
     }
 
     private func updatePathColumnVisibility() {
+        guard let tableView = tableView as NSTableView? else { return }
         guard let pathCol = tableView.tableColumns.first(where: { $0.identifier.rawValue == "path" }) else { return }
         let shouldShow: Bool
         if items.isEmpty {
@@ -481,6 +492,10 @@ final class FileTableViewController: NSViewController {
     }
 
     override func keyDown(with event: NSEvent) {
+        guard let tableView = tableView as NSTableView? else {
+            super.keyDown(with: event)
+            return
+        }
         if event.keyCode == 36, // Return
            let firstRow = tableView.selectedRowIndexes.first,
            firstRow >= 0, firstRow < items.count {
@@ -497,6 +512,8 @@ final class FileTableViewController: NSViewController {
 
     override func viewDidLayout() {
         super.viewDidLayout()
+        guard let scrollView = scrollView as NSScrollView? else { return }
+        guard let tableView = tableView as NSTableView? else { return }
         let visibleBounds = scrollView.contentView.bounds
         guard visibleBounds.width > 0 else { return }
         let contentHeight = CGFloat(items.count) * tableView.rowHeight + tableView.intercellSpacing.height * CGFloat(max(items.count - 1, 0))
@@ -506,6 +523,7 @@ final class FileTableViewController: NSViewController {
     }
 
     @objc private func handleDoubleClick() {
+        guard let tableView = tableView as NSTableView? else { return }
         let row = tableView.clickedRow
         guard row >= 0, row < items.count else { return }
         let item = items[row]
@@ -520,6 +538,7 @@ final class FileTableViewController: NSViewController {
 extension FileTableViewController: NSMenuDelegate {
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
+        guard let tableView = tableView as NSTableView? else { return }
         let clickedRow = tableView.clickedRow
         guard clickedRow >= 0, clickedRow < items.count else { return }
 

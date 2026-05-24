@@ -175,7 +175,9 @@ struct OnlineStorageView: View {
         guard let window = NSApp.keyWindow else { return }
         panel.beginSheetModal(for: window) { result in
             if result == .OK, let url = panel.url {
-                self.service.cachePath = url.path
+                Task { @MainActor in
+                    self.service.cachePath = url.path
+                }
             }
         }
     }

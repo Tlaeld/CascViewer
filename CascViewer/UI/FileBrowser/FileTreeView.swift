@@ -156,24 +156,22 @@ struct FileTreeContent: View {
             }
             rebuildDisplayRows()
         }
+        .onDisappear {
+            activeExtractService?.cancel()
+        }
     }
 
+    @MainActor
     private func performExtraction(to destination: URL, preserveStructure: Bool, overwriteExisting: Bool, openAfterExtract: Bool) async {
         let extractService = CASCExtractService(storage: storage.handle)
-        await MainActor.run {
-            activeExtractService = extractService
-        }
+        activeExtractService = extractService
         let result = await extractService.extract(entries: extractEntries, to: destination, preserveStructure: preserveStructure, overwriteExisting: overwriteExisting)
-        await MainActor.run {
-            activeExtractService = nil
-        }
+        activeExtractService = nil
         if result.wasCancelled {
             // Silently ignore cancelled extractions
         } else if result.failedFiles.isEmpty {
             if openAfterExtract {
-                await MainActor.run {
-                    NSWorkspace.shared.open(destination)
-                }
+                NSWorkspace.shared.open(destination)
             }
         } else {
             let failedList = result.failedFiles.prefix(10).map {
@@ -190,8 +188,8 @@ struct FileTreeContent: View {
 // MARK: - NSTableView Bridge
 
 final class TreeTableViewController: NSViewController {
-    private var tableView: NSTableView!
-    private var scrollView: NSScrollView!
+    private var tableView: NSTableView?
+    private var scrollView: NSScrollView?
 
     var items: [TreeRow] = []
     var currentPath: String = ""
@@ -208,13 +206,13 @@ final class TreeTableViewController: NSViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        scrollView = NSScrollView()
+        let scrollView = NSScrollView()
         scrollView.hasVerticalScroller = true
         scrollView.hasHorizontalScroller = true
         scrollView.autohidesScrollers = true
         scrollView.translatesAutoresizingMaskIntoConstraints = false
 
-        tableView = NSTableView()
+        let tableView = NSTableView()
         tableView.headerView = nil
         tableView.allowsMultipleSelection = false
         tableView.allowsEmptySelection = true
@@ -244,16 +242,21 @@ final class TreeTableViewController: NSViewController {
         let menu = NSMenu()
         menu.delegate = self
         tableView.menu = menu
+
+        self.scrollView = scrollView
+        self.tableView = tableView
     }
 
     func reload(items: [TreeRow], currentPath: String) {
         self.items = items
         self.currentPath = currentPath
+        guard let tableView = tableView else { return }
         tableView.reloadData()
         selectCurrentPath()
     }
 
     private func selectCurrentPath() {
+        guard let tableView = tableView else { return }
         guard let index = items.firstIndex(where: {
             currentPath == $0.node.path
         }) else {
@@ -296,7 +299,7 @@ extension TreeTableViewController: NSTableViewDelegate {
 
         let rowItem = items[row]
         let baseX = CGFloat(8 + rowItem.depth * 16)
-        let cellHeight: CGFloat = 24
+        let _: CGFloat = 24
 
         if cell == nil {
             cell = NSTableCellView()
@@ -379,7 +382,7 @@ extension TreeTableViewController: NSTableViewDelegate {
         guard !isProgrammaticSelection, !suppressSelection else { return }
         guard let tv = notification.object as? NSTableView else { return }
         let row = tv.selectedRow
-        guard row >= 0 else { return }
+        guard row >= 0, row < items.count else { return }
         onSelect?(items[row].node.path)
     }
 }
@@ -387,6 +390,7 @@ extension TreeTableViewController: NSTableViewDelegate {
 extension TreeTableViewController: NSMenuDelegate {
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
+        guard let tableView = tableView else { return }
         let row = tableView.clickedRow
         guard row >= 0, row < items.count else { return }
 

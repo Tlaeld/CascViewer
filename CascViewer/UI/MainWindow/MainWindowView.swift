@@ -55,7 +55,7 @@ struct LoadingOverlay: View {
 
 struct MainWindowView: View {
     @StateObject private var appState = AppState()
-    @StateObject private var settings = AppSettings.shared
+    @ObservedObject private var settings = AppSettings.shared
 
     // Horizontal split (left sidebar vs right content)
     @AppStorage("mainWindow.leftWidth") private var leftWidth: Double = 220
@@ -171,7 +171,6 @@ struct MainWindowView: View {
             }
         }
         .frame(minWidth: 900, minHeight: 600)
-        .id(settings.language)
         .preferredColorScheme(settings.theme.colorScheme)
         .alert(L("error"), isPresented: .init(
             get: { appState.errorMessage != nil },
