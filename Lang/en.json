@@ -1,6 +1,7 @@
 {
     "_description": "English language override. Place this file in ~/Library/Application Support/CascViewer/Lang/en.json to customize translations.",
     "app_name": "CascViewer",
+    "new_window": "New Window",
     "settings_title": "Settings",
     "settings_storage": "Storage",
     "settings_extraction": "Extraction",
