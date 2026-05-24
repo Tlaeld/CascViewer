@@ -10,6 +10,7 @@ struct InstallManifestEntryDetailView: View {
     @State private var fileExists = false
     @State private var actualSize: UInt64?
     @State private var isLocal = false
+    @State private var availabilityTask: Task<Void, Never>? = nil
 
     var ownedTags: [InstallManifestTag] {
         tags.enumerated().compactMap { index, tag in
@@ -77,20 +78,25 @@ struct InstallManifestEntryDetailView: View {
         .onAppear {
             checkFileAvailability()
         }
+        .onDisappear {
+            availabilityTask?.cancel()
+        }
     }
 
     private func checkFileAvailability() {
         guard let service = storageService else { return }
-        Task {
-            let path = entry.fileName.replacingOccurrences(of: "/", with: "\\")
+        let handle = service.handle
+        let path = entry.fileName.replacingOccurrences(of: "/", with: "\\")
+        let entrySize = entry.fileSize
+        availabilityTask = Task.detached {
+            var localHandle = handle
             var error = CascBridge.CascError.None
-            var handle = service.handle
             // Read a single byte to check existence without pulling the whole file into memory
-            _ = handle.readFilePartial(std.string(path), 0, 1, &error)
+            _ = localHandle.readFilePartial(std.string(path), 0, 1, &error)
             let exists = error == .None
             await MainActor.run {
                 self.fileExists = exists
-                self.actualSize = exists ? UInt64(self.entry.fileSize) : nil
+                self.actualSize = exists ? UInt64(entrySize) : nil
             }
         }
     }
@@ -139,6 +145,7 @@ struct FlowLayout: Layout {
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
         let result = FlowResult(in: bounds.width, subviews: subviews, spacing: spacing)
         for (index, subview) in subviews.enumerated() {
+            guard index < result.positions.count else { continue }
             subview.place(at: CGPoint(x: bounds.minX + result.positions[index].x, y: bounds.minY + result.positions[index].y), proposal: .unspecified)
         }
     }

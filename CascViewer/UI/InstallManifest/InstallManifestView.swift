@@ -176,6 +176,9 @@ struct InstallManifestView: View {
         .onAppear {
             updateFilteredEntries(debounce: false)
         }
+        .onDisappear {
+            filterTask?.cancel()
+        }
         .sheet(item: $detailEntry) { entry in
             InstallManifestEntryDetailView(
                 entry: entry,

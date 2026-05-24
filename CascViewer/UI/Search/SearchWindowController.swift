@@ -9,11 +9,9 @@ class SearchWindowController: NSWindowController, NSWindowDelegate {
     static func show(appState: AppState) {
         lock.lock()
         defer { lock.unlock() }
-        if let existing = shared {
-            existing.window?.makeKeyAndOrderFront(nil)
-            NSApp.activate(ignoringOtherApps: true)
-            return
-        }
+        // Close any existing window to avoid retaining a stale AppState from a
+        // previously closed main window.
+        shared?.window?.close()
 
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 1200, height: 700),
@@ -24,6 +22,7 @@ class SearchWindowController: NSWindowController, NSWindowDelegate {
         window.title = L("advanced_search")
         window.minSize = NSSize(width: 900, height: 400)
         window.setFrameAutosaveName("CascViewerSearchWindow")
+        window.isRestorable = false
         window.center()
 
         let hostingView = NSHostingView(rootView: SearchPanelView(appState: appState).frame(minWidth: 700, minHeight: 400))
@@ -42,6 +41,7 @@ class SearchWindowController: NSWindowController, NSWindowDelegate {
 
     func windowWillClose(_ notification: Notification) {
         window?.contentView = nil
+        window?.delegate = nil
         SearchWindowController.lock.lock()
         Self.shared = nil
         SearchWindowController.lock.unlock()

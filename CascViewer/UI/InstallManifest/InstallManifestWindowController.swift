@@ -16,6 +16,7 @@ class InstallManifestWindowController: NSWindowController, NSWindowDelegate {
         window.title = L("install_manifest_title")
         window.minSize = NSSize(width: 600, height: 400)
         window.setFrameAutosaveName("CascViewerInstallManifestWindow")
+        window.isRestorable = false
         window.center()
 
         let hostingView = NSHostingView(rootView:
@@ -35,6 +36,7 @@ class InstallManifestWindowController: NSWindowController, NSWindowDelegate {
 
     func windowWillClose(_ notification: Notification) {
         window?.contentView = nil
+        window?.delegate = nil
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
             Self.lock.lock()

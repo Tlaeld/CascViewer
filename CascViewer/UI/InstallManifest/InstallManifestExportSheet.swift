@@ -7,6 +7,11 @@ final class InstallManifestExtractService: ObservableObject {
     @Published var progress: Double = 0
     @Published var currentFile: String = ""
     @Published var isExporting: Bool = false
+    private var isCancelled = false
+
+    func cancel() {
+        isCancelled = true
+    }
 
     private class ProgressContext {
         weak var service: InstallManifestExtractService?
@@ -23,6 +28,7 @@ final class InstallManifestExtractService: ObservableObject {
     func extract(entries: [InstallManifestEntry], destination: URL, preserveStructure: Bool, storageService: CASCStorageService) async -> (success: Int, skipped: Int, failed: [String]) {
         isExporting = true
         progress = 0
+        isCancelled = false
         defer { isExporting = false }
 
         let total = entries.count
@@ -31,6 +37,7 @@ final class InstallManifestExtractService: ObservableObject {
 
         var lastProgressUpdate = 0.0
         for (index, entry) in entries.enumerated() {
+            if isCancelled { break }
             let newProgress = Double(index) / Double(total)
             if newProgress - lastProgressUpdate >= 0.05 || index == 0 || index == total - 1 {
                 await MainActor.run {
@@ -59,6 +66,8 @@ final class InstallManifestExtractService: ObservableObject {
             }
 
             var handle = storageService.handle
+
+            if isCancelled { break }
 
             let error: CascBridge.CascError = await withCheckedContinuation { continuation in
                 DispatchQueue.global(qos: .userInitiated).async {
@@ -183,6 +192,9 @@ struct InstallManifestExportSheet: View {
                 destination = url
             }
         }
+        .onDisappear {
+            extractService.cancel()
+        }
         .alert(L("download_required_title"), isPresented: $showingDownloadConfirm, presenting: remoteEntries) { entries in
             Button(L("download_and_export"), role: .none) {
                 performExport()
@@ -257,6 +269,7 @@ struct InstallManifestExportSheet: View {
         }
     }
 
+    @MainActor
     private func performExport() {
         guard let service = storageService else { return }
 
@@ -285,13 +298,11 @@ struct InstallManifestExportSheet: View {
                 if !remote.isEmpty {
                     failed.append(L("local_storage_cannot_download", remote.count))
                 }
-                await MainActor.run {
-                    exportResult = (
-                        success: localResult.success,
-                        skipped: localResult.skipped,
-                        failed: failed
-                    )
-                }
+                exportResult = (
+                    success: localResult.success,
+                    skipped: localResult.skipped,
+                    failed: failed
+                )
             }
             return
         }

@@ -10,11 +10,9 @@ class OnlineStorageWindowController: NSWindowController, NSWindowDelegate {
     static func show(appState: AppState) {
         lock.lock()
         defer { lock.unlock() }
-        if let existing = shared {
-            existing.window?.makeKeyAndOrderFront(nil)
-            NSApp.activate(ignoringOtherApps: true)
-            return
-        }
+        // Close any existing window to avoid retaining a stale AppState from a
+        // previously closed main window.
+        shared?.window?.close()
 
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 720, height: 540),
@@ -25,6 +23,7 @@ class OnlineStorageWindowController: NSWindowController, NSWindowDelegate {
         window.title = L("open_online_storage")
         window.minSize = NSSize(width: 600, height: 400)
         window.setFrameAutosaveName("CascViewerOnlineStorageWindow")
+        window.isRestorable = false
         window.center()
 
         let hostingView = NSHostingView(rootView:
@@ -33,23 +32,19 @@ class OnlineStorageWindowController: NSWindowController, NSWindowDelegate {
                     appState.openStorageTask = Task {
                         let shouldProceed = await Self.confirmCacheAction(product: product, region: region)
                         guard shouldProceed else {
-                            await MainActor.run { Self.closeWindow() }
+                            Self.closeWindow()
                             appState.openStorageTask = nil
                             return
                         }
                         let storage = CascBridge.CascStorageHandle.createLocal()
                         let service = CASCStorageService(storage: storage)
-                        await MainActor.run {
-                            appState.currentStorage?.close()
-                            appState.currentStorage = service
-                        }
+                        appState.currentStorage?.close()
+                        appState.currentStorage = service
                         await service.openOnline(product: product, region: region)
                         if service.error != nil {
-                            await MainActor.run {
-                                appState.errorMessage = service.error?.localizedDescription
-                            }
+                            appState.errorMessage = service.error?.localizedDescription
                         }
-                        await MainActor.run { Self.closeWindow() }
+                        Self.closeWindow()
                         appState.openStorageTask = nil
                     }
                 },
@@ -132,6 +127,7 @@ class OnlineStorageWindowController: NSWindowController, NSWindowDelegate {
 
     func windowWillClose(_ notification: Notification) {
         window?.contentView = nil
+        window?.delegate = nil
         OnlineStorageWindowController.lock.lock()
         Self.shared = nil
         OnlineStorageWindowController.lock.unlock()
