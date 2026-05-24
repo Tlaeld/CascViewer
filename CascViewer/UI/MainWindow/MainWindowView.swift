@@ -54,7 +54,7 @@ struct LoadingOverlay: View {
 }
 
 struct MainWindowView: View {
-    @EnvironmentObject var appState: AppState
+    @StateObject private var appState = AppState()
     @StateObject private var settings = AppSettings.shared
 
     // Horizontal split (left sidebar vs right content)
@@ -181,6 +181,6 @@ struct MainWindowView: View {
         } message: {
             Text(appState.errorMessage ?? "")
         }
-
+        .environmentObject(appState)
     }
 }
