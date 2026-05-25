@@ -101,17 +101,14 @@ final class SearchResultTableViewController: NSViewController {
     func reload(matches: [SearchMatch], mode: SearchMode) {
         self.matches = matches
         self.searchMode = mode
-        Task { @MainActor [weak self] in
-            guard let self = self else { return }
-            guard let tableView = tableView else { return }
-            tableView.reloadData()
-            updateSelection()
-            // Ensure width matches container after data reload
-            guard let scrollView = scrollView else { return }
-            var frame = tableView.frame
-            frame.size.width = scrollView.bounds.width
-            tableView.frame = frame
-        }
+        guard let tableView = tableView else { return }
+        tableView.reloadData()
+        updateSelection()
+        // Ensure width matches container after data reload
+        guard let scrollView = scrollView else { return }
+        var frame = tableView.frame
+        frame.size.width = scrollView.bounds.width
+        tableView.frame = frame
     }
 
     private func updateSelection() {

@@ -51,12 +51,13 @@ struct FileTreeContent: View {
     private func rebuildDisplayRows() {
         func build(path: String, depth: Int) -> [TreeRow] {
             let children = storage.childrenByPath[path, default: []]
-            let dirs = children.filter { $0.children != nil }.sorted { $0.name < $1.name }
+            // childrenByPath is already sorted in buildChildrenMap; no need to re-sort.
+            let dirs = children.filter { $0.children != nil }
             var rows: [TreeRow] = []
             for dir in dirs {
                 let isExpanded = expandedPaths.contains(dir.path)
-                let hasChildren = storage.childrenByPath[dir.path]?.contains(where: { $0.children != nil }) ?? false
-                rows.append(TreeRow(node: dir, depth: depth, isExpanded: isExpanded, hasChildren: hasChildren))
+                // Pre-computed hasChildDirectories avoids O(k) scan per directory.
+                rows.append(TreeRow(node: dir, depth: depth, isExpanded: isExpanded, hasChildren: dir.hasChildDirectories))
                 if isExpanded {
                     rows += build(path: dir.path, depth: depth + 1)
                 }
@@ -132,7 +133,6 @@ struct FileTreeContent: View {
                     .cornerRadius(12)
                     .shadow(radius: 20)
                 }
-                .onReceive(service.objectWillChange) { _ in }
             }
         }
         .onAppear {
@@ -141,20 +141,28 @@ struct FileTreeContent: View {
         .onChange(of: expandedPaths) { _ in
             rebuildDisplayRows()
         }
-        .onChange(of: storage.childrenByPath) { _ in
+        .onChange(of: storage.currentChildren) { _ in
+            // childrenByPath changes always accompany currentChildren changes;
+            // using currentChildren avoids O(totalEntries) dictionary equality comparison.
             expandedPaths.removeAll()
             rebuildDisplayRows()
         }
         .onChange(of: storage.currentPath) { newPath in
             // Auto-expand ancestor directories to reveal the current path
             var path = newPath
+            var didExpand = false
             while !path.isEmpty {
                 if !expandedPaths.contains(path) {
                     expandedPaths.insert(path)
+                    didExpand = true
                 }
                 path = (path as NSString).deletingLastPathComponent
             }
-            rebuildDisplayRows()
+            // Only rebuild explicitly if expandedPaths didn't change;
+            // otherwise onChange(of: expandedPaths) will handle it.
+            if !didExpand {
+                rebuildDisplayRows()
+            }
         }
         .onDisappear {
             activeExtractService?.cancel()

@@ -1,4 +1,5 @@
 import XCTest
+import CascBridge
 @testable import CascViewer
 
 final class ChildrenMapTests: XCTestCase {
@@ -138,5 +139,98 @@ final class ChildrenMapTests: XCTestCase {
         XCTAssertEqual(entriesByPath.count, 5000)
         XCTAssertEqual(childrenMap[""]?.count, 100)
         XCTAssertEqual(childrenMap["dir0"]?.count, 50)
+    }
+
+    // MARK: - Performance Benchmarks
+
+    func testBuildChildrenMapPerformance100K() {
+        // Simulate realistic CASC storage: ~100k files across deep nested dirs
+        var entries: [CASCFileEntry] = []
+        let dirs = ["assets", "textures", "models", "sounds", "scripts", "ui", "data"]
+        let subdirs = ["common", "rare", "epic", "legendary"]
+        let extensions = ["blp", "dds", "mp3", "lua", "xml", "json", "txt"]
+
+        for i in 0..<100_000 {
+            let dir = dirs[i % dirs.count]
+            let sub = subdirs[i % subdirs.count]
+            let subsub = "sub\(i % 20)"
+            let ext = extensions[i % extensions.count]
+            let path = "\(dir)/\(sub)/\(subsub)/file\(i).\(ext)"
+            entries.append(CASCFileEntry(
+                name: "file\(i).\(ext)",
+                fullPath: path,
+                type: .file,
+                size: UInt64(1024 + (i % 1048576)),
+                encodingKey: ""
+            ))
+        }
+
+        let start = CFAbsoluteTimeGetCurrent()
+        let (childrenMap, entriesByPath) = CASCStorageService.buildChildrenMap(from: entries)
+        let elapsed = CFAbsoluteTimeGetCurrent() - start
+
+        print("[BENCH] buildChildrenMap 100K entries: \(String(format: "%.4f", elapsed))s")
+        print("[BENCH]   entriesByPath: \(entriesByPath.count)")
+        print("[BENCH]   childrenByPath keys: \(childrenMap.count)")
+
+        XCTAssertEqual(entriesByPath.count, 100_000)
+        XCTAssertGreaterThan(childrenMap.count, 0)
+    }
+
+    func testEntryCreationPerformance500K() {
+        var rawData: [(name: String, fullPath: String, size: UInt64)] = []
+        let dirs = ["assets", "textures", "models", "sounds", "scripts", "ui", "data", "maps", "shaders", "particles"]
+        let subdirs = ["common", "rare", "epic", "legendary", "mythic"]
+        let extensions = ["blp", "dds", "mp3", "ogg", "lua", "xml", "json", "txt", "csv", "ini"]
+        for i in 0..<500_000 {
+            let dir = dirs[i % dirs.count]
+            let sub = subdirs[i % subdirs.count]
+            let subsub = "sub\(i % 50)"
+            let ext = extensions[i % extensions.count]
+            let path = "\(dir)/\(sub)/\(subsub)/file\(i).\(ext)"
+            rawData.append((name: "file\(i).\(ext)", fullPath: path, size: UInt64(1024 + (i % 1048576))))
+        }
+
+        let start = CFAbsoluteTimeGetCurrent()
+        let entries = rawData.map { d in
+            CASCFileEntry(name: d.name, fullPath: d.fullPath, type: .file, size: d.size, encodingKey: "")
+        }
+        let elapsed = CFAbsoluteTimeGetCurrent() - start
+        print("[BENCH] CASCFileEntry creation 500K: \(String(format: "%.4f", elapsed))s")
+        XCTAssertEqual(entries.count, 500_000)
+    }
+
+
+    func testBuildChildrenMapPerformance500K() {
+        var entries: [CASCFileEntry] = []
+        let dirs = ["assets", "textures", "models", "sounds", "scripts", "ui", "data", "maps", "shaders", "particles"]
+        let subdirs = ["common", "rare", "epic", "legendary", "mythic"]
+        let extensions = ["blp", "dds", "mp3", "ogg", "lua", "xml", "json", "txt", "csv", "ini"]
+
+        for i in 0..<500_000 {
+            let dir = dirs[i % dirs.count]
+            let sub = subdirs[i % subdirs.count]
+            let subsub = "sub\(i % 50)"
+            let ext = extensions[i % extensions.count]
+            let path = "\(dir)/\(sub)/\(subsub)/file\(i).\(ext)"
+            entries.append(CASCFileEntry(
+                name: "file\(i).\(ext)",
+                fullPath: path,
+                type: .file,
+                size: UInt64(1024 + (i % 1048576)),
+                encodingKey: ""
+            ))
+        }
+
+        let start = CFAbsoluteTimeGetCurrent()
+        let (childrenMap, entriesByPath) = CASCStorageService.buildChildrenMap(from: entries)
+        let elapsed = CFAbsoluteTimeGetCurrent() - start
+
+        print("[BENCH] buildChildrenMap 500K entries: \(String(format: "%.4f", elapsed))s")
+        print("[BENCH]   entriesByPath: \(entriesByPath.count)")
+        print("[BENCH]   childrenByPath keys: \(childrenMap.count)")
+
+        XCTAssertEqual(entriesByPath.count, 500_000)
+        XCTAssertGreaterThan(childrenMap.count, 0)
     }
 }

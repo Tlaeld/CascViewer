@@ -16,7 +16,7 @@ class InstallManifestWindowController: NSWindowController, NSWindowDelegate {
         }
     }
 
-    static func show(tags: [InstallManifestTag], entries: [InstallManifestEntry], storageService: CASCStorageService?) {
+    private static func createWindow(tags: [InstallManifestTag], entries: [InstallManifestEntry], storageService: CASCStorageService?) -> (NSWindow, InstallManifestWindowController) {
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 900, height: 600),
             styleMask: [.titled, .closable, .resizable, .miniaturizable],
@@ -37,11 +37,23 @@ class InstallManifestWindowController: NSWindowController, NSWindowDelegate {
 
         let controller = InstallManifestWindowController(window: window)
         window.delegate = controller
-        controller.showWindow(nil)
+        return (window, controller)
+    }
+
+    static func show(tags: [InstallManifestTag], entries: [InstallManifestEntry], storageService: CASCStorageService?) {
+        let (window, controller) = createWindow(tags: tags, entries: entries, storageService: storageService)
+        window.makeKeyAndOrderFront(nil)
         Self.lock.lock()
         Self.controllers.append(controller)
         Self.lock.unlock()
-        NSApp.activate(ignoringOtherApps: true)
+    }
+
+    static func showInBackground(tags: [InstallManifestTag], entries: [InstallManifestEntry], storageService: CASCStorageService?) {
+        let (window, controller) = createWindow(tags: tags, entries: entries, storageService: storageService)
+        window.orderFront(nil)
+        Self.lock.lock()
+        Self.controllers.append(controller)
+        Self.lock.unlock()
     }
 
     func windowWillClose(_ notification: Notification) {
