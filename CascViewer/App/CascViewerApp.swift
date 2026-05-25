@@ -1,6 +1,7 @@
 import SwiftUI
 import AppKit
 
+@MainActor
 class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private weak var mainWindow: NSWindow?
 

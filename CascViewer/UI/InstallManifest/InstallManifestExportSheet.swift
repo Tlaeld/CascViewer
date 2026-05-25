@@ -2,15 +2,25 @@ import SwiftUI
 import AppKit
 import CascBridge
 
+/// Thread-safe cancellation flag for background extraction tasks.
+private final class CancelFlag: @unchecked Sendable {
+    private let lock = NSLock()
+    private var _value = false
+    var value: Bool {
+        get { lock.lock(); defer { lock.unlock() }; return _value }
+        set { lock.lock(); defer { lock.unlock() }; _value = newValue }
+    }
+}
+
 @MainActor
 final class InstallManifestExtractService: ObservableObject {
     @Published var progress: Double = 0
     @Published var currentFile: String = ""
     @Published var isExporting: Bool = false
-    private var isCancelled = false
+    private let cancelFlag = CancelFlag()
 
     func cancel() {
-        isCancelled = true
+        cancelFlag.value = true
     }
 
     private class ProgressContext {
@@ -28,7 +38,7 @@ final class InstallManifestExtractService: ObservableObject {
     func extract(entries: [InstallManifestEntry], destination: URL, preserveStructure: Bool, storageService: CASCStorageService) async -> (success: Int, skipped: Int, failed: [String]) {
         isExporting = true
         progress = 0
-        isCancelled = false
+        cancelFlag.value = false
         defer { isExporting = false }
 
         let total = entries.count
@@ -37,7 +47,7 @@ final class InstallManifestExtractService: ObservableObject {
 
         var lastProgressUpdate = 0.0
         for (index, entry) in entries.enumerated() {
-            if isCancelled { break }
+            if cancelFlag.value { break }
             let newProgress = Double(index) / Double(total)
             if newProgress - lastProgressUpdate >= 0.05 || index == 0 || index == total - 1 {
                 await MainActor.run {
@@ -67,35 +77,34 @@ final class InstallManifestExtractService: ObservableObject {
 
             var handle = storageService.handle
 
-            if isCancelled { break }
+            if cancelFlag.value { break }
 
-            let error: CascBridge.CascError = await withCheckedContinuation { continuation in
-                DispatchQueue.global(qos: .userInitiated).async {
-                    let progressCtx = ProgressContext(service: self, fileIndex: index, totalFiles: total)
-                    let rawContext = Unmanaged.passRetained(progressCtx).toOpaque()
-                    defer { Unmanaged<ProgressContext>.fromOpaque(rawContext).release() }
-
-                    let progressBlock: @convention(c) (UnsafeMutableRawPointer?, Int64, Int64) -> Void = { context, current, totalBytes in
-                        guard let ctxPtr = context else { return }
-                        guard totalBytes > 0 else { return }
-                        let ctx = Unmanaged<ProgressContext>.fromOpaque(ctxPtr).takeUnretainedValue()
-                        guard let service = ctx.service else { return }
-                        let fileProgress = Double(current) / Double(totalBytes)
-                        let overallProgress = (Double(ctx.fileIndex) + fileProgress) / Double(ctx.totalFiles)
-                        Task { @MainActor in
-                            service.progress = overallProgress
-                        }
+            let fileIndex = index
+            let h = handle
+            let error: CascBridge.CascError = await Task.detached(priority: .userInitiated) { [h] in
+                let progressBlock: @convention(c) (UnsafeMutableRawPointer?, Int64, Int64) -> Void = { context, current, totalBytes in
+                    guard let ctxPtr = context else { return }
+                    guard totalBytes > 0 else { return }
+                    let ctx = Unmanaged<ProgressContext>.fromOpaque(ctxPtr).takeUnretainedValue()
+                    guard let service = ctx.service else { return }
+                    let fileProgress = Double(current) / Double(totalBytes)
+                    let overallProgress = (Double(ctx.fileIndex) + fileProgress) / Double(ctx.totalFiles)
+                    Task { @MainActor in
+                        service.progress = overallProgress
                     }
-
-                    let result = handle.extractFile(
-                        std.string(cascPath),
-                        std.string(destPath),
-                        progressBlock,
-                        rawContext
-                    )
-                    continuation.resume(returning: result)
                 }
-            }
+
+                let progressCtx = ProgressContext(service: self, fileIndex: fileIndex, totalFiles: total)
+                let rawContext = Unmanaged.passRetained(progressCtx).toOpaque()
+                defer { Unmanaged<ProgressContext>.fromOpaque(rawContext).release() }
+
+                return handle.extractFile(
+                    std.string(cascPath),
+                    std.string(destPath),
+                    progressBlock,
+                    rawContext
+                )
+            }.value
 
             if error == .FileNotFound {
                 skipped += 1
@@ -202,7 +211,7 @@ struct InstallManifestExportSheet: View {
             Button(L("cancel"), role: .cancel) { }
         } message: { entries in
             let totalSize = entries.reduce(0) { $0 + Int64($1.fileSize) }
-            let sizeStr = InstallManifestEntry.byteFormatter.string(fromByteCount: totalSize)
+            let sizeStr = { let f = ByteCountFormatter(); f.countStyle = .file; return f.string(fromByteCount: totalSize) }()
             Text(L("download_required_export_message", entries.count, sizeStr))
         }
     }

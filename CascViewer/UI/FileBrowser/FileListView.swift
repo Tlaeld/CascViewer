@@ -267,6 +267,11 @@ struct FileListContent: View {
 
 // MARK: - NSTableView Bridge (fast flat list, no tree indexing overhead)
 
+/// Box that holds a Task so a `let` property can be accessed from `deinit`.
+private final class TaskBox: @unchecked Sendable {
+    var task: Task<Void, Never>?
+}
+
 @MainActor
 final class FileTableViewController: NSViewController {
     private var tableView: NSTableView?
@@ -275,7 +280,7 @@ final class FileTableViewController: NSViewController {
 
     var items: [DirectoryNode] = []
     private var unsortedItems: [DirectoryNode] = []
-    private var sortTask: Task<Void, Never>? = nil
+    private let sortTaskBox = TaskBox()
     private var lastSelectedPaths: Set<String> = []
     var onSelect: ((String) -> Void)?
     var onDoubleClick: ((String) -> Void)?
@@ -283,7 +288,7 @@ final class FileTableViewController: NSViewController {
     var onExtract: (([DirectoryNode]) -> Void)?
 
     deinit {
-        sortTask?.cancel()
+        sortTaskBox.task?.cancel()
     }
 
     override func loadView() {
@@ -392,7 +397,7 @@ final class FileTableViewController: NSViewController {
     }
 
     private func applySorting() {
-        sortTask?.cancel()
+        sortTaskBox.task?.cancel()
         guard let tableView = tableView as NSTableView? else { return }
         guard let sortDescriptor = tableView.sortDescriptors.first else {
             self.items = unsortedItems
@@ -403,7 +408,7 @@ final class FileTableViewController: NSViewController {
         let ascending = sortDescriptor.ascending
         let key = sortDescriptor.key
         let items = unsortedItems
-        sortTask = Task { @MainActor [weak self] in
+        sortTaskBox.task = Task { @MainActor [weak self] in
             let sorted = items.sorted { a, b in
                 let aDir = a.children != nil
                 let bDir = b.children != nil

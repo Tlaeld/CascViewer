@@ -40,7 +40,11 @@ struct InstallManifestEntryDetailView: View {
                         DetailRow(label: L("file_size"), value: entry.formattedSize)
                         DetailRow(label: L("ckey"), value: entry.ckey)
                         if let actualSize = actualSize {
-                            DetailRow(label: L("actual_size"), value: InstallManifestEntry.byteFormatter.string(fromByteCount: Int64(actualSize)))
+                            DetailRow(label: L("actual_size"), value: {
+                                let formatter = ByteCountFormatter()
+                                formatter.countStyle = .file
+                                return formatter.string(fromByteCount: Int64(actualSize))
+                            }())
                         }
                         if storageService != nil {
                             HStack {

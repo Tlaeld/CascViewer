@@ -130,7 +130,7 @@ std::string CDNConfig::downloadText(const std::string& url, const std::function<
 CDNBuildConfig CDNConfig::fetchConfig(const std::string& product, const std::string& region, CascError& error)
 {
     error = CascError::None;
-
+    try {
     if (!isValidProductOrRegion(product) || !isValidProductOrRegion(region)) {
         error = CascError::CDNConfigError;
         return {};
@@ -246,6 +246,15 @@ CDNBuildConfig CDNConfig::fetchConfig(const std::string& product, const std::str
     }
 
     return config;
+    } catch (const std::exception& e) {
+        std::fprintf(stderr, "[CDNConfig] Exception in fetchConfig(): %s\n", e.what());
+        error = CascError::CDNConfigError;
+        return {};
+    } catch (...) {
+        std::fprintf(stderr, "[CDNConfig] Unknown exception in fetchConfig()\n");
+        error = CascError::CDNConfigError;
+        return {};
+    }
 }
 
 std::vector<std::string> CDNConfig::fetchProductRegions(const std::string& product)
@@ -255,6 +264,7 @@ std::vector<std::string> CDNConfig::fetchProductRegions(const std::string& produ
 
 std::vector<std::string> CDNConfig::fetchProductRegions(const std::string& product, const std::function<bool()>& isCancelled)
 {
+    try {
     if (!isValidProductOrRegion(product)) {
         return {};
     }
@@ -303,6 +313,13 @@ std::vector<std::string> CDNConfig::fetchProductRegions(const std::string& produ
     }
 
     return regions;
+    } catch (const std::exception& e) {
+        std::fprintf(stderr, "[CDNConfig] Exception in fetchProductRegions(): %s\n", e.what());
+        return {};
+    } catch (...) {
+        std::fprintf(stderr, "[CDNConfig] Unknown exception in fetchProductRegions()\n");
+        return {};
+    }
 }
 
 } // namespace CascBridge

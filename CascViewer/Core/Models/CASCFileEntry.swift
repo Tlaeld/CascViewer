@@ -34,14 +34,10 @@ public struct InstallManifestEntry: Identifiable, Hashable, Sendable {
         self.tagBits = tagBits
     }
     
-    public static let byteFormatter: ByteCountFormatter = {
-        let f = ByteCountFormatter()
-        f.countStyle = .file
-        return f
-    }()
-
     public var formattedSize: String {
-        InstallManifestEntry.byteFormatter.string(fromByteCount: Int64(fileSize))
+        let formatter = ByteCountFormatter()
+        formatter.countStyle = .file
+        return formatter.string(fromByteCount: Int64(fileSize))
     }
     
     public func hasTag(at index: Int) -> Bool {
@@ -62,15 +58,11 @@ public struct CASCFileEntry: Identifiable, Hashable, Sendable {
 
     public var normalizedPath: String { fullPath.replacingOccurrences(of: "\\", with: "/") }
 
-    public static let byteFormatter: ByteCountFormatter = {
-        let f = ByteCountFormatter()
-        f.countStyle = .file
-        return f
-    }()
-
     public var formattedSize: String {
         if type == .directory { return "--" }
-        return CASCFileEntry.byteFormatter.string(fromByteCount: Int64(size))
+        let formatter = ByteCountFormatter()
+        formatter.countStyle = .file
+        return formatter.string(fromByteCount: Int64(size))
     }
 
     public init(name: String, fullPath: String, type: FileType, size: UInt64, encodingKey: String, isLocal: Bool = true, nameType: CascNameType = .full, tagBitMask: UInt64 = 0) {

@@ -19,7 +19,12 @@ private func localizedProgressMessage(_ cMessage: UnsafePointer<CChar>) -> Strin
 /// so the callback can avoid creating a Task on every invocation.
 private final class ProgressCallbackContext: @unchecked Sendable {
     let service: CASCStorageService
-    var lastUpdate: Date = .distantPast
+    private let lock = NSLock()
+    private var _lastUpdate: Date = .distantPast
+    var lastUpdate: Date {
+        get { lock.lock(); defer { lock.unlock() }; return _lastUpdate }
+        set { lock.lock(); defer { lock.unlock() }; _lastUpdate = newValue }
+    }
     init(service: CASCStorageService) {
         self.service = service
     }
@@ -57,15 +62,11 @@ public struct DirectoryNode: Identifiable, Hashable, Sendable {
     public let size: UInt64
     public let iconName: String
 
-    private static let byteFormatter: ByteCountFormatter = {
-        let f = ByteCountFormatter()
-        f.countStyle = .file
-        return f
-    }()
-
     public var formattedSize: String {
         if children != nil { return "--" }
-        return DirectoryNode.byteFormatter.string(fromByteCount: Int64(size))
+        let formatter = ByteCountFormatter()
+        formatter.countStyle = .file
+        return formatter.string(fromByteCount: Int64(size))
     }
 
     public init(name: String, path: String, children: [DirectoryNode]? = nil, isLocal: Bool = true, size: UInt64 = 0) {
@@ -164,18 +165,16 @@ final class CASCStorageService: ObservableObject {
         handle.close()
     }
 
-    /// Run work on the serial background queue, tracking it with a DispatchGroup
+    /// Run work on a detached background task, tracking it with a DispatchGroup
     /// so `deinit` can wait for completion before closing the handle.
+    /// Task.detached ensures the caller stays on its executor (MainActor) after the await.
     private func runOnQueue<T>(_ work: @escaping () -> T) async -> T {
         let g = group
-        return await withCheckedContinuation { continuation in
+        return await Task.detached(priority: .userInitiated) {
             g.enter()
-            queue.async {
-                defer { g.leave() }
-                let result = work()
-                continuation.resume(returning: result)
-            }
-        }
+            defer { g.leave() }
+            return work()
+        }.value
     }
 
     var listFilePath: String = ""
