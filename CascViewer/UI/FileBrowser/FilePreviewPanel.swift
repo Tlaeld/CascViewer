@@ -7,6 +7,7 @@ struct FilePreviewPanel: View {
     @State private var selectedEntry: CASCFileEntry? = nil
     @State private var isOpeningImage = false
     @State private var openFileTask: Task<Void, Never>? = nil
+    @State private var cleanupTask: Task<Void, Never>? = nil
 
     private func refreshSelectedEntry() {
         guard let storage = appState.currentStorage, !appState.selectedPath.isEmpty else {
@@ -104,6 +105,7 @@ struct FilePreviewPanel: View {
         }
         .onDisappear {
             openFileTask?.cancel()
+            cleanupTask?.cancel()
         }
         // Removed watcher on allEntriesCount; selectedPath changes are sufficient.
         // This avoids redundant refreshes during bulk loading.
@@ -147,7 +149,8 @@ struct FilePreviewPanel: View {
         let result = await extractService.extract(entries: [entry], to: sessionDir, preserveStructure: false)
 
         // Clean up temporary directory after a short delay regardless of outcome
-        Task {
+        cleanupTask?.cancel()
+        cleanupTask = Task {
             try? await Task.sleep(nanoseconds: 5_000_000_000)
             try? FileManager.default.removeItem(at: sessionDir)
         }

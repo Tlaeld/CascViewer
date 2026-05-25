@@ -168,7 +168,7 @@ struct SearchTagSystem {
 class CASCSearchService {
     private let reader: CASCFileReader
     private let maxContentReadSize = 10 * 1024 * 1024 // 10MB cap per file
-    private let maxConcurrentSearches = ProcessInfo.processInfo.processorCount
+    private let maxConcurrentSearches = max(ProcessInfo.processInfo.processorCount, 1)
     /// Concurrent queue for file reads. The underlying C++ CascLib handle is protected by std::mutex,
     /// so concurrent reads are safe and significantly improve search throughput.
     private static let readQueue = DispatchQueue(label: "casc.search.read", qos: .userInitiated, attributes: .concurrent)
@@ -220,6 +220,10 @@ class CASCSearchService {
 
         return await withCheckedContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async {
+                guard !Task.isCancelled else {
+                    continuation.resume(returning: [])
+                    return
+                }
                 let results: [SearchMatch]
 
                 if useRegex {
@@ -438,6 +442,10 @@ class CASCSearchService {
 
         return await withCheckedContinuation { continuation in
             DispatchQueue.global(qos: .userInitiated).async {
+                guard !Task.isCancelled else {
+                    continuation.resume(returning: [])
+                    return
+                }
                 let results = filteredByType.compactMap { entry -> SearchMatch? in
                     guard (entry.tagBitMask & tagMask) != 0 else { return nil }
                     return SearchMatch(entry: entry, preview: nil, offset: nil)

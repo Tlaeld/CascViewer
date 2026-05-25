@@ -328,18 +328,15 @@ struct SearchPanelView: View {
         let sortBy = appState.searchSortBy
         let ascending = appState.searchSortAscending
         sortTask = Task { @MainActor in
-            let sorted = await Task.detached(priority: .userInitiated) {
-                let sorted: [SearchMatch]
-                switch sortBy {
-                case .name:
-                    sorted = results.sorted { ascending ? $0.entry.name < $1.entry.name : $0.entry.name > $1.entry.name }
-                case .size:
-                    sorted = results.sorted { ascending ? $0.entry.size < $1.entry.size : $0.entry.size > $1.entry.size }
-                case .path:
-                    sorted = results.sorted { ascending ? $0.entry.fullPath < $1.entry.fullPath : $0.entry.fullPath > $1.entry.fullPath }
-                }
-                return sorted
-            }.value
+            let sorted: [SearchMatch]
+            switch sortBy {
+            case .name:
+                sorted = results.sorted { ascending ? $0.entry.name < $1.entry.name : $0.entry.name > $1.entry.name }
+            case .size:
+                sorted = results.sorted { ascending ? $0.entry.size < $1.entry.size : $0.entry.size > $1.entry.size }
+            case .path:
+                sorted = results.sorted { ascending ? $0.entry.fullPath < $1.entry.fullPath : $0.entry.fullPath > $1.entry.fullPath }
+            }
             guard !Task.isCancelled else { return }
             self.sortedMatches = sorted
         }

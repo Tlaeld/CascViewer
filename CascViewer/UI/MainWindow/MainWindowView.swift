@@ -76,6 +76,8 @@ struct MainWindowView: View {
                 GeometryReader { geo in
                     let totalWidth = geo.size.width
                     let totalHeight = geo.size.height
+                    // Guard against zero-size layout passes
+                    let safeHeight = max(totalHeight, 1)
                     let minLeftW: CGFloat = 180
                     let maxLeftW: CGFloat = 400
                     let leftW = CGFloat(min(max(leftWidthDuringDrag, minLeftW), maxLeftW))
@@ -116,9 +118,9 @@ struct MainWindowView: View {
                         // Right area
                         let minH: CGFloat = 200
                         let minBottomH: CGFloat = 160
-                        let minRatio = Double(minH / totalHeight)
-                        let maxRatio = Double(max(totalHeight - minBottomH, minH) / totalHeight)
-                        let listHeight = totalHeight * CGFloat(min(max(topRatioDuringDrag, minRatio), maxRatio))
+                        let minRatio = Double(minH / safeHeight)
+                        let maxRatio = Double(max(safeHeight - minBottomH, minH) / safeHeight)
+                        let listHeight = safeHeight * CGFloat(min(max(topRatioDuringDrag, minRatio), maxRatio))
 
                         VStack(spacing: 0) {
                             FileListView()
