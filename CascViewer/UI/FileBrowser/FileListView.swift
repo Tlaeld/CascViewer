@@ -43,6 +43,7 @@ struct FileListContent: View {
     @State private var pendingOpenNode: DirectoryNode? = nil
     @State private var showingDownloadConfirm = false
     @State private var activeExtractService: CASCExtractService? = nil
+    @State private var cleanupTask: Task<Void, Never>? = nil
     @State private var displayedItems: [DirectoryNode] = []
 
     private func rebuildDisplayedItems() {
@@ -109,6 +110,7 @@ struct FileListContent: View {
         }
         .onDisappear {
             activeExtractService?.cancel()
+            cleanupTask?.cancel()
         }
         .sheet(isPresented: $showingExtractSheet) {
             ExtractDialogView(entries: extractEntries) { destination, preserveStructure, overwriteExisting, openAfterExtract in
@@ -173,7 +175,8 @@ struct FileListContent: View {
         activeExtractService = nil
 
         // Schedule cleanup regardless of outcome
-        Task {
+        cleanupTask?.cancel()
+        cleanupTask = Task {
             try? await Task.sleep(nanoseconds: 5_000_000_000)
             try? FileManager.default.removeItem(at: sessionDir)
         }
@@ -401,30 +404,28 @@ final class FileTableViewController: NSViewController {
         let key = sortDescriptor.key
         let items = unsortedItems
         sortTask = Task { @MainActor [weak self] in
-            let sorted = await Task.detached(priority: .userInitiated) {
-                return items.sorted { a, b in
-                    let aDir = a.children != nil
-                    let bDir = b.children != nil
-                    if aDir != bDir { return aDir && !bDir }
-                    switch key {
-                    case "name":
-                        return ascending ? a.name.localizedStandardCompare(b.name) == .orderedAscending
-                                         : a.name.localizedStandardCompare(b.name) == .orderedDescending
-                    case "path":
-                        return ascending ? a.path.localizedStandardCompare(b.path) == .orderedAscending
-                                         : a.path.localizedStandardCompare(b.path) == .orderedDescending
-                    case "size":
-                        return ascending ? a.size < b.size : a.size > b.size
-                    case "type":
-                        return ascending ? a.name.localizedStandardCompare(b.name) == .orderedAscending
-                                         : a.name.localizedStandardCompare(b.name) == .orderedDescending
-                    case "local":
-                        return ascending ? !a.isLocal && b.isLocal : a.isLocal && !b.isLocal
-                    default:
-                        return false
-                    }
+            let sorted = items.sorted { a, b in
+                let aDir = a.children != nil
+                let bDir = b.children != nil
+                if aDir != bDir { return aDir && !bDir }
+                switch key {
+                case "name":
+                    return ascending ? a.name.localizedStandardCompare(b.name) == .orderedAscending
+                                     : a.name.localizedStandardCompare(b.name) == .orderedDescending
+                case "path":
+                    return ascending ? a.path.localizedStandardCompare(b.path) == .orderedAscending
+                                     : a.path.localizedStandardCompare(b.path) == .orderedDescending
+                case "size":
+                    return ascending ? a.size < b.size : a.size > b.size
+                case "type":
+                    return ascending ? a.name.localizedStandardCompare(b.name) == .orderedAscending
+                                     : a.name.localizedStandardCompare(b.name) == .orderedDescending
+                case "local":
+                    return ascending ? !a.isLocal && b.isLocal : a.isLocal && !b.isLocal
+                default:
+                    return false
                 }
-            }.value
+            }
             guard let self = self, !Task.isCancelled else { return }
             // Preserve selection before replacing items
             let selectedPaths = tableView.selectedRowIndexes.compactMap { idx -> String? in

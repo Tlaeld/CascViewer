@@ -157,15 +157,11 @@ final class CASCStorageService: ObservableObject {
 
     deinit {
         handle.setOpenProgressCallback(nil, nil)
-        // Offload the blocking wait to a detached task to avoid deadlocking
-        // the main thread if background work is also trying to dispatch here.
-        let h = handle
-        let g = group
-        Task.detached {
-            g.wait()
-            var localHandle = h
-            localHandle.close()
-        }
+        // Synchronously wait for background queue work to finish, then close.
+        // This runs during reference-count deallocation; the instance is no
+        // longer reachable so no new work can be enqueued.
+        group.wait()
+        handle.close()
     }
 
     /// Run work on the serial background queue, tracking it with a DispatchGroup

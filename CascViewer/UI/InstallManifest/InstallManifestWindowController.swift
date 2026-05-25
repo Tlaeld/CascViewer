@@ -6,6 +6,16 @@ class InstallManifestWindowController: NSWindowController, NSWindowDelegate {
     private static var controllers: [InstallManifestWindowController] = []
     private static let lock = NSLock()
 
+    static func closeAll() {
+        Self.lock.lock()
+        let controllersToClose = Self.controllers
+        Self.controllers.removeAll()
+        Self.lock.unlock()
+        for controller in controllersToClose {
+            controller.window?.close()
+        }
+    }
+
     static func show(tags: [InstallManifestTag], entries: [InstallManifestEntry], storageService: CASCStorageService?) {
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 900, height: 600),

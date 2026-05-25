@@ -1,8 +1,8 @@
 import SwiftUI
 import AppKit
 
-class AppDelegate: NSObject, NSApplicationDelegate {
-    private var mainWindow: NSWindow?
+class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
+    private weak var mainWindow: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Only create one main window; ignore system restoration.
@@ -29,6 +29,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         window.setFrameAutosaveName("CascViewerMainWindow")
         window.isRestorable = false
         window.center()
+        window.delegate = self
 
         let hostingView = NSHostingView(rootView: MainWindowView())
         window.contentView = hostingView
@@ -37,6 +38,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.activate(ignoringOtherApps: true)
 
         self.mainWindow = window
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        if let window = notification.object as? NSWindow, window == mainWindow {
+            window.delegate = nil
+            window.contentView = nil
+            mainWindow = nil
+            // Close auxiliary windows to prevent them from holding stale AppState
+            SearchWindowController.closeWindow()
+            OnlineStorageWindowController.closeWindow()
+            InstallManifestWindowController.closeAll()
+        }
     }
 }
 

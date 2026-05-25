@@ -118,7 +118,12 @@ final class CASCExtractService: ObservableObject {
                     let destURL = URL(fileURLWithPath: destPath)
                     let parentDir = destURL.deletingLastPathComponent().path
                     if createdDirs.insert(parentDir).inserted {
-                        try? FileManager.default.createDirectory(at: destURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+                        do {
+                            try FileManager.default.createDirectory(at: destURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+                        } catch {
+                            continuation.resume(returning: .InvalidPath)
+                            return
+                        }
                     }
 
                     let progress: (Int64, Int64) -> Void = { current, totalBytes in

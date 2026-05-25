@@ -41,40 +41,36 @@ struct InstallManifestView: View {
             }
             guard !Task.isCancelled else { return }
 
-            let result = await Task.detached(priority: .userInitiated) {
-                var result = localEntries
+            var result = localEntries
 
-                if !localSelectedTags.isEmpty {
-                    result = result.filter { entry in
-                        localSelectedTags.allSatisfy { index in
-                            entry.hasTag(at: index)
-                        }
+            if !localSelectedTags.isEmpty {
+                result = result.filter { entry in
+                    localSelectedTags.allSatisfy { index in
+                        entry.hasTag(at: index)
                     }
                 }
+            }
 
-                if !localSearchText.isEmpty {
-                    let lowerQuery = localSearchText.lowercased()
-                    result = result.filter {
-                        $0.fileName.lowercased().contains(lowerQuery) ||
-                        $0.ckey.lowercased().contains(lowerQuery)
-                    }
+            if !localSearchText.isEmpty {
+                let lowerQuery = localSearchText.lowercased()
+                result = result.filter {
+                    $0.fileName.lowercased().contains(lowerQuery) ||
+                    $0.ckey.lowercased().contains(lowerQuery)
                 }
+            }
 
-                result.sort {
-                    let cmp: Bool
-                    switch localSortColumn {
-                    case .fileName:
-                        cmp = $0.fileName.localizedStandardCompare($1.fileName) == .orderedAscending
-                    case .fileSize:
-                        cmp = $0.fileSize < $1.fileSize
-                    case .ckey:
-                        cmp = $0.ckey < $1.ckey
-                    }
-                    return localSortAscending ? cmp : !cmp
+            result.sort {
+                let cmp: Bool
+                switch localSortColumn {
+                case .fileName:
+                    cmp = $0.fileName.localizedStandardCompare($1.fileName) == .orderedAscending
+                case .fileSize:
+                    cmp = $0.fileSize < $1.fileSize
+                case .ckey:
+                    cmp = $0.ckey < $1.ckey
                 }
-
-                return result
-            }.value
+                return localSortAscending ? cmp : !cmp
+            }
 
             guard !Task.isCancelled else { return }
             filteredEntries = result
