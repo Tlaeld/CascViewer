@@ -47,12 +47,12 @@ extension AppState {
             cancelBox.setCancelled()
         }
 
-        Task { @MainActor [weak self] in
-            let manifest = await storage.loadInstallManifest()
+        Task { @MainActor [weak self, weak alert, weak storage] in
+            let manifest = await storage?.loadInstallManifest()
             guard let self = self else { return }
             guard !cancelBox.isCancelled else { return }
             // Only endSheet if the alert is still visible (not already dismissed by Cancel)
-            if alert.window.isVisible {
+            if let alert = alert, alert.window.isVisible {
                 alert.window.sheetParent?.endSheet(alert.window)
             }
             if let manifest = manifest {
