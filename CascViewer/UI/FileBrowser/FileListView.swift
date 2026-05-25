@@ -141,7 +141,6 @@ struct FileListContent: View {
                     .cornerRadius(12)
                     .shadow(radius: 20)
                 }
-                .onReceive(service.objectWillChange) { _ in }
             }
         }
     }
@@ -408,37 +407,37 @@ final class FileTableViewController: NSViewController {
         let ascending = sortDescriptor.ascending
         let key = sortDescriptor.key
         let items = unsortedItems
-        sortTaskBox.task = Task { @MainActor [weak self] in
+        sortTaskBox.task = Task { [weak self] in
             let sorted = items.sorted { a, b in
                 let aDir = a.children != nil
                 let bDir = b.children != nil
                 if aDir != bDir { return aDir && !bDir }
                 switch key {
                 case "name":
-                    return ascending ? a.name.localizedStandardCompare(b.name) == .orderedAscending
-                                     : a.name.localizedStandardCompare(b.name) == .orderedDescending
+                    return ascending ? a.name < b.name : a.name > b.name
                 case "path":
-                    return ascending ? a.path.localizedStandardCompare(b.path) == .orderedAscending
-                                     : a.path.localizedStandardCompare(b.path) == .orderedDescending
+                    return ascending ? a.path < b.path : a.path > b.path
                 case "size":
                     return ascending ? a.size < b.size : a.size > b.size
                 case "type":
-                    return ascending ? a.name.localizedStandardCompare(b.name) == .orderedAscending
-                                     : a.name.localizedStandardCompare(b.name) == .orderedDescending
+                    return ascending ? a.name < b.name : a.name > b.name
                 case "local":
                     return ascending ? !a.isLocal && b.isLocal : a.isLocal && !b.isLocal
                 default:
                     return false
                 }
             }
-            guard let self = self, !Task.isCancelled else { return }
-            // Preserve selection before replacing items
-            let selectedPaths = tableView.selectedRowIndexes.compactMap { idx -> String? in
-                idx < self.items.count ? self.items[idx].path : nil
+            guard !Task.isCancelled else { return }
+            await MainActor.run { [weak self] in
+                guard let self = self else { return }
+                // Preserve selection before replacing items
+                let selectedPaths = tableView.selectedRowIndexes.compactMap { idx -> String? in
+                    idx < self.items.count ? self.items[idx].path : nil
+                }
+                self.lastSelectedPaths = Set(selectedPaths)
+                self.items = sorted
+                self.reloadTable()
             }
-            self.lastSelectedPaths = Set(selectedPaths)
-            self.items = sorted
-            self.reloadTable()
         }
     }
 

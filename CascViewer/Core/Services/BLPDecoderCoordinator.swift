@@ -2,11 +2,24 @@ import Foundation
 import CoreImage
 import CascBridge
 
+final class ImageDecodeResultBox: NSObject {
+    let result: ImageDecodeResult
+    init(result: ImageDecodeResult) {
+        self.result = result
+    }
+}
+
 actor BLPDecoderCoordinator {
     private var decoder = CascBridge.ImageDecoderBridge()
+    private static let cache = NSCache<NSString, ImageDecodeResultBox>()
 
     func decode(data: Data) async throws -> ImageDecodeResult {
         guard !data.isEmpty else { throw CASCError.decodingError }
+
+        let cacheKey = data.base64EncodedString() as NSString
+        if let cached = Self.cache.object(forKey: cacheKey) {
+            return cached.result
+        }
 
         // Try native C++ decoder first (BLP, DDS)
         var error = CascBridge.CascError.None
@@ -17,11 +30,14 @@ actor BLPDecoderCoordinator {
             return decoder.decode(ptr, data.count, &error)
         }
         if let cppResult = cppResult, error == .None {
-            return ImageDecodeResult(cppResult: cppResult)
+            let result = ImageDecodeResult(cppResult: cppResult)
+            Self.cache.setObject(ImageDecodeResultBox(result: result), forKey: cacheKey)
+            return result
         }
 
         // Fallback to system ImageIO for PNG, JPEG, GIF, BMP, TGA, etc.
         if let ioResult = decodeViaImageIO(data: data) {
+            Self.cache.setObject(ImageDecodeResultBox(result: ioResult), forKey: cacheKey)
             return ioResult
         }
 

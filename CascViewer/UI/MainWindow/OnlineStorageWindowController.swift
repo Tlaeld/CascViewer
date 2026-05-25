@@ -45,6 +45,10 @@ class OnlineStorageWindowController: NSWindowController, NSWindowDelegate {
                             appState.errorMessage = service.error?.localizedDescription
                         }
                         Self.closeWindow()
+                        // Bring main window to front so user sees the loading result
+                        if let mainWindow = NSApp.windows.first(where: { $0.frameAutosaveName == "CascViewerMainWindow" }) {
+                            mainWindow.makeKeyAndOrderFront(nil)
+                        }
                         appState.openStorageTask = nil
                     }
                 },
@@ -59,8 +63,11 @@ class OnlineStorageWindowController: NSWindowController, NSWindowDelegate {
         let controller = OnlineStorageWindowController(window: window)
         window.delegate = controller
         shared = controller
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        if NSApp.isActive {
+            window.makeKeyAndOrderFront(nil)
+        } else {
+            window.orderFront(nil)
+        }
     }
 
     static func closeWindow() {
@@ -92,14 +99,15 @@ class OnlineStorageWindowController: NSWindowController, NSWindowDelegate {
             alert.addButton(withTitle: L("cancel"))
             alert.alertStyle = .informational
 
-            guard let window = shared?.window else {
-                // Fallback to synchronous if window is missing
+            let window = shared?.window ?? NSApp.mainWindow ?? NSApp.keyWindow
+            guard let parentWindow = window else {
+                // Fallback to synchronous if no window is available
                 let response = alert.runModal()
                 continuation.resume(returning: handleCacheAlertResponse(response, cachePath: cachePath))
                 return
             }
 
-            alert.beginSheetModal(for: window) { response in
+            alert.beginSheetModal(for: parentWindow) { response in
                 continuation.resume(returning: handleCacheAlertResponse(response, cachePath: cachePath))
             }
         }

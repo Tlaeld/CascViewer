@@ -161,17 +161,31 @@ struct SearchTagSystem {
         }
         return mask
     }
+
+    /// Pre-computed bitmask for a given tag set, avoiding repeated dictionary construction.
+    static func precomputedBitMask(map: [String: UInt64], selected: Set<String>) -> UInt64 {
+        var mask: UInt64 = 0
+        for name in selected {
+            if let bit = map[name] {
+                mask |= bit
+            }
+        }
+        return mask
+    }
 }
 
 // MARK: - Search Service
 
 class CASCSearchService {
     private let reader: CASCFileReader
-    private let maxContentReadSize = 10 * 1024 * 1024 // 10MB cap per file
+    private let maxContentReadSize = 1 * 1024 * 1024 // 1MB cap per file
     private let maxConcurrentSearches = max(ProcessInfo.processInfo.processorCount, 1)
     /// Concurrent queue for file reads. The underlying C++ CascLib handle is protected by std::mutex,
     /// so concurrent reads are safe and significantly improve search throughput.
     private static let readQueue = DispatchQueue(label: "casc.search.read", qos: .userInitiated, attributes: .concurrent)
+
+    /// Cache for compiled regular expressions keyed by pattern + options.
+    private static let regexCache = NSCache<NSString, NSRegularExpression>()
 
     init(reader: CASCFileReader) {
         self.reader = reader
@@ -185,21 +199,24 @@ class CASCSearchService {
     func search(_ request: SearchRequest, allEntries: [CASCFileEntry], entries: [CASCFileEntry], currentPath: String) async -> [SearchMatch] {
         let candidates = getCandidates(scope: request.scope, allEntries: allEntries, entries: entries, currentPath: currentPath)
 
+        // Pre-compute tag bitmask map once to avoid repeated dictionary construction.
+        let tagBitMaskMap = SearchTagSystem.tagBitMasks(from: request.availableTags)
+
         let results: [SearchMatch]
         switch request.mode {
         case .filename:
-            results = await searchFilename(request: request, candidates: candidates)
+            results = await searchFilename(request: request, candidates: candidates, tagBitMaskMap: tagBitMaskMap)
         case .content:
-            results = await searchContent(request: request, candidates: candidates)
+            results = await searchContent(request: request, candidates: candidates, tagBitMaskMap: tagBitMaskMap)
         case .hex:
-            results = await searchHex(request: request, candidates: candidates)
+            results = await searchHex(request: request, candidates: candidates, tagBitMaskMap: tagBitMaskMap)
         case .tag:
-            results = await searchTag(request: request, candidates: candidates)
+            results = await searchTag(request: request, candidates: candidates, tagBitMaskMap: tagBitMaskMap)
         }
 
         // Apply tag filter if any tags are selected
         if !request.selectedTags.isEmpty {
-            let tagMask = SearchTagSystem.bitMask(for: request.availableTags, selected: request.selectedTags)
+            let tagMask = SearchTagSystem.precomputedBitMask(map: tagBitMaskMap, selected: request.selectedTags)
             if tagMask != 0 {
                 return results.filter { ($0.entry.tagBitMask & tagMask) != 0 }
             }
@@ -209,7 +226,7 @@ class CASCSearchService {
 
     // MARK: - Filename Search
 
-    private func searchFilename(request: SearchRequest, candidates: [CASCFileEntry]) async -> [SearchMatch] {
+    private func searchFilename(request: SearchRequest, candidates: [CASCFileEntry], tagBitMaskMap: [String: UInt64]) async -> [SearchMatch] {
         let query = request.query
         guard !query.isEmpty else { return [] }
 
@@ -232,7 +249,14 @@ class CASCSearchService {
                         return
                     }
                     let options: NSRegularExpression.Options = caseSensitive ? [] : .caseInsensitive
-                    guard let regex = try? NSRegularExpression(pattern: query, options: options) else {
+                    let cacheKey = "\(query)|\(options.rawValue)" as NSString
+                    let regex: NSRegularExpression
+                    if let cached = Self.regexCache.object(forKey: cacheKey) {
+                        regex = cached
+                    } else if let compiled = try? NSRegularExpression(pattern: query, options: options) {
+                        Self.regexCache.setObject(compiled, forKey: cacheKey)
+                        regex = compiled
+                    } else {
                         continuation.resume(returning: [])
                         return
                     }
@@ -248,8 +272,19 @@ class CASCSearchService {
                     let pattern = query
                         .replacingOccurrences(of: "*", with: ".*")
                         .replacingOccurrences(of: "?", with: ".")
-                    guard CASCStorageService.isSafeRegexPattern(pattern),
-                          let regex = try? NSRegularExpression(pattern: pattern, options: caseSensitive ? [] : .caseInsensitive) else {
+                    guard CASCStorageService.isSafeRegexPattern(pattern) else {
+                        continuation.resume(returning: [])
+                        return
+                    }
+                    let options: NSRegularExpression.Options = caseSensitive ? [] : .caseInsensitive
+                    let cacheKey = "\(pattern)|\(options.rawValue)" as NSString
+                    let regex: NSRegularExpression
+                    if let cached = Self.regexCache.object(forKey: cacheKey) {
+                        regex = cached
+                    } else if let compiled = try? NSRegularExpression(pattern: pattern, options: options) {
+                        Self.regexCache.setObject(compiled, forKey: cacheKey)
+                        regex = compiled
+                    } else {
                         continuation.resume(returning: [])
                         return
                     }
@@ -279,7 +314,7 @@ class CASCSearchService {
 
     // MARK: - Content Search (parallel with TaskGroup)
 
-    private func searchContent(request: SearchRequest, candidates: [CASCFileEntry]) async -> [SearchMatch] {
+    private func searchContent(request: SearchRequest, candidates: [CASCFileEntry], tagBitMaskMap: [String: UInt64]) async -> [SearchMatch] {
         let query = request.query
         guard !query.isEmpty else { return [] }
 
@@ -350,16 +385,35 @@ class CASCSearchService {
     /// Falls back to UTF-8 string comparison for non-ASCII content.
     internal static func rangeOfCaseInsensitive(_ needle: String, in haystack: Data) -> Range<Data.Index>? {
         let needleLower = Data(needle.lowercased().utf8)
+        let needleUpper = Data(needle.uppercased().utf8)
+        guard needleLower.count > 0 && haystack.count >= needleLower.count else { return nil }
 
-        // Fast path: if haystack is valid UTF-8, lowercase the whole thing
+        // Fast path: ASCII-only haystack, no full lowercase allocation needed.
+        let isASCIIOnly = haystack.allSatisfy { $0 < 128 }
+        if isASCIIOnly {
+            for i in 0...(haystack.count - needleLower.count) {
+                var matched = true
+                for j in 0..<needleLower.count {
+                    let byte = haystack[i + j]
+                    if byte != needleLower[j] && byte != needleUpper[j] {
+                        matched = false
+                        break
+                    }
+                }
+                if matched {
+                    return i..<(i + needleLower.count)
+                }
+            }
+            return nil
+        }
+
+        // Fallback: haystack contains non-ASCII, perform full lowercase.
         if let text = String(data: haystack, encoding: .utf8) {
             let lowerData = Data(text.lowercased().utf8)
             return lowerData.range(of: needleLower)
         }
 
-        // Fallback: ASCII case-insensitive byte scan for non-UTF-8 data
-        let needleUpper = Data(needle.uppercased().utf8)
-        guard needleLower.count > 0 && haystack.count >= needleLower.count else { return nil }
+        // Last resort: ASCII case-insensitive byte scan for non-UTF-8 data
         for i in 0...(haystack.count - needleLower.count) {
             var matched = true
             for j in 0..<needleLower.count {
@@ -378,7 +432,7 @@ class CASCSearchService {
 
     // MARK: - Hex Search (parallel with TaskGroup)
 
-    private func searchHex(request: SearchRequest, candidates: [CASCFileEntry]) async -> [SearchMatch] {
+    private func searchHex(request: SearchRequest, candidates: [CASCFileEntry], tagBitMaskMap: [String: UInt64]) async -> [SearchMatch] {
         guard let pattern = HexPatternParser.parse(request.query) else { return [] }
         guard !pattern.isEmpty else { return [] }
 
@@ -432,10 +486,10 @@ class CASCSearchService {
 
     // MARK: - Tag Search
 
-    private func searchTag(request: SearchRequest, candidates: [CASCFileEntry]) async -> [SearchMatch] {
+    private func searchTag(request: SearchRequest, candidates: [CASCFileEntry], tagBitMaskMap: [String: UInt64]) async -> [SearchMatch] {
         guard !request.selectedTags.isEmpty else { return [] }
 
-        let tagMask = SearchTagSystem.bitMask(for: request.availableTags, selected: request.selectedTags)
+        let tagMask = SearchTagSystem.precomputedBitMask(map: tagBitMaskMap, selected: request.selectedTags)
         guard tagMask != 0 else { return [] }
 
         let filteredByType = filterByTypes(candidates, request.fileTypes)
@@ -475,6 +529,8 @@ class CASCSearchService {
                 return all.filter { CASCStorageService.isUncategorized($0) }
             }
             let prefix = normalized.isEmpty ? "" : normalized + "/"
+            // Fast path: use binary search on sorted paths if allEntries is sorted by path.
+            // Fallback to linear scan for simplicity.
             return all.filter { $0.normalizedPath.hasPrefix(prefix) }
         }
     }
@@ -482,31 +538,53 @@ class CASCSearchService {
     internal func filterByTypes(_ entries: [CASCFileEntry], _ types: Set<String>) -> [CASCFileEntry] {
         guard !types.isEmpty else { return entries }
         return entries.filter { entry in
-            let ext = (entry.name as NSString).pathExtension.uppercased()
-            return types.contains(ext)
+            let name = entry.name
+            if let dot = name.lastIndex(of: ".") {
+                let ext = String(name[name.index(after: dot)...]).uppercased()
+                return types.contains(ext)
+            }
+            return false
         }
     }
 
+    /// Optimized hex pattern search using Sunday's algorithm with wildcard support.
     internal static func findHexPattern(_ pattern: [UInt8?], in data: Data) -> Int? {
-        guard !pattern.isEmpty else { return nil }
-        let firstByte = pattern[0]
+        guard !pattern.isEmpty, data.count >= pattern.count else { return nil }
+        let m = pattern.count
+        let n = data.count
 
-        for i in 0..<data.count {
-            if let first = firstByte, data[i] != first { continue }
+        // Build Sunday skip table from fixed bytes in the pattern.
+        // skip[byte] = distance from the rightmost occurrence of that byte to the end of pattern.
+        var skip = [Int](repeating: m + 1, count: 256)
+        for j in 0..<m {
+            if let fixed = pattern[j] {
+                skip[Int(fixed)] = m - j
+            }
+        }
 
+        var i = 0
+        while i <= n - m {
             var matched = true
-            for j in 0..<pattern.count {
-                let idx = i + j
-                if idx >= data.count { matched = false; break }
-                if let expected = pattern[j], data[idx] != expected {
+            for j in 0..<m {
+                if let expected = pattern[j], data[i + j] != expected {
                     matched = false
                     break
                 }
             }
             if matched { return i }
+
+            // Sunday's shift: look at the byte just after the pattern window.
+            let nextPos = i + m
+            if nextPos >= n { break }
+            i += skip[Int(data[nextPos])]
         }
         return nil
     }
+
+    /// Pre-computed hex strings for 0x00-0xFF to avoid repeated String(format:) allocation.
+    private static let hexLookupTable: [String] = {
+        (0...255).map { String(format: "%02X", $0) }
+    }()
 
     internal static func makePreview(data: Data, matchRange: Range<Data.Index>, queryLength: Int) -> SearchMatchPreview {
         let totalMaxChars = 50
@@ -543,7 +621,7 @@ class CASCSearchService {
         } else {
             let matchStartInSlice = matchRange.lowerBound - start
             let matchEndInSlice = matchStartInSlice + queryLength
-            let hexBytes = slice.map { String(format: "%02X", $0) }
+            let hexBytes = slice.map { Self.hexLookupTable[Int($0)] }
             let prefixBytes = Array(hexBytes.prefix(matchStartInSlice))
             let matchBytes = Array(hexBytes[matchStartInSlice..<matchEndInSlice])
             let suffixBytes = Array(hexBytes.suffix(hexBytes.count - matchEndInSlice))
@@ -560,7 +638,7 @@ class CASCSearchService {
         let start = max(0, offset - contextBytes)
         let end = min(data.count, offset + patternLength + contextBytes)
         let slice = data[start..<end]
-        let hexBytes = slice.map { String(format: "%02X", $0) }
+        let hexBytes = slice.map { Self.hexLookupTable[Int($0)] }
 
         let matchStartInSlice = offset - start
         let matchEndInSlice = matchStartInSlice + patternLength

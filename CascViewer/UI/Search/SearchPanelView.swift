@@ -433,7 +433,7 @@ struct SearchPanelView: View {
         appState.selectedPath = entry.fullPath
 
         // Bring main window to front while keeping search window open
-        if let mainWindow = NSApp.windows.first(where: { $0 != SearchWindowController.shared?.window && $0.isVisible }) {
+        if let mainWindow = NSApp.windows.first(where: { $0.frameAutosaveName == "CascViewerMainWindow" }) {
             mainWindow.makeKeyAndOrderFront(nil)
         }
     }

@@ -49,25 +49,28 @@ public struct InstallManifestEntry: Identifiable, Hashable, Sendable {
 public struct CASCFileEntry: Identifiable, Hashable, Sendable {
     public let name: String
     public let fullPath: String
+    public let normalizedPath: String
     public let type: FileType
     public let size: UInt64
     public let encodingKey: String
     public let isLocal: Bool
     public let nameType: CascNameType
     public let tagBitMask: UInt64
-
-    public var normalizedPath: String { fullPath.replacingOccurrences(of: "\\", with: "/") }
-
     public var formattedSize: String {
         if type == .directory { return "--" }
-        let formatter = ByteCountFormatter()
-        formatter.countStyle = .file
-        return formatter.string(fromByteCount: Int64(size))
+        return Self.byteFormatter.string(fromByteCount: Int64(size))
     }
+
+    private static let byteFormatter: ByteCountFormatter = {
+        let f = ByteCountFormatter()
+        f.countStyle = .file
+        return f
+    }()
 
     public init(name: String, fullPath: String, type: FileType, size: UInt64, encodingKey: String, isLocal: Bool = true, nameType: CascNameType = .full, tagBitMask: UInt64 = 0) {
         self.name = name
         self.fullPath = fullPath
+        self.normalizedPath = fullPath.replacingOccurrences(of: "\\", with: "/")
         self.type = type
         self.size = size
         self.encodingKey = encodingKey

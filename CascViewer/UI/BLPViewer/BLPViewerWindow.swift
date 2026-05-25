@@ -93,7 +93,7 @@ struct BLPViewerWindow: View {
         let defaultName = (fileName as NSString).deletingPathExtension + ".png"
         panel.nameFieldStringValue = defaultName
 
-        guard let window = NSApp.keyWindow ?? NSApp.mainWindow else { return }
+        guard let window = NSApp.mainWindow ?? NSApp.keyWindow else { return }
         panel.beginSheetModal(for: window) { [weak viewModel] result in
             guard result == .OK, let url = panel.url else { return }
             guard let destination = CGImageDestinationCreateWithURL(url as CFURL, UTType.png.identifier as CFString, 1, nil) else {
@@ -116,7 +116,7 @@ private let blpDisplayLinkCallback: CVDisplayLinkOutputCallback = { _, _, _, _, 
     guard let context = context else { return kCVReturnError }
     let viewModel = Unmanaged<BLPViewerViewModel>.fromOpaque(context).takeUnretainedValue()
     Task { @MainActor in
-        viewModel.stepFrame(delta: 1)
+        viewModel.stepFrameIfNeeded()
     }
     return kCVReturnSuccess
 }
@@ -135,8 +135,11 @@ class BLPViewerViewModel: ObservableObject {
     @Published var errorMessage: String?
 
     private var decodedResult: ImageDecodeResult?
+    private var cgImageCache: [[CGImage]] = []
     private var displayLink: CVDisplayLink?
     private var displayLinkContext: UnsafeMutableRawPointer?
+    private var lastFrameTime: Double = 0
+    private let targetFrameInterval: Double = 1.0 / 30.0 // Cap at 30fps for BLP animations
 
     deinit {
         // Inline cleanup to avoid deinit calling an actor-isolated method.
@@ -154,6 +157,10 @@ class BLPViewerViewModel: ObservableObject {
         do {
             let result = try await coordinator.decode(data: data)
             self.decodedResult = result
+            // Pre-render all CGImages to avoid per-frame allocation during animation.
+            self.cgImageCache = result.mipMaps.isEmpty
+                ? [result.frames.compactMap { $0.cgImage }]
+                : result.mipMaps.map { $0.compactMap { $0.cgImage } }
             self.imageInfo = BLPImageInfo(
                 format: result.format,
                 width: result.width,
@@ -185,31 +192,31 @@ class BLPViewerViewModel: ObservableObject {
         updateCurrentFrame()
     }
 
+    func stepFrameIfNeeded() {
+        let now = CACurrentMediaTime()
+        if now - lastFrameTime >= targetFrameInterval {
+            lastFrameTime = now
+            stepFrame(delta: 1)
+        }
+    }
+
     private func updateCurrentFrame() {
-        guard let result = decodedResult, !result.frames.isEmpty else {
+        guard !cgImageCache.isEmpty else {
             currentFrame = nil
             return
         }
-
-        // If no mipmaps, use the main frame directly
-        if result.mipMaps.isEmpty {
-            let frame = min(currentFrameIndex, result.frames.count - 1)
-            currentFrame = result.frames[frame].cgImage
-            return
-        }
-
-        let level = min(Int(currentMipLevel), result.mipMaps.count - 1)
-        guard level >= 0, level < result.mipMaps.count else {
+        let level = min(Int(currentMipLevel), cgImageCache.count - 1)
+        guard level >= 0, level < cgImageCache.count else {
             currentFrame = nil
             return
         }
-        let frames = result.mipMaps[level]
+        let frames = cgImageCache[level]
         guard !frames.isEmpty else {
             currentFrame = nil
             return
         }
         let frame = min(currentFrameIndex, frames.count - 1)
-        currentFrame = frames[frame].cgImage
+        currentFrame = frames[frame]
     }
 
     private func startAnimation() {
@@ -264,8 +271,11 @@ final class ImageViewerWindowController: NSWindowController, NSWindowDelegate {
         Self.lock.lock()
         Self.controllers.append(self)
         Self.lock.unlock()
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        if NSApp.isActive {
+            window.makeKeyAndOrderFront(nil)
+        } else {
+            window.orderFront(nil)
+        }
     }
 
     required init?(coder: NSCoder) {

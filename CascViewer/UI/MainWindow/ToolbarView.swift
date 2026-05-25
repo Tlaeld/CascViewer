@@ -262,7 +262,7 @@ struct SettingsView: View {
         panel.allowsMultipleSelection = false
         panel.prompt = L("choose")
 
-        guard let window = NSApp.keyWindow else { return }
+        guard let window = NSApp.mainWindow ?? NSApp.keyWindow else { return }
         panel.beginSheetModal(for: window) { result in
             if result == .OK, let url = panel.url {
                 Task { @MainActor in
@@ -279,7 +279,7 @@ struct SettingsView: View {
         panel.allowsMultipleSelection = false
         panel.prompt = L("choose")
 
-        guard let window = NSApp.keyWindow else { return }
+        guard let window = NSApp.mainWindow ?? NSApp.keyWindow else { return }
         panel.beginSheetModal(for: window) { result in
             if result == .OK, let url = panel.url {
                 Task { @MainActor in
@@ -342,7 +342,7 @@ struct ListFileButton: View {
         alert.addButton(withTitle: L("listfile_prompt_ok"))
         alert.addButton(withTitle: L("listfile_prompt_cancel"))
         
-        if let window = NSApp.keyWindow ?? NSApp.mainWindow {
+        if let window = NSApp.mainWindow ?? NSApp.keyWindow {
             alert.beginSheetModal(for: window) { response in
                 if response == .alertFirstButtonReturn {
                     Task { @MainActor in
@@ -385,7 +385,7 @@ struct ListFileButton: View {
             }
         }
         
-        if let window = NSApp.keyWindow ?? NSApp.mainWindow {
+        if let window = NSApp.mainWindow ?? NSApp.keyWindow {
             panel.beginSheetModal(for: window, completionHandler: completion)
         } else {
             panel.begin(completionHandler: completion)

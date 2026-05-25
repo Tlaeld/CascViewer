@@ -31,8 +31,11 @@ class SearchWindowController: NSWindowController, NSWindowDelegate {
         let controller = SearchWindowController(window: window)
         window.delegate = controller
         shared = controller
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        if NSApp.isActive {
+            window.makeKeyAndOrderFront(nil)
+        } else {
+            window.orderFront(nil)
+        }
     }
 
     static func closeWindow() {

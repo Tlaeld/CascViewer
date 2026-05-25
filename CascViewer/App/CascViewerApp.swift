@@ -12,7 +12,12 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        if !flag {
+        if let mainWindow = NSApp.windows.first(where: { $0.frameAutosaveName == "CascViewerMainWindow" }) {
+            if mainWindow.isMiniaturized {
+                mainWindow.deminiaturize(nil)
+            }
+            mainWindow.makeKeyAndOrderFront(nil)
+        } else {
             createMainWindow()
         }
         return false
@@ -35,8 +40,11 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         let hostingView = NSHostingView(rootView: MainWindowView())
         window.contentView = hostingView
 
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        if NSApp.isActive {
+            window.makeKeyAndOrderFront(nil)
+        } else {
+            window.orderFront(nil)
+        }
 
         self.mainWindow = window
     }

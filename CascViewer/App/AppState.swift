@@ -29,7 +29,7 @@ final class AppState: ObservableObject {
 extension AppState {
     func showInstallManifestWindow() {
         guard let storage = currentStorage else { return }
-        guard let window = NSApp.keyWindow else { return }
+        guard let window = NSApp.mainWindow ?? NSApp.keyWindow else { return }
 
         let alert = NSAlert()
         alert.messageText = L("loading_install_manifest")
@@ -56,11 +56,20 @@ extension AppState {
                 alert.window.sheetParent?.endSheet(alert.window)
             }
             if let manifest = manifest {
-                InstallManifestWindowController.show(
-                    tags: manifest.tags,
-                    entries: manifest.entries,
-                    storageService: storage
-                )
+                if NSApp.isActive {
+                    InstallManifestWindowController.show(
+                        tags: manifest.tags,
+                        entries: manifest.entries,
+                        storageService: storage
+                    )
+                } else {
+                    // App is in background; show window without stealing focus
+                    InstallManifestWindowController.showInBackground(
+                        tags: manifest.tags,
+                        entries: manifest.entries,
+                        storageService: storage
+                    )
+                }
             } else {
                 self.errorMessage = L("install_manifest_not_found")
             }
