@@ -1,7 +1,7 @@
 import Foundation
 import CascBridge
 
-struct CascTag: Equatable {
+struct CascTag: Equatable, Sendable {
     let name: String
     let value: UInt32
 }

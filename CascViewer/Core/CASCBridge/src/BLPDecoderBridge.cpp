@@ -192,34 +192,39 @@ static bool decompressDXT(uint32_t width, uint32_t height, const uint8_t* data, 
 
     rgba.resize(static_cast<size_t>(width) * height * 4);
 
+    std::atomic<bool> workerError{false};
     auto decompressRows = [&](size_t startRow, size_t endRow) {
-        DXTColor block[4 * 4];
-        for (size_t by = startRow; by < endRow; ++by) {
-            for (size_t bx = 0; bx < blockCountX; ++bx) {
-                const uint8_t* src = data + (by * blockCountX + bx) * blockSize;
-                if (compression == ImageCompression::DXTC1) {
-                    decompressDXT1Color(src, block, 4, false);
-                } else if (compression == ImageCompression::DXTC3) {
-                    decompressDXT3Block(src, block, 4);
-                } else {
-                    decompressDXT5Block(src, block, 4);
-                }
+        try {
+            DXTColor block[4 * 4];
+            for (size_t by = startRow; by < endRow; ++by) {
+                for (size_t bx = 0; bx < blockCountX; ++bx) {
+                    const uint8_t* src = data + (by * blockCountX + bx) * blockSize;
+                    if (compression == ImageCompression::DXTC1) {
+                        decompressDXT1Color(src, block, 4, false);
+                    } else if (compression == ImageCompression::DXTC3) {
+                        decompressDXT3Block(src, block, 4);
+                    } else {
+                        decompressDXT5Block(src, block, 4);
+                    }
 
-                for (int y = 0; y < 4; y++) {
-                    for (int x = 0; x < 4; x++) {
-                        uint32_t px = static_cast<uint32_t>(bx * 4 + x);
-                        uint32_t py = static_cast<uint32_t>(by * 4 + y);
-                        if (px < width && py < height) {
-                            size_t dstOff = (py * width + px) * 4;
-                            DXTColor& c = block[y * 4 + x];
-                            rgba[dstOff + 0] = c.r;
-                            rgba[dstOff + 1] = c.g;
-                            rgba[dstOff + 2] = c.b;
-                            rgba[dstOff + 3] = c.a;
+                    for (int y = 0; y < 4; y++) {
+                        for (int x = 0; x < 4; x++) {
+                            uint32_t px = static_cast<uint32_t>(bx * 4 + x);
+                            uint32_t py = static_cast<uint32_t>(by * 4 + y);
+                            if (px < width && py < height) {
+                                size_t dstOff = (py * width + px) * 4;
+                                DXTColor& c = block[y * 4 + x];
+                                rgba[dstOff + 0] = c.r;
+                                rgba[dstOff + 1] = c.g;
+                                rgba[dstOff + 2] = c.b;
+                                rgba[dstOff + 3] = c.a;
+                            }
                         }
                     }
                 }
             }
+        } catch (...) {
+            workerError.store(true, std::memory_order_relaxed);
         }
     };
 
@@ -245,6 +250,9 @@ static bool decompressDXT(uint32_t width, uint32_t height, const uint8_t* data, 
 
     for (auto& t : threads) {
         t.join();
+    }
+    if (workerError.load(std::memory_order_relaxed)) {
+        return false;
     }
     return true;
 }

@@ -1,6 +1,6 @@
 import Foundation
 
-struct CDNProduct: Identifiable, Equatable {
+struct CDNProduct: Identifiable, Equatable, Sendable {
     var id: String { code }
     let name: String
     let code: String

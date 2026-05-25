@@ -37,7 +37,7 @@ protocol CASCStorageHandleProtocol: CASCFileReader, CASCFileExtractor {}
 /// Bridges `CascBridge.CascStorageHandle` to the Swift-friendly protocols.
 /// All C++ interop (std.string, C callbacks, etc.) lives here.
 final class CascStorageHandleAdapter: CASCStorageHandleProtocol, @unchecked Sendable {
-    var handle: CascBridge.CascStorageHandle
+    var handle: CascBridge.CascStorageHandle  // var required for C++ non-const interop; never reassigned after init
 
     init(handle: CascBridge.CascStorageHandle) {
         self.handle = handle
@@ -74,7 +74,7 @@ final class CascStorageHandleAdapter: CASCStorageHandleProtocol, @unchecked Send
 }
 
 /// Internal box to pass a Swift closure through a C-style callback context pointer.
-private final class ProgressBox {
+private final class ProgressBox: @unchecked Sendable {
     let progress: (Int64, Int64) -> Void
     init(progress: @escaping (Int64, Int64) -> Void) {
         self.progress = progress

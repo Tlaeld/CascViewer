@@ -750,6 +750,12 @@ std::pair<std::vector<InstallManifestTag>, std::vector<InstallManifestEntry>> Lo
     uint16_t tagCount = (ptr[4] << 8) | ptr[5];
     uint32_t entryCount = ((uint32_t)ptr[6] << 24) | ((uint32_t)ptr[7] << 16) | ((uint32_t)ptr[8] << 8) | ptr[9];
 
+    // Cap entryCount to prevent OOM from malformed manifests claiming huge counts
+    const uint32_t maxEntries = static_cast<uint32_t>(fileSize / 32);
+    if (entryCount > maxEntries) {
+        entryCount = maxEntries;
+    }
+
     ptr += 10;
 
     std::vector<InstallManifestTag> tags;

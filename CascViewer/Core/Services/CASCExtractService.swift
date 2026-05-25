@@ -81,67 +81,56 @@ final class CASCExtractService: ObservableObject {
                 currentFile = entry.name
             }
 
-            // Offload all per-file I/O and extraction to the background queue
-            // so the MainActor is not blocked by path sanitization or FileManager calls.
-            let result: CascBridge.CascError = await withCheckedContinuation { (continuation: CheckedContinuation<CascBridge.CascError, Never>) in
-                queue.async {
-                    let sanitizedPath = entry.normalizedPath
-                        .components(separatedBy: "/")
-                        .filter { $0 != ".." && $0 != "." && !$0.isEmpty }
-                        .joined(separator: "/")
+            // Offload per-file I/O to a detached task so the MainActor is preserved
+            // after the await (Swift 6 compatibility).
+            let fileIndex = index
+            let result: CascBridge.CascError = await Task.detached(priority: .userInitiated) { [extractor, destination, preserveStructure, overwriteExisting] in
+                let sanitizedPath = entry.normalizedPath
+                    .components(separatedBy: "/")
+                    .filter { $0 != ".." && $0 != "." && !$0.isEmpty }
+                    .joined(separator: "/")
 
-                    let sanitizedName = entry.name
-                        .components(separatedBy: "/")
-                        .filter { $0 != ".." && $0 != "." && !$0.isEmpty }
-                        .joined(separator: "_")
+                let sanitizedName = entry.name
+                    .components(separatedBy: "/")
+                    .filter { $0 != ".." && $0 != "." && !$0.isEmpty }
+                    .joined(separator: "_")
 
-                    // Skip entries whose path sanitizes to nothing
-                    if sanitizedPath.isEmpty || sanitizedName.isEmpty {
-                        continuation.resume(returning: .InvalidPath)
-                        return
-                    }
-
-                    let destPath: String
-                    if preserveStructure {
-                        destPath = destination.appendingPathComponent(sanitizedPath).path
-                    } else {
-                        destPath = destination.appendingPathComponent(sanitizedName).path
-                    }
-
-                    // Skip if file exists and overwrite is disabled
-                    if !overwriteExisting && FileManager.default.fileExists(atPath: destPath) {
-                        continuation.resume(returning: .None)
-                        return
-                    }
-
-                    // Ensure parent directories exist before extraction
-                    let destURL = URL(fileURLWithPath: destPath)
-                    let parentDir = destURL.deletingLastPathComponent().path
-                    if createdDirs.insert(parentDir).inserted {
-                        do {
-                            try FileManager.default.createDirectory(at: destURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-                        } catch {
-                            continuation.resume(returning: .InvalidPath)
-                            return
-                        }
-                    }
-
-                    let progress: (Int64, Int64) -> Void = { current, totalBytes in
-                        let fileProgress = totalBytes > 0 ? Double(current) / Double(totalBytes) : 0
-                        let overallProgress = (Double(index) + fileProgress) / Double(total)
-                        Task { @MainActor in
-                            self.progress = overallProgress
-                        }
-                    }
-
-                    let result = extractor.extractFile(
-                        cascPath: sanitizedPath,
-                        destPath: destPath,
-                        progress: progress
-                    )
-                    continuation.resume(returning: result)
+                if sanitizedPath.isEmpty || sanitizedName.isEmpty {
+                    return .InvalidPath
                 }
-            }
+
+                let destPath: String
+                if preserveStructure {
+                    destPath = destination.appendingPathComponent(sanitizedPath).path
+                } else {
+                    destPath = destination.appendingPathComponent(sanitizedName).path
+                }
+
+                if !overwriteExisting && FileManager.default.fileExists(atPath: destPath) {
+                    return .None
+                }
+
+                let destURL = URL(fileURLWithPath: destPath)
+                let parentDir = destURL.deletingLastPathComponent().path
+                do {
+                    try FileManager.default.createDirectory(at: destURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+                } catch {
+                    return .InvalidPath
+                }
+
+                let result = extractor.extractFile(
+                    cascPath: sanitizedPath,
+                    destPath: destPath,
+                    progress: { current, totalBytes in
+                        let fileProgress = totalBytes > 0 ? Double(current) / Double(totalBytes) : 0
+                        let overallProgress = (Double(fileIndex) + fileProgress) / Double(total)
+                        Task { @MainActor [weak self] in
+                            self?.progress = overallProgress
+                        }
+                    }
+                )
+                return result
+            }.value
 
             if isCancelled {
                 break
@@ -150,11 +139,9 @@ final class CASCExtractService: ObservableObject {
             if result == .None {
                 successCount += 1
             } else if result == .Cancelled {
-                // Don't treat cancellation as a failure, just stop
                 break
             } else {
                 var cascError = mapError(result)
-                // Distinguish remote files that are not available on CDN
                 if cascError == .fileNotFound && !entry.isLocal {
                     cascError = .fileNotAvailable
                 }

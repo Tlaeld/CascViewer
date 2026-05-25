@@ -85,7 +85,7 @@ CDNCacheManager::CDNCacheManager(const std::string& product, const std::string& 
 
 std::string CDNCacheManager::chunkPath(const std::string& encodingKey) const
 {
-    if (!isValidHex(encodingKey)) {
+    if (encodingKey.empty() || !isValidHex(encodingKey)) {
         return cacheRoot + "/invalid";
     }
     if (encodingKey.size() < 2) {
@@ -141,6 +141,7 @@ std::vector<uint8_t> CDNCacheManager::getChunk(const std::string& encodingKey,
                                                const std::string& cdnUrl,
                                                CascError& error)
 {
+    try {
     error = CascError::None;
     std::string path = chunkPath(encodingKey);
 
@@ -183,6 +184,15 @@ std::vector<uint8_t> CDNCacheManager::getChunk(const std::string& encodingKey,
     }
 
     return buffer;
+    } catch (const std::exception& e) {
+        std::fprintf(stderr, "[CDNCacheManager] Exception in getChunk(): %s\n", e.what());
+        error = CascError::ReadError;
+        return {};
+    } catch (...) {
+        std::fprintf(stderr, "[CDNCacheManager] Unknown exception in getChunk()\n");
+        error = CascError::ReadError;
+        return {};
+    }
 }
 
 void CDNCacheManager::clearCache()
