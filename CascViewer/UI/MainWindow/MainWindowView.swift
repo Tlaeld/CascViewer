@@ -101,10 +101,11 @@ struct MainWindowView: View {
                             DragGesture(minimumDistance: 1, coordinateSpace: .global)
                                 .onChanged { value in
                                     let newWidth = hDragStartWidth + Double(value.translation.width)
-                                    leftWidth = min(max(newWidth, minLeftW), maxLeftW)
+                                    leftWidthDuringDrag = min(max(newWidth, minLeftW), maxLeftW)
                                 }
                                 .onEnded { _ in
-                                    hDragStartWidth = leftWidth
+                                    leftWidth = leftWidthDuringDrag
+                                    hDragStartWidth = leftWidthDuringDrag
                                 }
                         )
                         .onHover { isHovering in
