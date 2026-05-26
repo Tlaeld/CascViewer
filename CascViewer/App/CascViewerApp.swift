@@ -34,6 +34,10 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         window.minSize = NSSize(width: 800, height: 600)
         window.setFrameAutosaveName("CascViewerMainWindow")
         window.isRestorable = false
+        // Disable the window close animation to prevent EXC_BAD_ACCESS in
+        // _NSWindowTransformAnimation when SwiftUI tears down its state while
+        // AppKit animation blocks still retain internal pointers.
+        window.animationBehavior = .none
         window.center()
         window.delegate = self
 
@@ -53,18 +57,18 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         if let window = notification.object as? NSWindow, window == mainWindow {
             window.delegate = nil
             mainWindow = nil
-            // Close auxiliary windows first before tearing down the main window's
-            // SwiftUI state to avoid EXC_BAD_ACCESS in _NSWindowTransformAnimation
-            // when aux windows still reference AppState during close animation.
             SearchWindowController.closeWindow()
             OnlineStorageWindowController.closeWindow()
             InstallManifestWindowController.closeAll()
-            // Delay contentView cleanup to the next runloop iteration so the window
-            // close animation (and any retained blocks from SwiftUI/AppKit) finish
-            // before the view hierarchy is torn down.
-            DispatchQueue.main.async { [weak window] in
-                window?.contentView = nil
-            }
+        }
+    }
+
+    func windowDidClose(_ notification: Notification) {
+        if let window = notification.object as? NSWindow {
+            // Break the NSHostingView <-> NSWindow retain cycle after the close
+            // animation (if any) has fully finished and AppKit has released all
+            // animation-related internal objects.
+            window.contentView = nil
         }
     }
 }
