@@ -52,12 +52,19 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     func windowWillClose(_ notification: Notification) {
         if let window = notification.object as? NSWindow, window == mainWindow {
             window.delegate = nil
-            window.contentView = nil
             mainWindow = nil
-            // Close auxiliary windows to prevent them from holding stale AppState
+            // Close auxiliary windows first before tearing down the main window's
+            // SwiftUI state to avoid EXC_BAD_ACCESS in _NSWindowTransformAnimation
+            // when aux windows still reference AppState during close animation.
             SearchWindowController.closeWindow()
             OnlineStorageWindowController.closeWindow()
             InstallManifestWindowController.closeAll()
+            // Delay contentView cleanup to the next runloop iteration so the window
+            // close animation (and any retained blocks from SwiftUI/AppKit) finish
+            // before the view hierarchy is torn down.
+            DispatchQueue.main.async { [weak window] in
+                window?.contentView = nil
+            }
         }
     }
 }
