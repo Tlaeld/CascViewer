@@ -1,0 +1,81 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Build CascLib
+        run: |
+          cd CascLib
+          mkdir -p build && cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release
+          make -j$(sysctl -n hw.ncpu)
+
+      - name: Build Archive
+        run: |
+          xcodebuild archive \
+            -project CascViewer.xcodeproj \
+            -scheme CascViewer \
+            -archivePath build/CascViewer.xcarchive \
+            -configuration Release \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGN_ENTITLEMENTS="" \
+            DEVELOPMENT_TEAM=""
+
+      - name: Export App
+        run: |
+          xcodebuild -exportArchive \
+            -archivePath build/CascViewer.xcarchive \
+            -exportPath build/export \
+            -exportOptionsPlist /dev/stdin <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>developer-id</string>
+            <key>signingStyle</key>
+            <string>manual</string>
+            <key>teamID</key>
+            <string></string>
+          </dict>
+          </plist>
+          EOF
+        continue-on-error: true
+
+      - name: Package (fallback unsigned)
+        run: |
+          APP_PATH="build/CascViewer.xcarchive/Products/Applications/CascViewer.app"
+          if [ ! -d "$APP_PATH" ]; then
+            APP_PATH=$(find build/export -name "CascViewer.app" -type d | head -1)
+          fi
+          if [ ! -d "$APP_PATH" ]; then
+            echo "App not found"
+            exit 1
+          fi
+          mkdir -p dist
+          ditto -c -k --keepParent "$APP_PATH" "dist/CascViewer-macOS.zip"
+          ls -la dist/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/CascViewer-macOS.zip
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
