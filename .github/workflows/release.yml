@@ -18,20 +18,13 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Build CascLib
+      - name: Build
         run: |
-          cd CascLib
-          mkdir -p build && cd build
-          cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5
-          make -j$(sysctl -n hw.ncpu)
-
-      - name: Build Archive
-        run: |
-          xcodebuild archive \
+          xcodebuild build \
             -project CascViewer.xcodeproj \
             -scheme CascViewer \
-            -archivePath build/CascViewer.xcarchive \
             -configuration Release \
+            -derivedDataPath build/DerivedData \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGN_ENTITLEMENTS="" \
@@ -39,7 +32,7 @@ jobs:
 
       - name: Package
         run: |
-          APP_PATH="build/CascViewer.xcarchive/Products/Applications/CascViewer.app"
+          APP_PATH="build/DerivedData/Build/Products/Release/CascViewer.app"
           if [ ! -d "$APP_PATH" ]; then
             echo "App not found at $APP_PATH"
             exit 1
