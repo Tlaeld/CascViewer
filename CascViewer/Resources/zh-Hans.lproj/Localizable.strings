@@ -164,6 +164,8 @@
 
 /* Status Bar */
 "status_files" = "文件: %d";
+"status_current_folder" = "当前: %d";
+"status_selected" = "已选: %@";
 "status_storage" = "存储: %@ %@";
 "status_ready" = "就绪";
 

@@ -653,8 +653,16 @@ CascStorageInfo LocalCascStorage::getStorageInfo(CascError& error)
     }
 
     CascStorageInfo info;
-    info.productName = "unknown";
-    info.buildVersion = "unknown";
+    if (hStorage != nullptr) {
+        TCascStorage* hs = static_cast<TCascStorage*>(hStorage);
+        if (hs->ClassName == CASC_MAGIC_STORAGE) {
+            info.productName = (hs->szCodeName != nullptr) ? hs->szCodeName : "unknown";
+            info.buildVersion = std::to_string(hs->dwBuildNumber);
+        } else {
+            info.productName = "unknown";
+            info.buildVersion = "unknown";
+        }
+    }
     info.totalFiles = fileCount;
     info.totalSize = 0;
     return info;
