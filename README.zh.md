@@ -99,6 +99,16 @@ open CascViewer.xcodeproj
 xcodebuild -project CascViewer.xcodeproj -scheme CascViewer -destination 'platform=macOS'
 ```
 
+## 💡 关于代码签名的说明
+
+本软件**未使用 Apple 开发者证书签名**。下载预构建版本后，macOS 可能会提示「无法打开」或「来自身份不明的开发者」。
+
+请在终端执行以下命令移除隔离属性后即可正常使用：
+
+```bash
+sudo xattr -r -d com.apple.quarantine /Applications/CascViewer.app
+```
+
 ## 📖 使用指南
 
 ### 打开存储

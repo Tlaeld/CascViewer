@@ -99,6 +99,18 @@ Then select **Product → Build** (⌘B) in Xcode.
 xcodebuild -project CascViewer.xcodeproj -scheme CascViewer -destination 'platform=macOS'
 ```
 
+## 💡 Note on Code Signing
+
+This application is **not signed with an Apple Developer certificate**. When downloading the pre-built release, macOS may display a warning saying the app "cannot be opened" or "is from an unidentified developer".
+
+To remove the quarantine attribute and run the app, open Terminal and execute:
+
+```bash
+sudo xattr -r -d com.apple.quarantine /Applications/CascViewer.app
+```
+
+After running the command, you can launch the app normally.
+
 ## 📖 Usage
 
 ### Opening a Storage
