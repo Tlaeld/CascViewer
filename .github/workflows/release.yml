@@ -18,6 +18,13 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Environment Info
+        run: |
+          sw_vers
+          xcodebuild -version
+          xcrun --show-sdk-path
+          xcrun --show-sdk-version
+
       - name: Build
         run: |
           xcodebuild build \
@@ -29,6 +36,18 @@ jobs:
             CODE_SIGN_IDENTITY="" \
             CODE_SIGN_ENTITLEMENTS="" \
             DEVELOPMENT_TEAM=""
+
+      - name: Run Smoke Test on Runner
+        run: |
+          APP="build/DerivedData/Build/Products/Release/CascViewer.app"
+          echo "Launching app..."
+          open "$APP"
+          sleep 5
+          echo "Quitting app..."
+          osascript -e 'tell application "CascViewer" to quit' || true
+          sleep 2
+          echo "Checking for crash reports..."
+          ls -lt ~/Library/Logs/DiagnosticReports/ 2>/dev/null | head -5 || true
 
       - name: Package
         run: |
