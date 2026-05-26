@@ -124,8 +124,12 @@ std::vector<CascFileEntry> CascStorageHandle::listDirectory(const std::string& p
 CascError CascStorageHandle::extractFile(const std::string& cascPath,
                                          const std::string& destPath) {
     try {
-        std::lock_guard<std::mutex> lock(impl->mutex);
-        return impl->storage ? impl->storage->extractFile(cascPath, destPath, ProgressCallback{}) : CascError::Unknown;
+        ICascStorage* storagePtr = nullptr;
+        {
+            std::lock_guard<std::mutex> lock(impl->mutex);
+            storagePtr = impl->storage.get();
+        }
+        return storagePtr ? storagePtr->extractFile(cascPath, destPath, ProgressCallback{}) : CascError::Unknown;
     } catch (const std::exception& e) {
         std::fprintf(stderr, "[CascStorageHandle] Exception in extractFile(): %s\n", e.what());
         return CascError::Unknown;
@@ -140,8 +144,12 @@ CascError CascStorageHandle::extractFile(const std::string& cascPath,
                                          void (*progressCallback)(void*, int64_t, int64_t),
                                          void* progressContext) {
     try {
-        std::lock_guard<std::mutex> lock(impl->mutex);
-        if (!impl->storage) {
+        ICascStorage* storagePtr = nullptr;
+        {
+            std::lock_guard<std::mutex> lock(impl->mutex);
+            storagePtr = impl->storage.get();
+        }
+        if (!storagePtr) {
             return CascError::Unknown;
         }
         ProgressCallback progress;
@@ -150,7 +158,7 @@ CascError CascStorageHandle::extractFile(const std::string& cascPath,
                 progressCallback(progressContext, current, total);
             };
         }
-        return impl->storage->extractFile(cascPath, destPath, progress);
+        return storagePtr->extractFile(cascPath, destPath, progress);
     } catch (const std::exception& e) {
         std::fprintf(stderr, "[CascStorageHandle] Exception in extractFile(): %s\n", e.what());
         return CascError::Unknown;
