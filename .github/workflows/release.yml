@@ -37,35 +37,11 @@ jobs:
             CODE_SIGN_ENTITLEMENTS="" \
             DEVELOPMENT_TEAM=""
 
-      - name: Export App
-        run: |
-          xcodebuild -exportArchive \
-            -archivePath build/CascViewer.xcarchive \
-            -exportPath build/export \
-            -exportOptionsPlist /dev/stdin <<EOF
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>method</key>
-            <string>developer-id</string>
-            <key>signingStyle</key>
-            <string>manual</string>
-            <key>teamID</key>
-            <string></string>
-          </dict>
-          </plist>
-          EOF
-        continue-on-error: true
-
-      - name: Package (fallback unsigned)
+      - name: Package
         run: |
           APP_PATH="build/CascViewer.xcarchive/Products/Applications/CascViewer.app"
           if [ ! -d "$APP_PATH" ]; then
-            APP_PATH=$(find build/export -name "CascViewer.app" -type d | head -1)
-          fi
-          if [ ! -d "$APP_PATH" ]; then
-            echo "App not found"
+            echo "App not found at $APP_PATH"
             exit 1
           fi
           mkdir -p dist
