@@ -43,8 +43,9 @@ class SearchWindowController: NSWindowController, NSWindowDelegate {
     }
 
     func windowWillClose(_ notification: Notification) {
-        window?.contentView = nil
-        window?.delegate = nil
+        // Do NOT set window?.contentView = nil or window?.delegate = nil here.
+        // AppKit handles window lifecycle automatically; manual cleanup races
+        // with internal KVO teardown and causes double-release crashes.
         SearchWindowController.lock.lock()
         Self.shared = nil
         SearchWindowController.lock.unlock()
