@@ -4,6 +4,9 @@ import AppKit
 @MainActor
 class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private weak var mainWindow: NSWindow?
+    // Strong retain the window during the close sequence to prevent premature
+    // deallocation while SwiftUI internal autorelease pools still hold refs.
+    private var windowRetainer: NSWindow?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Only create one main window; ignore system restoration.
@@ -54,22 +57,29 @@ class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     }
 
     func windowWillClose(_ notification: Notification) {
-        if let window = notification.object as? NSWindow, window == mainWindow {
-            window.delegate = nil
-            mainWindow = nil
-            SearchWindowController.closeWindow()
-            OnlineStorageWindowController.closeWindow()
-            InstallManifestWindowController.closeAll()
-        }
+        guard let window = notification.object as? NSWindow, window == mainWindow else { return }
+        // Close auxiliary windows before the main window is deallocated.
+        SearchWindowController.closeWindow()
+        OnlineStorageWindowController.closeWindow()
+        InstallManifestWindowController.closeAll()
+        // Retain the window during the close sequence. SwiftUI internally
+        // autoreleases the NSWindow in some code paths; if the window is
+        // deallocated (isReleasedWhenClosed) before the pool drains, the
+        // pool tries to release a zombie NSKVONotifying_NSWindow.
+        windowRetainer = window
+        mainWindow = nil
     }
 
     func windowDidClose(_ notification: Notification) {
-        if let window = notification.object as? NSWindow {
-            // Break the NSHostingView <-> NSWindow retain cycle after the close
-            // animation (if any) has fully finished and AppKit has released all
-            // animation-related internal objects.
-            window.contentView = nil
+        // Release the strong retain after AppKit has finished the close
+        // sequence and all internal autorelease pools have been drained.
+        if let window = notification.object as? NSWindow, window === windowRetainer {
+            windowRetainer = nil
         }
+    }
+
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        return true
     }
 }
 
