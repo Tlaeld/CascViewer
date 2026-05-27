@@ -163,15 +163,12 @@ final class CASCStorageService: ObservableObject {
 
     deinit {
         handle.setOpenProgressCallback(nil, nil)
-        // Avoid blocking MainActor during deallocation.
-        // Background work is completed asynchronously; the handle's C++ mutex
-        // protects against concurrent access.
-        var localHandle = handle
-        let localGroup = group
-        Task.detached {
-            localGroup.wait()
-            localHandle.close()
-        }
+        // Synchronously wait for any outstanding background work (runOnQueue)
+        // and then close the storage. CascLib is not thread-safe; calling
+        // CascCloseStorage from a detached Task while internal threads may
+        // still be active causes assert failures in CASC_SOCKET_CACHE.
+        let _ = group.wait(timeout: .now() + .seconds(5))
+        handle.close()
     }
 
     /// Run work on a detached background task, tracking it with a DispatchGroup
