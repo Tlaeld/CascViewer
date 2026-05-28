@@ -40,6 +40,11 @@ struct LoadingOverlay: View {
                     Button(L("cancel")) {
                         appState.openStorageTask?.cancel()
                         appState.openStorageTask = nil
+                        // Immediately hide the loading UI even though the underlying
+                        // synchronous C++ open() may still be running in the detached task.
+                        storage.isLoading = false
+                        storage.loadProgress = 0
+                        storage.loadProgressMessage = ""
                     }
                     .buttonStyle(.bordered)
                 }

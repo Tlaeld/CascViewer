@@ -265,6 +265,13 @@ final class CASCStorageService: ObservableObject {
 
         let result = await openWithConfig(config: config)
 
+        guard !Task.isCancelled else {
+            isLoading = false
+            loadProgress = 0
+            loadProgressMessage = ""
+            return
+        }
+
         // If cache is corrupted, clean it and retry once
         if result == .StorageCorrupted {
             // Cache corrupted, retrying
@@ -308,6 +315,12 @@ final class CASCStorageService: ObservableObject {
     }
 
     private func handleOpenResult(_ result: CascBridge.CascError) async {
+        guard !Task.isCancelled else {
+            isLoading = false
+            loadProgress = 0
+            loadProgressMessage = ""
+            return
+        }
         loadProgress = 0
         if result != .None {
             loadProgressMessage = ""
