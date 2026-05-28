@@ -65,7 +65,8 @@ public struct DirectoryNode: Identifiable, Hashable, Sendable {
 
     public var formattedSize: String {
         if children != nil { return "--" }
-        return Self.byteFormatter.string(fromByteCount: Int64(size))
+        guard let sizeInt64 = Int64(exactly: size) else { return "--" }
+        return Self.byteFormatter.string(fromByteCount: sizeInt64)
     }
 
     private static let byteFormatter: ByteCountFormatter = {
