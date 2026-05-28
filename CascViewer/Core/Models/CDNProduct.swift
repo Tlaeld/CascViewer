@@ -105,7 +105,7 @@ struct CDNProduct: Identifiable, Equatable, Sendable {
         // StarCraft
         CDNProduct(name: "StarCraft", code: "s1"),
         CDNProduct(name: "StarCraft II", code: "s2"),
-        CDNProduct(name: "StarCraft II", code: "s2v"),
+        CDNProduct(name: "StarCraft II China", code: "s2c"),
         CDNProduct(name: "StarCraft II Public Test Realm", code: "s2t"),
         CDNProduct(name: "StarCraft Public Test Realm", code: "s1t"),
         // Warcraft
