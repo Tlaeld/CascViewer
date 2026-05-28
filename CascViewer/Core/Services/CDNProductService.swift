@@ -29,7 +29,7 @@ final class CDNProductService: ObservableObject {
         products.contains { !$0.regions.isEmpty }
     }
 
-    func loadRegions() async {
+    func loadRegions(maxConcurrent: Int = 10) async {
         isLoading = true
         defer {
             isLoading = false
@@ -37,25 +37,36 @@ final class CDNProductService: ObservableObject {
         }
 
         await withTaskGroup(of: (Int, [String]).self) { group in
+            var launchedCount = 0
+
+            // Launch up to maxConcurrent initial tasks
             for (index, product) in products.enumerated() {
                 if Task.isCancelled { break }
                 products[index].isLoading = true
                 group.addTask {
                     let regions = await CDNProductService.fetchRegions(for: product.code)
-                    // Progress logged internally
                     return (index, regions)
                 }
+                launchedCount += 1
+                if launchedCount >= maxConcurrent { break }
             }
 
-            // Consume ALL finished results — do NOT break on cancellation,
-            // otherwise completed tasks whose results haven't been consumed yet
-            // are dropped and their regions never get saved to cache.
+            // Consume results and backfill new tasks to keep concurrency bounded
             for await (index, regions) in group {
                 if index < products.count {
                     products[index].regions = regions
                     products[index].loadFailed = regions.isEmpty
                     products[index].isLoading = false
-                    saveCachedRegions() // incremental save so early closure doesn't lose data
+                }
+
+                if launchedCount < products.count && !Task.isCancelled {
+                    let nextIndex = launchedCount
+                    products[nextIndex].isLoading = true
+                    group.addTask {
+                        let regions = await CDNProductService.fetchRegions(for: self.products[nextIndex].code)
+                        return (nextIndex, regions)
+                    }
+                    launchedCount += 1
                 }
             }
         }
@@ -83,21 +94,22 @@ final class CDNProductService: ObservableObject {
     }
 
     private func saveCachedRegions() {
-        let url = Self.cacheFileURL
-        let fm = FileManager.default
-        var dict: [String: [String]] = [:]
-        for product in products {
+        // Snapshot current state to avoid capturing self across isolation boundaries
+        let snapshot: [String: [String]] = products.reduce(into: [:]) { dict, product in
             if !product.regions.isEmpty {
                 dict[product.code] = product.regions
             }
         }
-        guard let data = try? JSONEncoder().encode(dict) else { return }
-        do {
-            try fm.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-            try data.write(to: url, options: .atomic)
-        } catch {
-            // Cache save failed; best-effort, log for debugging
-            print("Failed to save CDN product cache: \(error)")
+        let url = Self.cacheFileURL
+        Task.detached(priority: .utility) {
+            guard let data = try? JSONEncoder().encode(snapshot) else { return }
+            do {
+                try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+                try data.write(to: url, options: .atomic)
+            } catch {
+                // Cache save failed; best-effort, log for debugging
+                print("Failed to save CDN product cache: \(error)")
+            }
         }
     }
 
