@@ -115,7 +115,7 @@ After running the command, you can launch the app normally.
 
 ### Opening a Storage
 
-1. Click **"Open Storage"** (打开存储) in the toolbar
+1. Click **"Open Storage"** in the toolbar
 2. Choose one of:
    - **Local Folder** — Select a local CASC directory (e.g., `World of Warcraft\_retail_`)
    - **Online CDN** — Select a game product and region to browse via CDN
@@ -130,7 +130,7 @@ After running the command, you can launch the app normally.
 ### Searching
 
 1. Type in the toolbar search box for quick filename search
-2. Or click **"Advanced Search"** (高级搜索) to open the search panel with:
+2. Or click **"Advanced Search"** to open the search panel with:
    - Regex, case sensitivity, and path inclusion options
    - File type and tag filters
    - Scope selection (entire storage or current directory)
@@ -138,7 +138,7 @@ After running the command, you can launch the app normally.
 ### Extracting Files
 
 1. Select one or more files in the file list
-2. Right-click and choose **"Extract"** (提取)
+2. Right-click and choose **"Extract"**
 3. Choose destination folder and options (preserve structure, overwrite)
 
 ### Viewing Images
