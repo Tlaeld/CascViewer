@@ -247,6 +247,10 @@ CascError LocalCascStorage::open(const std::string& localPath)
         TCascStorage* hs = static_cast<TCascStorage*>(hStorage);
         if (hs->ClassName == CASC_MAGIC_STORAGE) {
             hs->dwFeatures |= CASC_FEATURE_ONLINE;
+            // CascOpenStorageEx does not pass CASC_FEATURE_ONLINE to LoadCascStorage
+            // for local storages, so sockets_set_caching(true) was never called.
+            // We must balance it here so that Release() can safely call false.
+            sockets_set_caching(true);
         }
     }
 
