@@ -446,11 +446,12 @@ final class FileTableViewController: NSViewController {
             guard let self = self else { return }
             guard let tableView = tableView as NSTableView? else { return }
             guard let scrollView = scrollView as NSScrollView? else { return }
-            let scrollRow = tableView.rows(in: scrollView.contentView.visibleRect).location
+            // Save the exact scroll offset instead of a row index to avoid
+            // NSTableView forcing the visible area to jump around.
+            let savedOrigin = scrollView.contentView.bounds.origin
             self.updatePathColumnVisibility()
             tableView.reloadData()
             self.updateEmptyState()
-            self.view.needsLayout = true
 
             // Restore selection if the same paths still exist
             if !self.lastSelectedPaths.isEmpty {
@@ -462,14 +463,18 @@ final class FileTableViewController: NSViewController {
                 }
                 if !indexes.isEmpty {
                     tableView.selectRowIndexes(indexes, byExtendingSelection: false)
-                    if let first = indexes.first {
-                        tableView.scrollRowToVisible(first)
-                    }
                 }
                 self.lastSelectedPaths.removeAll()
-            } else if scrollRow >= 0, scrollRow < self.items.count {
-                tableView.scrollRowToVisible(scrollRow)
             }
+
+            // Restore scroll position without forcing any row into view.
+            // Use a zero-duration animation block to suppress implicit AppKit
+            // scroll animations that can fight user-driven scrolling.
+            NSAnimationContext.runAnimationGroup({ context in
+                context.duration = 0
+                scrollView.contentView.scroll(to: savedOrigin)
+                scrollView.reflectScrolledClipView(scrollView.contentView)
+            })
         }
     }
 
@@ -517,14 +522,9 @@ final class FileTableViewController: NSViewController {
 
     override func viewDidLayout() {
         super.viewDidLayout()
-        guard let scrollView = scrollView as NSScrollView? else { return }
-        guard let tableView = tableView as NSTableView? else { return }
-        let visibleBounds = scrollView.contentView.bounds
-        guard visibleBounds.width > 0 else { return }
-        let contentHeight = CGFloat(items.count) * tableView.rowHeight + tableView.intercellSpacing.height * CGFloat(max(items.count - 1, 0))
-        let targetHeight = visibleBounds.height > 0 ? max(contentHeight, visibleBounds.height) : contentHeight
-        tableView.setFrameSize(NSSize(width: visibleBounds.width, height: targetHeight))
-        scrollView.reflectScrolledClipView(scrollView.contentView)
+        // Let NSTableView manage its own frame automatically as the documentView
+        // of the enclosing NSScrollView. Manually setting the frame here was
+        // interfering with user-driven scrolling and elastic over-scroll.
     }
 
     @objc private func handleDoubleClick() {
