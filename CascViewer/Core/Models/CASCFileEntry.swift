@@ -58,7 +58,8 @@ public struct CASCFileEntry: Identifiable, Hashable, Sendable {
     public let tagBitMask: UInt64
     public var formattedSize: String {
         if type == .directory { return "--" }
-        return Self.byteFormatter.string(fromByteCount: Int64(size))
+        guard let sizeInt64 = Int64(exactly: size) else { return "--" }
+        return Self.byteFormatter.string(fromByteCount: sizeInt64)
     }
 
     private static let byteFormatter: ByteCountFormatter = {
