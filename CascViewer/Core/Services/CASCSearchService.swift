@@ -381,39 +381,19 @@ class CASCSearchService {
         }
     }
 
-    /// Fast case-insensitive byte search. Converts both needle and haystack to lowercase ASCII.
-    /// Falls back to UTF-8 string comparison for non-ASCII content.
+    /// Fast case-insensitive byte search using Swift stdlib-optimized string search.
     internal static func rangeOfCaseInsensitive(_ needle: String, in haystack: Data) -> Range<Data.Index>? {
         let needleLower = Data(needle.lowercased().utf8)
-        let needleUpper = Data(needle.uppercased().utf8)
         guard needleLower.count > 0 && haystack.count >= needleLower.count else { return nil }
 
-        // Fast path: ASCII-only haystack, no full lowercase allocation needed.
-        let isASCIIOnly = haystack.allSatisfy { $0 < 128 }
-        if isASCIIOnly {
-            for i in 0...(haystack.count - needleLower.count) {
-                var matched = true
-                for j in 0..<needleLower.count {
-                    let byte = haystack[i + j]
-                    if byte != needleLower[j] && byte != needleUpper[j] {
-                        matched = false
-                        break
-                    }
-                }
-                if matched {
-                    return i..<(i + needleLower.count)
-                }
-            }
-            return nil
-        }
-
-        // Fallback: haystack contains non-ASCII, perform full lowercase.
+        // Fast path: valid UTF-8 — lowercase the whole haystack and use stdlib range(of:).
         if let text = String(data: haystack, encoding: .utf8) {
             let lowerData = Data(text.lowercased().utf8)
             return lowerData.range(of: needleLower)
         }
 
-        // Last resort: ASCII case-insensitive byte scan for non-UTF-8 data
+        // Fallback: non-UTF-8 data — byte-by-byte ASCII case-insensitive scan.
+        let needleUpper = Data(needle.uppercased().utf8)
         for i in 0...(haystack.count - needleLower.count) {
             var matched = true
             for j in 0..<needleLower.count {

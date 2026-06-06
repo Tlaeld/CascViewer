@@ -112,28 +112,12 @@ struct FileTreeContent: View {
             }
         }
         .overlay {
-            if let service = activeExtractService, service.isExtracting {
-                ZStack {
-                    Color.black.opacity(0.4)
-                        .ignoresSafeArea()
-                    VStack(spacing: 16) {
-                        Text(L("extracting_files", service.currentFile))
-                            .font(.headline)
-                            .foregroundColor(.primary)
-                        ProgressView(value: service.progress)
-                            .frame(width: 280)
-                        Button(L("cancel")) {
-                            service.cancel()
-                        }
-                        .buttonStyle(.bordered)
-                    }
-                    .padding(24)
-                    .frame(width: 340)
-                    .background(Color(NSColor.controlBackgroundColor))
-                    .cornerRadius(12)
-                    .shadow(radius: 20)
-                }
-            }
+            ExtractionOverlay(
+                service: activeExtractService,
+                titleKey: "extracting_files",
+                width: 280,
+                showPercentage: false
+            )
         }
         .onAppear {
             rebuildDisplayRows()

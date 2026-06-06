@@ -311,5 +311,7 @@ struct SearchResultTableView: NSViewControllerRepresentable {
         vc.onSelect = onSelect
         vc.onDoubleClick = onDoubleClick
         vc.onCopyPath = onCopyPath
+        vc.onOpenFile = onOpenFile
+        vc.onExtract = onExtract
     }
 }

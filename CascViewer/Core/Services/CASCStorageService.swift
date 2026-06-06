@@ -164,12 +164,19 @@ final class CASCStorageService: ObservableObject {
 
     deinit {
         handle.setOpenProgressCallback(nil, nil)
-        // Synchronously wait for any outstanding background work (runOnQueue)
-        // and then close the storage. CascLib is not thread-safe; calling
-        // CascCloseStorage from a detached Task while internal threads may
-        // still be active causes assert failures in CASC_SOCKET_CACHE.
-        let _ = group.wait(timeout: .now() + .seconds(5))
-        handle.close()
+        if let raw = progressContext {
+            progressContext = nil
+            Unmanaged<ProgressCallbackContext>.fromOpaque(raw).release()
+        }
+        // Move the blocking wait + close off the actor deinit path.
+        // CascStorageHandle uses shared_ptr internally, so copying it into
+        // the detached task is safe (ref-count bump).
+        var h = handle
+        let g = group
+        Task.detached(priority: .utility) {
+            let _ = g.wait(timeout: .now() + .seconds(5))
+            h.close()
+        }
     }
 
     /// Run work on a detached background task, tracking it with a DispatchGroup

@@ -70,7 +70,6 @@ final class CASCExtractService: ObservableObject {
         let total = entries.count
         var successCount = 0
         var failedFiles = [(path: String, error: CASCError)]()
-        var createdDirs = Set<String>()
 
         for (index, entry) in entries.enumerated() {
             if isCancelled {
@@ -81,56 +80,56 @@ final class CASCExtractService: ObservableObject {
                 currentFile = entry.name
             }
 
-            // Offload per-file I/O to a detached task so the MainActor is preserved
-            // after the await (Swift 6 compatibility).
+            // Offload per-file I/O to the serial background queue.
             let fileIndex = index
-            let result: CascBridge.CascError = await Task.detached(priority: .userInitiated) { [extractor, destination, preserveStructure, overwriteExisting] in
-                let sanitizedPath = entry.normalizedPath
-                    .components(separatedBy: "/")
-                    .filter { $0 != ".." && $0 != "." && !$0.isEmpty }
-                    .joined(separator: "/")
+            let result: CascBridge.CascError = await withCheckedContinuation { continuation in
+                queue.async { [extractor, destination, preserveStructure, overwriteExisting] in
+                    let sanitizedPath = (entry.normalizedPath as NSString).standardizingPath
 
-                let sanitizedName = entry.name
-                    .components(separatedBy: "/")
-                    .filter { $0 != ".." && $0 != "." && !$0.isEmpty }
-                    .joined(separator: "_")
+                    let sanitizedName = entry.name
+                        .replacingOccurrences(of: "/", with: "_")
 
-                if sanitizedPath.isEmpty || sanitizedName.isEmpty {
-                    return .InvalidPath
-                }
-
-                let destPath: String
-                if preserveStructure {
-                    destPath = destination.appendingPathComponent(sanitizedPath).path
-                } else {
-                    destPath = destination.appendingPathComponent(sanitizedName).path
-                }
-
-                if !overwriteExisting && FileManager.default.fileExists(atPath: destPath) {
-                    return .None
-                }
-
-                let destURL = URL(fileURLWithPath: destPath)
-                let parentDir = destURL.deletingLastPathComponent().path
-                do {
-                    try FileManager.default.createDirectory(at: destURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-                } catch {
-                    return .InvalidPath
-                }
-
-                let result = extractor.extractFile(
-                    cascPath: sanitizedPath,
-                    destPath: destPath,
-                    progress: { current, totalBytes in
-                        let fileProgress = totalBytes > 0 ? Double(current) / Double(totalBytes) : 0
-                        let overallProgress = (Double(fileIndex) + fileProgress) / Double(total)
-                        Task { @MainActor [weak self] in
-                            self?.progress = overallProgress
-                        }
+                    guard !sanitizedPath.isEmpty, !sanitizedName.isEmpty else {
+                        continuation.resume(returning: .InvalidPath)
+                        return
                     }
-                )
-                return result
-            }.value
+
+                    let destPath: String
+                    if preserveStructure {
+                        destPath = destination.appendingPathComponent(sanitizedPath).path
+                    } else {
+                        destPath = destination.appendingPathComponent(sanitizedName).path
+                    }
+
+                    if !overwriteExisting && FileManager.default.fileExists(atPath: destPath) {
+                        continuation.resume(returning: .None)
+                        return
+                    }
+
+                    do {
+                        try FileManager.default.createDirectory(
+                            at: URL(fileURLWithPath: destPath).deletingLastPathComponent(),
+                            withIntermediateDirectories: true
+                        )
+                    } catch {
+                        continuation.resume(returning: .InvalidPath)
+                        return
+                    }
+
+                    let result = extractor.extractFile(
+                        cascPath: sanitizedPath,
+                        destPath: destPath,
+                        progress: { current, totalBytes in
+                            let fileProgress = totalBytes > 0 ? Double(current) / Double(totalBytes) : 0
+                            let overallProgress = (Double(fileIndex) + fileProgress) / Double(total)
+                            Task { @MainActor [weak self] in
+                                self?.progress = overallProgress
+                            }
+                        }
+                    )
+                    continuation.resume(returning: result)
+                }
+            }
 
             if isCancelled {
                 break
@@ -169,7 +168,7 @@ final class CASCExtractService: ObservableObject {
         case .CDNConfigError: return .cdnConfigError
         case .DecodingError: return .decodingError
         case .NotImplemented: return .notImplemented
-        case .None: return .unknown
+        case .Unknown, .None: return .unknown
         @unknown default: return .unknown
         }
     }

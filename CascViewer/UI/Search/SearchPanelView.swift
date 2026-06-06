@@ -287,31 +287,12 @@ struct SearchPanelView: View {
             }
         }
         .overlay {
-            if let service = activeExtractService, service.isExtracting {
-                ZStack {
-                    Color.black.opacity(0.4)
-                        .ignoresSafeArea()
-                    VStack(spacing: 16) {
-                        Text(L("downloading_file", service.currentFile))
-                            .font(.system(size: 14, weight: .semibold))
-                        ProgressView(value: service.progress, total: 1.0)
-                            .progressViewStyle(LinearProgressViewStyle())
-                            .frame(width: 200)
-                        Text("\(Int(max(0, min(service.progress, 1)) * 100))%")
-                            .font(.system(size: 11))
-                            .foregroundColor(.secondary)
-                            .monospacedDigit()
-                        Button(L("cancel")) {
-                            activeExtractService?.cancel()
-                        }
-                        .buttonStyle(.bordered)
-                    }
-                    .padding(24)
-                    .background(Color(NSColor.controlBackgroundColor))
-                    .cornerRadius(12)
-                    .shadow(radius: 8)
-                }
-            }
+            ExtractionOverlay(
+                service: activeExtractService,
+                titleKey: "downloading_file",
+                width: 200,
+                showPercentage: true
+            )
         }
     }
 

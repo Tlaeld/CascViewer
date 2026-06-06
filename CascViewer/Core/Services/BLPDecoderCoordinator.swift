@@ -11,12 +11,12 @@ final class ImageDecodeResultBox: NSObject {
 
 actor BLPDecoderCoordinator {
     private var decoder = CascBridge.ImageDecoderBridge()
-    private static let cache = NSCache<NSString, ImageDecodeResultBox>()
+    private static let cache = NSCache<NSData, ImageDecodeResultBox>()
 
     func decode(data: Data) async throws -> ImageDecodeResult {
         guard !data.isEmpty else { throw CASCError.decodingError }
 
-        let cacheKey = data.base64EncodedString() as NSString
+        let cacheKey = data as NSData
         if let cached = Self.cache.object(forKey: cacheKey) {
             return cached.result
         }
