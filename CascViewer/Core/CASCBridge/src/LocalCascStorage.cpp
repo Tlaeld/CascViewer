@@ -218,7 +218,7 @@ CascError LocalCascStorage::open(const std::string& localPath)
             ? localPath.substr(secondSep + 1) 
             : "";
 
-        args.dwFlags = cdnDownloadEnabled ? (CASC_FEATURE_ALLOW_DOWNLOAD | CASC_FEATURE_ONLINE) : 0;
+        args.dwFlags = cdnDownloadEnabled ? (CASC_FEATURE_ALLOW_DOWNLOAD | CASC_FEATURE_ONLINE | CASC_FEATURE_FORCE_DOWNLOAD) : 0;
         args.szLocalPath = cachePathStr.c_str();
         args.szCodeName = productStr.c_str();
         if (!regionStr.empty()) {
