@@ -15,7 +15,6 @@
 		172E6E146C2A14931A56F7FF /* MainWindowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B6BCE37A9280E35F34F1154 /* MainWindowView.swift */; };
 		197B1B4D2CA41F96379ABBC4 /* CascRootFile_WoW.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 573143E92267442F4D7B6A98 /* CascRootFile_WoW.cpp */; };
 		25B9B34C3912FEEF2E00BD28 /* CascFiles.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DFC33452ACA17436061E5626 /* CascFiles.cpp */; };
-		27FE348AC978ACE4040B10F6 /* CascViewerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFE966467010291B97D25EFC /* CascViewerTests.swift */; };
 		2A3A8BBC5F5C013D873E2828 /* AppSettingsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B3884ED075B3207805D9031 /* AppSettingsTests.swift */; };
 		2D93B78694FC7A98E3F63545 /* InstallManifestWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 203BA01A02EBC8DEC2462D73 /* InstallManifestWindowController.swift */; };
 		2EC0D95E05EE9CCA0BE47901 /* libcurl.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 1AA2D4B030A2E2A07F7D82C4 /* libcurl.tbd */; };
@@ -96,6 +95,8 @@
 		F6789012345678ABCDEF0123456789AB /* BLPViewerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F6789012345678ABCDEF0123 /* BLPViewerView.swift */; };
 		F82B9B63F9F175BB716E67A1 /* aes.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DA4F4F44C601D45F8DCDC6DC /* aes.cpp */; };
 		bded554361194cb1820bb7a599abbaaf /* SearchResultTableView.swift in Sources */ = {isa = PBXBuildFile; fileRef = c84b018fbc4d43d8b692b2903f929b2d /* SearchResultTableView.swift */; };
+		8C0F067674A44B27AE82D394 /* CDNProducts.json in Resources */ = {isa = PBXBuildFile; fileRef = EB00671784D24D96A1994474 /* CDNProducts.json */; };
+		EE72D1562B8140A69DFC5E23 /* ExtractionOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = C873A8C364D14BCAA5376C8F /* ExtractionOverlay.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -194,7 +195,6 @@
 		A7ACAD71F179479399D317B5 /* ServiceTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ServiceTests.swift; sourceTree = "<group>"; };
 		A7D133EEFE591AC22BE06B4C /* overwatch.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = overwatch.h; path = CascLib/src/overwatch/overwatch.h; sourceTree = "<group>"; };
 		A8FEB22D1DEEB4FF00E64B06 /* lookup.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = lookup.h; path = CascLib/src/jenkins/lookup.h; sourceTree = "<group>"; };
-		AFE966467010291B97D25EFC /* CascViewerTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CascViewerTests.swift; sourceTree = "<group>"; };
 		B1DB78AD7C1635C26329BCA1 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		B2C3D4E5F6789012345678ABCDEF0123 /* BLPViewerView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BLPViewerView.swift; sourceTree = "<group>"; };
 		B7EB086980673D41B0CBF8AB /* Sockets.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = Sockets.cpp; path = CascLib/src/common/Sockets.cpp; sourceTree = "<group>"; };
@@ -233,6 +233,8 @@
 		FF97E7A9848A040719B153D1 /* cmf.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = cmf.cpp; path = CascLib/src/overwatch/cmf.cpp; sourceTree = "<group>"; };
 		c1c7d93268ec4530b5e3690592b665bc /* SearchPanelView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SearchPanelView.swift; sourceTree = "<group>"; };
 		c84b018fbc4d43d8b692b2903f929b2d /* SearchResultTableView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SearchResultTableView.swift; sourceTree = "<group>"; };
+		EB00671784D24D96A1994474 /* CDNProducts.json */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.json; path = CDNProducts.json; sourceTree = "<group>"; };
+		C873A8C364D14BCAA5376C8F /* ExtractionOverlay.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ExtractionOverlay.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -404,7 +406,6 @@
 		77925DAAF85B93C1321224E8 /* CascViewerTests */ = {
 			isa = PBXGroup;
 			children = (
-				AFE966467010291B97D25EFC /* CascViewerTests.swift */,
 				30CF441EFCAA4921BCA96139 /* BridgeTests.swift */,
 				A7ACAD71F179479399D317B5 /* ServiceTests.swift */,
 				7B49513BF7A5406AAAD097452DF39E98 /* IntegrationTests.swift */,
@@ -439,6 +440,7 @@
 		952931FFD7A7D0C9C3E055E5 /* Common */ = {
 			isa = PBXGroup;
 			children = (
+				C873A8C364D14BCAA5376C8F /* ExtractionOverlay.swift */,
 			);
 			name = Common;
 			path = Common;
@@ -451,6 +453,7 @@
 				B1DB78AD7C1635C26329BCA1 /* Info.plist */,
 				D0081FF760214BFDF7BEA061 /* en.lproj */,
 				5E639AB885FD9E5942EA68F5 /* zh-Hans.lproj */,
+				EB00671784D24D96A1994474 /* CDNProducts.json */,
 			);
 			name = Resources;
 			path = Resources;
@@ -671,6 +674,7 @@
 				D5E1827D062484478F8E4332 /* Assets.xcassets in Resources */,
 				EA4867FD974BCE4332E163AD /* Localizable.strings in Resources */,
 				6F8F6D1395942D273BE9A9ED /* Localizable.strings in Resources */,
+				8C0F067674A44B27AE82D394 /* CDNProducts.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -755,6 +759,7 @@
 				AE634EE7C8A0FBFD9A128E34 /* InstallManifestEntryDetailView.swift in Sources */ ,
 				3D0A6EAEC614C46E103C56AF /* InstallManifestExportSheet.swift in Sources */ ,
 				2D93B78694FC7A98E3F63545 /* InstallManifestWindowController.swift in Sources */,
+				EE72D1562B8140A69DFC5E23 /* ExtractionOverlay.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -762,7 +767,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				27FE348AC978ACE4040B10F6 /* CascViewerTests.swift in Sources */,
 				308B59ECC23544008EF5FA04 /* BridgeTests.swift in Sources */,
 				3FC64AAADCAC494DBC9CD0BB /* ServiceTests.swift in Sources */,
 				A4362CE38EE34B8B9FDACA56261F029F /* IntegrationTests.swift in Sources */,
