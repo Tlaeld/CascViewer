@@ -27,8 +27,15 @@ Carthage/Build/
 *.xcarchive
 
 # Local debug tools
-tools/
+tools/*
 *.profraw
 
 # Screenshots
 screenshot_*.png
+
+# WhiteoutLib 构建产物
+WhiteoutLib/build-*/
+
+# Task 1 纳入版本管理的 tools 文件(tools/ 其余仍被忽略)
+!tools/build_whiteout.sh
+!tools/test_whiteout_smoke.cpp
