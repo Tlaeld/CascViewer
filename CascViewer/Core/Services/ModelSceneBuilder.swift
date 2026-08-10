@@ -79,19 +79,21 @@ enum ModelSceneBuilder {
     }
 
     private static func buildGeometry(_ mesh: ModelScene.Mesh) -> SCNGeometry {
-        let vertexData = Data(bytes: mesh.positions, count: mesh.positions.count * 12)
+        // SIMD3<Float> 内存 stride 为 16(12 字节数据 + 4 字节 padding),
+        // 必须按 stride 16 打包,否则顶点 ≥1 全部错位
+        let vertexData = Data(bytes: mesh.positions, count: mesh.positions.count * 16)
         let positionSource = SCNGeometrySource(
             data: vertexData, semantic: .vertex,
             vectorCount: mesh.positions.count,
             usesFloatComponents: true, componentsPerVector: 3,
-            bytesPerComponent: 4, dataOffset: 0, dataStride: 12
+            bytesPerComponent: 4, dataOffset: 0, dataStride: 16
         )
-        let normalData = Data(bytes: mesh.normals, count: mesh.normals.count * 12)
+        let normalData = Data(bytes: mesh.normals, count: mesh.normals.count * 16)
         let normalSource = SCNGeometrySource(
             data: normalData, semantic: .normal,
             vectorCount: mesh.normals.count,
             usesFloatComponents: true, componentsPerVector: 3,
-            bytesPerComponent: 4, dataOffset: 0, dataStride: 12
+            bytesPerComponent: 4, dataOffset: 0, dataStride: 16
         )
         let uvData = Data(bytes: mesh.uvs, count: mesh.uvs.count * 8)
         let uvSource = SCNGeometrySource(

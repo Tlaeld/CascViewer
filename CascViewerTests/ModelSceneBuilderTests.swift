@@ -54,6 +54,43 @@ final class ModelSceneBuilderTests: XCTestCase {
         XCTAssertEqual(skinner?.boneInverseBindTransforms?.count, 2)
     }
 
+    func testVertexPayloadRoundTrip() {
+        let built = ModelSceneBuilder.build(makeScene())
+        let geometryNode = built.rootNode.childNodes.first { $0.geometry != nil }!
+        let geometry = geometryNode.geometry!
+
+        func float3(at index: Int, in source: SCNGeometrySource) -> (Float, Float, Float) {
+            let base = source.dataOffset + index * source.dataStride
+            return source.data.withUnsafeBytes { ptr in
+                let x = ptr.loadUnaligned(fromByteOffset: base, as: Float.self)
+                let y = ptr.loadUnaligned(fromByteOffset: base + 4, as: Float.self)
+                let z = ptr.loadUnaligned(fromByteOffset: base + 8, as: Float.self)
+                return (x, y, z)
+            }
+        }
+
+        // 位置源:读回应与夹具输入 (0,0,0) (1,0,0) (0,1,0) 完全一致
+        let vertexSource = geometry.sources(for: .vertex).first!
+        let expectedPositions: [(Float, Float, Float)] = [(0, 0, 0), (1, 0, 0), (0, 1, 0)]
+        XCTAssertEqual(vertexSource.vectorCount, expectedPositions.count)
+        for (i, expected) in expectedPositions.enumerated() {
+            let v = float3(at: i, in: vertexSource)
+            XCTAssertEqual(v.0, expected.0, "vertex \(i).x")
+            XCTAssertEqual(v.1, expected.1, "vertex \(i).y")
+            XCTAssertEqual(v.2, expected.2, "vertex \(i).z")
+        }
+
+        // 法线源:全 (0,0,1)
+        let normalSource = geometry.sources(for: .normal).first!
+        XCTAssertEqual(normalSource.vectorCount, 3)
+        for i in 0..<3 {
+            let n = float3(at: i, in: normalSource)
+            XCTAssertEqual(n.0, 0, "normal \(i).x")
+            XCTAssertEqual(n.1, 0, "normal \(i).y")
+            XCTAssertEqual(n.2, 1, "normal \(i).z")
+        }
+    }
+
     func testMaterialMapping() {
         let built = ModelSceneBuilder.build(makeScene())
         let geometryNode = built.rootNode.childNodes.first { $0.geometry != nil }!
