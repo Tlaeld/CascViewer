@@ -10,7 +10,7 @@ final class ImageDecodeResultBox: NSObject {
 }
 
 actor BLPDecoderCoordinator {
-    private var decoder = CascBridge.ImageDecoderBridge()
+    private var decoder = WhiteoutBridge.WOTextureDecoder()
     private static let cache = NSCache<NSData, ImageDecodeResultBox>()
 
     func decode(data: Data) async throws -> ImageDecodeResult {
@@ -22,8 +22,8 @@ actor BLPDecoderCoordinator {
         }
 
         // Try native C++ decoder first (BLP, DDS)
-        var error = CascBridge.CascError.None
-        let cppResult: CascBridge.ImageDecodeResult? = data.withUnsafeBytes { rawBuffer -> CascBridge.ImageDecodeResult? in
+        var error = WhiteoutBridge.WOError.None
+        let cppResult: WhiteoutBridge.WOImageDecodeResult? = data.withUnsafeBytes { rawBuffer -> WhiteoutBridge.WOImageDecodeResult? in
             guard let ptr = rawBuffer.bindMemory(to: UInt8.self).baseAddress else {
                 return nil
             }
@@ -133,7 +133,7 @@ struct ImageDecodeResult: Sendable {
         }
     }
 
-    init(cppResult: CascBridge.ImageDecodeResult) {
+    init(cppResult: WhiteoutBridge.WOImageDecodeResult) {
         switch cppResult.format {
         case .BLP2: format = .blp2
         case .DDS: format = .dds

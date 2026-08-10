@@ -3,7 +3,6 @@ module CascBridge {
     header "CascStorageHandle.h"
     header "CDNConfig.h"
     header "CDNCacheManager.h"
-    header "BLPDecoderBridge.h"
     header "../../WhiteoutBridge/include/WOTypes.h"
     header "../../WhiteoutBridge/include/WOTextureDecoder.h"
     export *

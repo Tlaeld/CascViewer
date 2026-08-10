@@ -33,7 +33,6 @@
 		4D51AB860D38CFB17FD78A82 /* SearchPreviewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C53A74B49F92CA270158001F /* SearchPreviewTests.swift */; };
 		51FF2C4CA3B4BD63979EFAEE /* libz.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = DE915E0C8899B4E0AC257F43 /* libz.tbd */; };
 		529BF5E678F2BD950A440D88 /* CascRootFile_Diablo3.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 821951C36FC08A869EADC182 /* CascRootFile_Diablo3.cpp */; };
-		53402D15180DB908F43C3BE9 /* BLPDecoderBridge.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 34B2877B55EEFB6DD1DF5284 /* BLPDecoderBridge.cpp */; };
 		77900556769F4E1FBE231538 /* WOTextureDecoder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4CFDFC95C1FF405F82C123B2 /* WOTextureDecoder.cpp */; };
 		53B3774597432B71EAF87108 /* RootHandler.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 3C5DC5E6A96CAE5935AABAF4 /* RootHandler.cpp */; };
 		55A1A7B2DFFE07299CACDE22 /* CASCStorageService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EAF6700599D831770C9F3C8 /* CASCStorageService.swift */; };
@@ -147,7 +146,6 @@
 		30CF441EFCAA4921BCA96139 /* BridgeTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BridgeTests.swift; sourceTree = "<group>"; };
 		33F77860FD0E4C6EA5319A5E /* WhiteoutBridgeTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WhiteoutBridgeTests.swift; sourceTree = "<group>"; };
 		343D3D1253E74997181CF840 /* CascReadFile.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = CascReadFile.cpp; path = CascLib/src/CascReadFile.cpp; sourceTree = "<group>"; };
-		34B2877B55EEFB6DD1DF5284 /* BLPDecoderBridge.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; path = BLPDecoderBridge.cpp; sourceTree = "<group>"; };
 		4CFDFC95C1FF405F82C123B2 /* WOTextureDecoder.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; path = WOTextureDecoder.cpp; sourceTree = "<group>"; };
 		26C74EA4AE3243AFAEC354AB /* WOTypes.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = WOTypes.h; sourceTree = "<group>"; };
 		45787BC813A04A4C893DDF5C /* WOTextureDecoder.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = WOTextureDecoder.h; sourceTree = "<group>"; };
@@ -272,7 +270,6 @@
 				4E39B4D1CD21D0464CAA3CE0 /* CDNConfig.cpp */,
 				0F540B1A5FC8CBA58ED0AC72 /* CDNCacheManager.cpp */,
 				7E6F0F92DB2DF0F0B8A3032F /* CascStorageHandle.cpp */,
-				34B2877B55EEFB6DD1DF5284 /* BLPDecoderBridge.cpp */,
 			);
 			name = src;
 			path = src;
@@ -771,7 +768,6 @@
 				4D15C10CC39F79093455C089 /* CASCStorageInfo.swift in Sources */,
 				AFFE10EAE618391FADB5F697 /* CASCError.swift in Sources */,
 				39D9B3484F0602C4D0C0AD0B /* BLPImageInfo.swift in Sources */,
-				53402D15180DB908F43C3BE9 /* BLPDecoderBridge.cpp in Sources */,
 				77900556769F4E1FBE231538 /* WOTextureDecoder.cpp in Sources */,
 				DF2F6796CDC1369C47E57CC0 /* CascStorageProtocols.swift in Sources */,
 				35FD3BB8F88FC22459CA8A23 /* CascBridge+Sendable.swift in Sources */,
