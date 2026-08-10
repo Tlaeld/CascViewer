@@ -6,3 +6,5 @@
 #include "CDNCacheManager.h"
 #include "WOTypes.h"
 #include "WOTextureDecoder.h"
+#include "WOModel.h"
+#include "WOModelLoader.h"

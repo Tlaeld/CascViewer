@@ -5,5 +5,7 @@ module CascBridge {
     header "CDNCacheManager.h"
     header "../../WhiteoutBridge/include/WOTypes.h"
     header "../../WhiteoutBridge/include/WOTextureDecoder.h"
+    header "../../WhiteoutBridge/include/WOModel.h"
+    header "../../WhiteoutBridge/include/WOModelLoader.h"
     export *
 }
