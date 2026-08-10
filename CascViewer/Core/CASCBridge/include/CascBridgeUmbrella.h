@@ -5,3 +5,5 @@
 #include "CDNConfig.h"
 #include "CDNCacheManager.h"
 #include "BLPDecoderBridge.h"
+#include "WOTypes.h"
+#include "WOTextureDecoder.h"

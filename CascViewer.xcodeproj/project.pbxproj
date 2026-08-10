@@ -19,6 +19,7 @@
 		2D93B78694FC7A98E3F63545 /* InstallManifestWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 203BA01A02EBC8DEC2462D73 /* InstallManifestWindowController.swift */; };
 		2EC0D95E05EE9CCA0BE47901 /* libcurl.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 1AA2D4B030A2E2A07F7D82C4 /* libcurl.tbd */; };
 		308B59ECC23544008EF5FA04 /* BridgeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30CF441EFCAA4921BCA96139 /* BridgeTests.swift */; };
+		69356A720A824C1192A8C6D0 /* WhiteoutBridgeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33F77860FD0E4C6EA5319A5E /* WhiteoutBridgeTests.swift */; };
 		DF2F6796CDC1369C47E57CC0 /* CascStorageProtocols.swift in Sources */ = {isa = PBXBuildFile; fileRef = F22FE567D9102B367A941D5E /* CascStorageProtocols.swift */; };
 		35FD3BB8F88FC22459CA8A23 /* CascBridge+Sendable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2458F6C63AF9557BC2D751E0 /* CascBridge+Sendable.swift */; };
 		39D9B3484F0602C4D0C0AD0B /* BLPImageInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECAC951BA9367B1B54A50B52 /* BLPImageInfo.swift */; };
@@ -33,6 +34,7 @@
 		51FF2C4CA3B4BD63979EFAEE /* libz.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = DE915E0C8899B4E0AC257F43 /* libz.tbd */; };
 		529BF5E678F2BD950A440D88 /* CascRootFile_Diablo3.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 821951C36FC08A869EADC182 /* CascRootFile_Diablo3.cpp */; };
 		53402D15180DB908F43C3BE9 /* BLPDecoderBridge.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 34B2877B55EEFB6DD1DF5284 /* BLPDecoderBridge.cpp */; };
+		77900556769F4E1FBE231538 /* WOTextureDecoder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4CFDFC95C1FF405F82C123B2 /* WOTextureDecoder.cpp */; };
 		53B3774597432B71EAF87108 /* RootHandler.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 3C5DC5E6A96CAE5935AABAF4 /* RootHandler.cpp */; };
 		55A1A7B2DFFE07299CACDE22 /* CASCStorageService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EAF6700599D831770C9F3C8 /* CASCStorageService.swift */; };
 		5797E3E1AB3A7D429B5C04CF /* OnlineStorageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BE656CB5D129E14AC64E4BE /* OnlineStorageView.swift */; };
@@ -143,8 +145,12 @@
 		278A09974B745D208E54D7D8 /* Common.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = Common.h; path = CascLib/src/common/Common.h; sourceTree = "<group>"; };
 		2B321136423FAF8FC571698A /* lookup3.c */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.c; name = lookup3.c; path = CascLib/src/jenkins/lookup3.c; sourceTree = "<group>"; };
 		30CF441EFCAA4921BCA96139 /* BridgeTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BridgeTests.swift; sourceTree = "<group>"; };
+		33F77860FD0E4C6EA5319A5E /* WhiteoutBridgeTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WhiteoutBridgeTests.swift; sourceTree = "<group>"; };
 		343D3D1253E74997181CF840 /* CascReadFile.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = CascReadFile.cpp; path = CascLib/src/CascReadFile.cpp; sourceTree = "<group>"; };
 		34B2877B55EEFB6DD1DF5284 /* BLPDecoderBridge.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; path = BLPDecoderBridge.cpp; sourceTree = "<group>"; };
+		4CFDFC95C1FF405F82C123B2 /* WOTextureDecoder.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; path = WOTextureDecoder.cpp; sourceTree = "<group>"; };
+		26C74EA4AE3243AFAEC354AB /* WOTypes.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = WOTypes.h; sourceTree = "<group>"; };
+		45787BC813A04A4C893DDF5C /* WOTextureDecoder.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = WOTextureDecoder.h; sourceTree = "<group>"; };
 		3C5DC5E6A96CAE5935AABAF4 /* RootHandler.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = RootHandler.cpp; path = CascLib/src/common/RootHandler.cpp; sourceTree = "<group>"; };
 		3F0CE6201AD76D5461554E67 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		43DC46B47C216703772EFD6C /* Sockets.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = Sockets.h; path = CascLib/src/common/Sockets.h; sourceTree = "<group>"; };
@@ -378,6 +384,7 @@
 			isa = PBXGroup;
 			children = (
 				81EC0ECE6621CE70FBAA2E98 /* CASCBridge */,
+				69BEA62B0841487A80B61917 /* WhiteoutBridge */,
 				1ACDB31B1FB8AE2968F3C393 /* Services */,
 				0B9CF068F2FCB597BC499CC6 /* Models */,
 			);
@@ -407,6 +414,7 @@
 			isa = PBXGroup;
 			children = (
 				30CF441EFCAA4921BCA96139 /* BridgeTests.swift */,
+				33F77860FD0E4C6EA5319A5E /* WhiteoutBridgeTests.swift */,
 				A7ACAD71F179479399D317B5 /* ServiceTests.swift */,
 				7B49513BF7A5406AAAD097452DF39E98 /* IntegrationTests.swift */,
 				3F0CE6201AD76D5461554E67 /* Info.plist */,
@@ -427,6 +435,35 @@
 			);
 			name = CASCBridge;
 			path = CASCBridge;
+			sourceTree = "<group>";
+		};
+		69BEA62B0841487A80B61917 /* WhiteoutBridge */ = {
+			isa = PBXGroup;
+			children = (
+				A512992D0A5E4F89A62C8BB6 /* include */,
+				7D07C5113B644A2A9178375F /* src */,
+			);
+			name = WhiteoutBridge;
+			path = WhiteoutBridge;
+			sourceTree = "<group>";
+		};
+		A512992D0A5E4F89A62C8BB6 /* include */ = {
+			isa = PBXGroup;
+			children = (
+				26C74EA4AE3243AFAEC354AB /* WOTypes.h */,
+				45787BC813A04A4C893DDF5C /* WOTextureDecoder.h */,
+			);
+			name = include;
+			path = include;
+			sourceTree = "<group>";
+		};
+		7D07C5113B644A2A9178375F /* src */ = {
+			isa = PBXGroup;
+			children = (
+				4CFDFC95C1FF405F82C123B2 /* WOTextureDecoder.cpp */,
+			);
+			name = src;
+			path = src;
 			sourceTree = "<group>";
 		};
 		900AED00E1A39E66BC68C16B /* OS X */ = {
@@ -735,6 +772,7 @@
 				AFFE10EAE618391FADB5F697 /* CASCError.swift in Sources */,
 				39D9B3484F0602C4D0C0AD0B /* BLPImageInfo.swift in Sources */,
 				53402D15180DB908F43C3BE9 /* BLPDecoderBridge.cpp in Sources */,
+				77900556769F4E1FBE231538 /* WOTextureDecoder.cpp in Sources */,
 				DF2F6796CDC1369C47E57CC0 /* CascStorageProtocols.swift in Sources */,
 				35FD3BB8F88FC22459CA8A23 /* CascBridge+Sendable.swift in Sources */,
 				037A470504DB30EFFCACF80F45F52C0B /* ToolbarView.swift in Sources */,
@@ -768,6 +806,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				308B59ECC23544008EF5FA04 /* BridgeTests.swift in Sources */,
+				69356A720A824C1192A8C6D0 /* WhiteoutBridgeTests.swift in Sources */,
 				3FC64AAADCAC494DBC9CD0BB /* ServiceTests.swift in Sources */,
 				A4362CE38EE34B8B9FDACA56261F029F /* IntegrationTests.swift in Sources */,
 				3B9267AB2BDDE21301D7B864 /* ChildrenMapTests.swift in Sources */,
@@ -807,13 +846,23 @@
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(SRCROOT)/CascViewer/Core/CASCBridge/include",
+					"$(SRCROOT)/CascViewer/Core/WhiteoutBridge/include",
+					"$(SRCROOT)/WhiteoutLib/include",
 					"$(SRCROOT)/CascLib/src",
 				);
 				INFOPLIST_FILE = CascViewer/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/WhiteoutLib/build-universal",
+				);
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				OTHER_CPLUSPLUSFLAGS = "$(inherited)";
-				OTHER_SWIFT_FLAGS = "$(inherited) -I$(SRCROOT)/CascViewer/Core/CASCBridge/include";
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-lwhiteout_lib",
+				);
+				OTHER_SWIFT_FLAGS = "$(inherited) -I$(SRCROOT)/CascViewer/Core/CASCBridge/include -I$(SRCROOT)/CascViewer/Core/WhiteoutBridge/include";
 				PRODUCT_BUNDLE_IDENTIFIER = com.cascviewer.CascViewer;
 				SDKROOT = macosx;
 				SWIFT_BRIDGING_HEADER = "CascViewer/CascViewer-Bridging-Header.h";
@@ -948,6 +997,7 @@
 				INFOPLIST_FILE = CascViewerTests/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				OTHER_SWIFT_FLAGS = "$(inherited) -I$(SRCROOT)/CascViewer/Core/CASCBridge/include -I$(SRCROOT)/CascViewer/Core/WhiteoutBridge/include";
 				PRODUCT_BUNDLE_IDENTIFIER = com.cascviewer.CascViewerTests;
 				SDKROOT = macosx;
 				SWIFT_OBJC_INTEROP_MODE = objcxx;
@@ -964,6 +1014,7 @@
 				INFOPLIST_FILE = CascViewerTests/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				OTHER_SWIFT_FLAGS = "$(inherited) -I$(SRCROOT)/CascViewer/Core/CASCBridge/include -I$(SRCROOT)/CascViewer/Core/WhiteoutBridge/include";
 				PRODUCT_BUNDLE_IDENTIFIER = com.cascviewer.CascViewerTests;
 				SDKROOT = macosx;
 				SWIFT_OBJC_INTEROP_MODE = objcxx;
@@ -989,13 +1040,23 @@
 				GENERATE_INFOPLIST_FILE = NO;
 				HEADER_SEARCH_PATHS = (
 					"$(SRCROOT)/CascViewer/Core/CASCBridge/include",
+					"$(SRCROOT)/CascViewer/Core/WhiteoutBridge/include",
+					"$(SRCROOT)/WhiteoutLib/include",
 					"$(SRCROOT)/CascLib/src",
 				);
 				INFOPLIST_FILE = CascViewer/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/WhiteoutLib/build-universal",
+				);
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				OTHER_CPLUSPLUSFLAGS = "$(inherited)";
-				OTHER_SWIFT_FLAGS = "$(inherited) -I$(SRCROOT)/CascViewer/Core/CASCBridge/include";
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-lwhiteout_lib",
+				);
+				OTHER_SWIFT_FLAGS = "$(inherited) -I$(SRCROOT)/CascViewer/Core/CASCBridge/include -I$(SRCROOT)/CascViewer/Core/WhiteoutBridge/include";
 				PRODUCT_BUNDLE_IDENTIFIER = com.cascviewer.CascViewer;
 				SDKROOT = macosx;
 				SWIFT_BRIDGING_HEADER = "CascViewer/CascViewer-Bridging-Header.h";
