@@ -20,7 +20,7 @@ public:
 };
 
 // ── 测试支持(writer round-trip 夹具,无版权素材)──
-std::vector<uint8_t> WOEncodeTestMDX();  // 1 三角网格 / 2 骨骼 / 1 动画(Stand,1000ms)
+std::vector<uint8_t> WOEncodeTestMDX();  // 1 三角网格 / 3 骨骼(深度 3 链)/ 1 动画(Stand,1000ms)
 std::vector<uint8_t> WOEncodeTestM3();   // Task 5 实现
 std::vector<uint8_t> WOEncodeTestM2();   // Task 5 实现
 

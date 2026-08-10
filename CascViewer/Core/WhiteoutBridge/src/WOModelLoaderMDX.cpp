@@ -168,10 +168,17 @@ WOModel WOModelLoader::parseMDX(const uint8_t* data, size_t length, WOError& err
         auto it = nodeToBone.find(pid);
         if (it != nodeToBone.end()) {
             out.bones[i].parentIndex = it->second;
-            // PIVT 为模型空间绝对坐标,转成父空间相对偏移(锚点公式用)
-            out.bones[i].pivot.x -= out.bones[it->second].pivot.x;
-            out.bones[i].pivot.y -= out.bones[it->second].pivot.y;
-            out.bones[i].pivot.z -= out.bones[it->second].pivot.z;
+            // PIVT 为模型空间绝对坐标,转成父空间相对偏移(锚点公式用)。
+            // 减数必须是父的原始绝对 pivot(model.pivotPoints)——out.bones[parent].pivot
+            // 可能已被本循环就地改成相对值(父先于子处理时),深度 ≥3 的链会出错。
+            // 越界时不做减法,与首个循环的 fallback(保持零值)语义一致。
+            const u32 parentObjId = model.bones[it->second].node.objectId;
+            if (parentObjId < model.pivotPoints.size()) {
+                const Vector3f& parentPivot = model.pivotPoints[parentObjId];
+                out.bones[i].pivot.x -= parentPivot.x;
+                out.bones[i].pivot.y -= parentPivot.y;
+                out.bones[i].pivot.z -= parentPivot.z;
+            }
         }
         // 父不是骨骼(helper 等)v1 挂根
     }
@@ -268,7 +275,7 @@ WOModel WOModelLoader::parseMDX(const uint8_t* data, size_t length, WOError& err
     return out;
 }
 
-// ── 测试夹具:1 三角网格 / 2 骨骼 / 1 个 1000ms "Stand" 动画 ──
+// ── 测试夹具:1 三角网格 / 3 骨骼(深度 3 链)/ 1 个 1000ms "Stand" 动画 ──
 std::vector<uint8_t> WOEncodeTestMDX() {
     mdx::Model model;
     model.version = 800;
@@ -287,7 +294,7 @@ std::vector<uint8_t> WOEncodeTestMDX() {
     mat.layers.push_back(layer);
     model.materials.push_back(mat);
 
-    // 骨骼 2 个(bone1 是 bone0 的子)
+    // 骨骼 3 个(root → child → grandchild,深度 3 链验证 pivot 转换)
     mdx::Bone b0;
     b0.node.name = "root";
     b0.node.objectId = 0;
@@ -302,8 +309,13 @@ std::vector<uint8_t> WOEncodeTestMDX() {
     b1.node.translationTracks.timestamps = {0, 1000};
     b1.node.translationTracks.keys_data = {Vector3f{0, 0, 0}, Vector3f{0, 1, 0}};
     b1.node.translationTracks.keyCount = 2;
-    model.bones = {b0, b1};
-    model.pivotPoints = {Vector3f{0, 0, 0}, Vector3f{0, 0, 1}};
+    mdx::Bone b2;
+    b2.node.name = "grandchild";
+    b2.node.objectId = 2;
+    b2.node.parentId = 1;
+    model.bones = {b0, b1, b2};
+    // PIVT 绝对坐标:同 x 的链,转换后应得 (10,0,0)/(0,0,5)/(0,0,4)
+    model.pivotPoints = {Vector3f{10, 0, 0}, Vector3f{10, 0, 5}, Vector3f{10, 0, 9}};
 
     // 动画序列
     mdx::Sequence seq;
