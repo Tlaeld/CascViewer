@@ -1,5 +1,7 @@
 #include "WOTextureDecoder.h"
 
+#include <cstring>
+
 #include <whiteout/textures/texture.h>
 #include <whiteout/textures/blp/blp.h>
 #include <whiteout/textures/dds/dds.h>
@@ -12,6 +14,55 @@ namespace WhiteoutBridge {
 static uint32_t readLE32(const uint8_t* p) {
     return (uint32_t)p[0] | ((uint32_t)p[1] << 8) |
            ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
+}
+
+static void writeLE32(uint8_t* p, uint32_t v) {
+    p[0] = (uint8_t)(v & 0xFF);
+    p[1] = (uint8_t)((v >> 8) & 0xFF);
+    p[2] = (uint8_t)((v >> 16) & 0xFF);
+    p[3] = (uint8_t)((v >> 24) & 0xFF);
+}
+
+// ── 24-bit 非压缩 DDS 支持 ──
+// WhiteoutLib 的 dds::Parser 只接受 4 字节/像素的 legacy 格式,24-bit DDS
+// 会被拒绝。这里在桥内把 24-bit 像素扩展成 32-bit(每像素追加 alpha=255),
+// 并把头部改成对应的 32-bit 描述,再交给 parser。R/G/B 掩码保持原样,
+// parser 依据掩码自行处理通道顺序(常见的 BGR 文件会走 Bgra 交换路径)。
+
+static constexpr uint32_t kDDPFAlphaPixels = 0x1;
+static constexpr uint32_t kDDPFFourCC = 0x4;
+static constexpr uint32_t kDDPFRGB = 0x40;
+static constexpr size_t kDDSHeaderSize = 128; // 4 magic + 124 header
+
+// DDS_PIXELFORMAT 字段在整个文件中的偏移(小端 u32):
+// pf.dwFlags@80, pf.dwFourCC@84, pf.dwRGBBitCount@88,
+// dwRBitMask@92, dwGBitMask@96, dwBBitMask@100, dwABitMask@104
+static bool isDDS24Bit(const uint8_t* data, size_t length) {
+    if (length < kDDSHeaderSize) return false;
+    const uint32_t pfFlags = readLE32(data + 80);
+    const uint32_t bitCount = readLE32(data + 88);
+    return bitCount == 24 && (pfFlags & kDDPFRGB) && !(pfFlags & kDDPFFourCC);
+}
+
+static std::vector<uint8_t> expandDDS24To32(const uint8_t* data, size_t length) {
+    const size_t srcBytes = length - kDDSHeaderSize;
+    std::vector<uint8_t> out(kDDSHeaderSize + (srcBytes / 3) * 4);
+    std::memcpy(out.data(), data, kDDSHeaderSize);
+    writeLE32(out.data() + 88, 32);                                // dwRGBBitCount
+    writeLE32(out.data() + 104, 0xFF000000u);                      // dwABitMask
+    writeLE32(out.data() + 80, readLE32(data + 80) | kDDPFAlphaPixels); // dwFlags
+    // 像素区按紧凑布局处理:每 3 字节 (b,g,r) 扩为 4 字节 (b,g,r,255)。
+    // 近似说明:若文件的逐 mip 行带 4 字节对齐 pitch 填充(24-bit DDS 实践中
+    // 很少见),这里的紧凑假设会产生错位的像素,而不是解码失败。
+    const uint8_t* src = data + kDDSHeaderSize;
+    uint8_t* dst = out.data() + kDDSHeaderSize;
+    for (size_t i = 0; i + 2 < srcBytes; i += 3) {
+        *dst++ = src[i];
+        *dst++ = src[i + 1];
+        *dst++ = src[i + 2];
+        *dst++ = 255;
+    }
+    return out;
 }
 
 static WOImageCompression compressionFor(PixelFormat fmt) {
@@ -50,7 +101,12 @@ WOImageDecodeResult WOTextureDecoder::decode(const uint8_t* data, size_t length,
         format = (magic == 0x32504C42) ? WOImageFormat::BLP2 : WOImageFormat::BLP1;
     } else if (magic == 0x20534444 /* "DDS " */) {
         dds::Parser parser;
-        parsed = parser.parse(std::span<const u8>(data, length));
+        if (isDDS24Bit(data, length)) {
+            std::vector<uint8_t> expanded = expandDDS24To32(data, length);
+            parsed = parser.parse(std::span<const u8>(expanded.data(), expanded.size()));
+        } else {
+            parsed = parser.parse(std::span<const u8>(data, length));
+        }
         format = WOImageFormat::DDS;
     } else {
         error = WOError::UnsupportedFormat;
