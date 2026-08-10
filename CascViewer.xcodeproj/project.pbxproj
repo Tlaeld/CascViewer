@@ -21,8 +21,9 @@
 		308B59ECC23544008EF5FA04 /* BridgeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30CF441EFCAA4921BCA96139 /* BridgeTests.swift */; };
 		69356A720A824C1192A8C6D0 /* WhiteoutBridgeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33F77860FD0E4C6EA5319A5E /* WhiteoutBridgeTests.swift */; };
 		A40000000000000000000008 /* WhiteoutBridgeModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A40000000000000000000007 /* WhiteoutBridgeModelTests.swift */; };
-		A40000000000000000000005 /* WOModelLoader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A40000000000000000000003 /* WOModelLoader.cpp */; };
 		A40000000000000000000006 /* WOModelLoaderMDX.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A40000000000000000000004 /* WOModelLoaderMDX.cpp */; };
+		A4000000000000000000000A /* WOModelLoaderM3.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A40000000000000000000009 /* WOModelLoaderM3.cpp */; };
+		A4000000000000000000000C /* WOModelLoaderM2.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A4000000000000000000000B /* WOModelLoaderM2.cpp */; };
 		DF2F6796CDC1369C47E57CC0 /* CascStorageProtocols.swift in Sources */ = {isa = PBXBuildFile; fileRef = F22FE567D9102B367A941D5E /* CascStorageProtocols.swift */; };
 		35FD3BB8F88FC22459CA8A23 /* CascBridge+Sendable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2458F6C63AF9557BC2D751E0 /* CascBridge+Sendable.swift */; };
 		39D9B3484F0602C4D0C0AD0B /* BLPImageInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECAC951BA9367B1B54A50B52 /* BLPImageInfo.swift */; };
@@ -151,8 +152,9 @@
 		A40000000000000000000007 /* WhiteoutBridgeModelTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WhiteoutBridgeModelTests.swift; sourceTree = "<group>"; };
 		A40000000000000000000001 /* WOModel.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = WOModel.h; sourceTree = "<group>"; };
 		A40000000000000000000002 /* WOModelLoader.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = WOModelLoader.h; sourceTree = "<group>"; };
-		A40000000000000000000003 /* WOModelLoader.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; path = WOModelLoader.cpp; sourceTree = "<group>"; };
 		A40000000000000000000004 /* WOModelLoaderMDX.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; path = WOModelLoaderMDX.cpp; sourceTree = "<group>"; };
+		A40000000000000000000009 /* WOModelLoaderM3.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; path = WOModelLoaderM3.cpp; sourceTree = "<group>"; };
+		A4000000000000000000000B /* WOModelLoaderM2.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; path = WOModelLoaderM2.cpp; sourceTree = "<group>"; };
 		343D3D1253E74997181CF840 /* CascReadFile.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = CascReadFile.cpp; path = CascLib/src/CascReadFile.cpp; sourceTree = "<group>"; };
 		4CFDFC95C1FF405F82C123B2 /* WOTextureDecoder.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; path = WOTextureDecoder.cpp; sourceTree = "<group>"; };
 		26C74EA4AE3243AFAEC354AB /* WOTypes.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = WOTypes.h; sourceTree = "<group>"; };
@@ -469,8 +471,9 @@
 			isa = PBXGroup;
 			children = (
 				4CFDFC95C1FF405F82C123B2 /* WOTextureDecoder.cpp */,
-				A40000000000000000000003 /* WOModelLoader.cpp */,
 				A40000000000000000000004 /* WOModelLoaderMDX.cpp */,
+				A40000000000000000000009 /* WOModelLoaderM3.cpp */,
+				A4000000000000000000000B /* WOModelLoaderM2.cpp */,
 			);
 			name = src;
 			path = src;
@@ -782,8 +785,9 @@
 				AFFE10EAE618391FADB5F697 /* CASCError.swift in Sources */,
 				39D9B3484F0602C4D0C0AD0B /* BLPImageInfo.swift in Sources */,
 				77900556769F4E1FBE231538 /* WOTextureDecoder.cpp in Sources */,
-				A40000000000000000000005 /* WOModelLoader.cpp in Sources */,
 				A40000000000000000000006 /* WOModelLoaderMDX.cpp in Sources */,
+				A4000000000000000000000A /* WOModelLoaderM3.cpp in Sources */,
+				A4000000000000000000000C /* WOModelLoaderM2.cpp in Sources */,
 				DF2F6796CDC1369C47E57CC0 /* CascStorageProtocols.swift in Sources */,
 				35FD3BB8F88FC22459CA8A23 /* CascBridge+Sendable.swift in Sources */,
 				037A470504DB30EFFCACF80F45F52C0B /* ToolbarView.swift in Sources */,

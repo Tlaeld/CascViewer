@@ -58,4 +58,42 @@ final class WhiteoutBridgeModelTests: XCTestCase {
         }
         XCTAssertEqual(error, WhiteoutBridge.WOError.ParseFailed)
     }
+
+    private func parseM3(_ bytes: Data) -> WhiteoutBridge.WOModel {
+        var data = bytes
+        var error = WhiteoutBridge.WOError.None
+        var loader = WhiteoutBridge.WOModelLoader()
+        return data.withUnsafeBytes { rawBuffer in
+            let ptr = rawBuffer.bindMemory(to: UInt8.self).baseAddress!
+            return loader.parseM3(ptr, data.count, &error)
+        }
+    }
+
+    func testM3RoundTrip() {
+        let bytes = WhiteoutBridge.WOEncodeTestM3()
+        XCTAssertGreaterThan(bytes.size(), 0)
+        let model = parseM3(Data(bytes))
+        XCTAssertEqual(model.format, WhiteoutBridge.WOModelFormat.M3)
+        XCTAssertEqual(model.meshes.size(), 1)
+        XCTAssertGreaterThan(model.meshes[0].positions.size(), 0)
+        XCTAssertEqual(model.bones.size(), 1)
+        XCTAssertEqual(model.materials.size(), 1)
+        XCTAssertEqual(model.animations.size(), 1)
+        // 夹具的骨骼带 2 帧位移动画
+        XCTAssertEqual(model.animations[0].translations[0].times.size(), 2)
+    }
+
+    func testM2SmokeRoundTrip() {
+        let bytes = WhiteoutBridge.WOEncodeTestM2()
+        XCTAssertGreaterThan(bytes.size(), 0)
+        var data = Data(bytes)
+        var error = WhiteoutBridge.WOError.None
+        var loader = WhiteoutBridge.WOModelLoader()
+        let model = data.withUnsafeBytes { rawBuffer -> WhiteoutBridge.WOModel in
+            let ptr = rawBuffer.bindMemory(to: UInt8.self).baseAddress!
+            return loader.parseM2(ptr, data.count, nil, nil, &error)
+        }
+        XCTAssertEqual(error, WhiteoutBridge.WOError.None)
+        XCTAssertEqual(model.format, WhiteoutBridge.WOModelFormat.M2)
+    }
 }
