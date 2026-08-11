@@ -74,23 +74,44 @@ actor ModelLoaderService {
         }
 
         var scene = ModelSceneConverter.convert(cppModel, format: format)
-        await resolveTextures(&scene)
+        await resolveTextures(&scene, modelPath: path)
         cache.setObject(ModelSceneBox(scene: scene), forKey: cacheKey)
         return scene
     }
 
+    /// 纹理路径候选列表。SC2/HotS 的 M3 纹理引用是相对 assets 虚拟根的逻辑路径
+    /// (如 "Assets/Textures/Zealot_Diffuse.dds"),CASC 实际存储在 mod 前缀下
+    /// (如 "mods/liberty.sc2mod/base.sc2assets/Assets/Textures/...")。
+    /// 从模型自身路径的 "/assets/" 边界提取前缀构造候选;原样路径优先。
+    static func textureCandidates(modelPath: String, texturePath: String) -> [String] {
+        let ref = texturePath.replacingOccurrences(of: "\\", with: "/")
+        let model = modelPath.replacingOccurrences(of: "\\", with: "/")
+        var candidates = [ref]
+        if let range = model.range(of: "/assets/", options: .caseInsensitive) {
+            let prefix = String(model[..<range.lowerBound]) + "/"
+            candidates.append(prefix + ref)
+        }
+        return candidates
+    }
+
     /// 逐材质解析纹理引用并从存储读取解码;失败保留 nil(占位材质)。
-    private func resolveTextures(_ scene: inout ModelScene) async {
+    private func resolveTextures(_ scene: inout ModelScene, modelPath: String) async {
         let coordinator = BLPDecoderCoordinator()
         for i in scene.materials.indices {
             let mat = scene.materials[i]
-            let data: Data?
+            var data: Data? = nil
             if !mat.texturePath.isEmpty {
-                data = provider.readFile(path: mat.texturePath)
-            } else if mat.textureFileDataId != 0 {
+                for candidate in Self.textureCandidates(modelPath: modelPath,
+                                                        texturePath: mat.texturePath) {
+                    if let d = provider.readFile(path: candidate) {
+                        data = d
+                        break
+                    }
+                }
+            }
+            // 路径读取失败(M2 常空路径)时回退 FileDataId
+            if data == nil, mat.textureFileDataId != 0 {
                 data = provider.readFileByDataId(mat.textureFileDataId)
-            } else {
-                data = nil
             }
             guard let textureData = data,
                   let decoded = try? await coordinator.decode(data: textureData),
