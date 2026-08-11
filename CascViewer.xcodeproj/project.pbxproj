@@ -106,6 +106,8 @@
 		F5F10E6FDD4971F4513ECB3D /* Mime.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 23607A5F1D7C0F155E14B24B /* Mime.cpp */; };
 		F6767672290F47B5453CD517 /* CascOpenStorage.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 67562BD9B2A0706D6DF74178 /* CascOpenStorage.cpp */; };
 		F6789012345678ABCDEF0123456789AB /* BLPViewerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F6789012345678ABCDEF0123 /* BLPViewerView.swift */; };
+		A9D100000000000000000002 /* ModelViewerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9D100000000000000000001 /* ModelViewerView.swift */; };
+		A9D100000000000000000004 /* ModelViewerWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9D100000000000000000003 /* ModelViewerWindow.swift */; };
 		F82B9B63F9F175BB716E67A1 /* aes.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DA4F4F44C601D45F8DCDC6DC /* aes.cpp */; };
 		bded554361194cb1820bb7a599abbaaf /* SearchResultTableView.swift in Sources */ = {isa = PBXBuildFile; fileRef = c84b018fbc4d43d8b692b2903f929b2d /* SearchResultTableView.swift */; };
 		8C0F067674A44B27AE82D394 /* CDNProducts.json in Resources */ = {isa = PBXBuildFile; fileRef = EB00671784D24D96A1994474 /* CDNProducts.json */; };
@@ -227,6 +229,8 @@
 		A8FEB22D1DEEB4FF00E64B06 /* lookup.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = lookup.h; path = CascLib/src/jenkins/lookup.h; sourceTree = "<group>"; };
 		B1DB78AD7C1635C26329BCA1 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		B2C3D4E5F6789012345678ABCDEF0123 /* BLPViewerView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BLPViewerView.swift; sourceTree = "<group>"; };
+		A9D100000000000000000001 /* ModelViewerView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ModelViewerView.swift; sourceTree = "<group>"; };
+		A9D100000000000000000003 /* ModelViewerWindow.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ModelViewerWindow.swift; sourceTree = "<group>"; };
 		B7EB086980673D41B0CBF8AB /* Sockets.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = Sockets.cpp; path = CascLib/src/common/Sockets.cpp; sourceTree = "<group>"; };
 		B8DA7A45CD285A674BDEFCCF /* CDNProductService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CDNProductService.swift; sourceTree = "<group>"; };
 		B9578B46AAD3571DDD3649BD /* Localizable.strings */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.strings; name = Localizable.strings; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
@@ -383,6 +387,16 @@
 			);
 			name = BLPViewer;
 			path = BLPViewer;
+			sourceTree = "<group>";
+		};
+		A9D100000000000000000005 /* ModelViewer */ = {
+			isa = PBXGroup;
+			children = (
+				A9D100000000000000000001 /* ModelViewerView.swift */,
+				A9D100000000000000000003 /* ModelViewerWindow.swift */,
+			);
+			name = ModelViewer;
+			path = ModelViewer;
 			sourceTree = "<group>";
 		};
 		4EEA17C9D9AE01DE53EEA192 /* CascViewer */ = {
@@ -595,6 +609,7 @@
 				CF2002F63384C458183DDD5D /* FileBrowser */,
 				52876911EFB6B64D630AE9C3 /* Search */,
 				4EC8D351CC474622DDF2A948 /* BLPViewer */,
+				A9D100000000000000000005 /* ModelViewer */,
 				952931FFD7A7D0C9C3E055E5 /* Common */,
 				310AC8A08F6C5A302BE829E7 /* InstallManifest */,
 			);
@@ -832,6 +847,8 @@
 				F6789012345678ABCDEF0123456789AB /* BLPViewerView.swift in Sources */,
 				6789012345678ABCDEF0123456789ABC /* BLPAnimationControls.swift in Sources */,
 				789012345678ABCDEF0123456789ABCD /* BLPMipMapSelector.swift in Sources */,
+				A9D100000000000000000002 /* ModelViewerView.swift in Sources */,
+				A9D100000000000000000004 /* ModelViewerWindow.swift in Sources */,
 				5797E3E1AB3A7D429B5C04CF /* OnlineStorageView.swift in Sources */,
 				0BADAAEC3C84D033D5264282 /* CDNProduct.swift in Sources */,
 				F30AA302032A81ABA1CA7ED2 /* CDNProductService.swift in Sources */,

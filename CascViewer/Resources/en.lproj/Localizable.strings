@@ -227,3 +227,10 @@
 "listfile_prompt_message" = "This storage lacks human-readable filenames. Load a listfile to display proper names?";
 "listfile_prompt_ok" = "Load";
 "listfile_prompt_cancel" = "Not Now";
+
+/* Model Viewer */
+"open_model_viewer" = "Open in Model Viewer";
+"animation_label" = "Animation";
+"no_animations" = "No animations";
+"model_load_failed" = "Failed to load model: %@";
+"use_builtin_model_viewer" = "Use built-in model viewer";

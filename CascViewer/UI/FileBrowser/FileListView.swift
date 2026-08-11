@@ -167,9 +167,27 @@ struct FileListContent: View {
         if result.wasCancelled {
             return
         } else if result.failedFiles.isEmpty {
-            let isImage = safeName.lowercased().hasSuffix(".blp") || safeName.lowercased().hasSuffix(".dds")
+            let lowerName = safeName.lowercased()
+            let isImage = lowerName.hasSuffix(".blp") || lowerName.hasSuffix(".dds")
+            let isModel = lowerName.hasSuffix(".mdx") || lowerName.hasSuffix(".m3")
+                || lowerName.hasSuffix(".m3a") || lowerName.hasSuffix(".m2")
             if isImage, let data = try? Data(contentsOf: destURL) {
                 openImageViewerWindow(fileName: safeName, imageData: data)
+            } else if isModel, AppSettings.shared.useBuiltInModelViewer,
+                      let storage = appState.currentStorage {
+                // 模型伴随文件(.skin/.anim/纹理)仍需从存储读,故走 provider 而非本地文件
+                let ext = (safeName as NSString).pathExtension.lowercased()
+                let format: ModelScene.Format = (ext == "m2") ? .m2 : (ext == "mdx" ? .mdx : .m3)
+                Task { @MainActor in
+                    let provider = CascModelFileProvider(handle: storage.handle)
+                    let service = ModelLoaderService(provider: provider)
+                    if let scene = try? await service.load(path: entry.normalizedPath, format: format) {
+                        let built = ModelSceneBuilder.build(scene)
+                        openModelViewerWindow(fileName: safeName, modelScene: scene, built: built)
+                    } else {
+                        NSWorkspace.shared.open(destURL)
+                    }
+                }
             } else {
                 NSWorkspace.shared.open(destURL)
             }

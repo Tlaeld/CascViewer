@@ -36,6 +36,10 @@ final class AppSettings: ObservableObject {
         didSet { defaults.set(useBuiltInImageViewer, forKey: "useBuiltInImageViewer") }
     }
 
+    @Published var useBuiltInModelViewer: Bool {
+        didSet { defaults.set(useBuiltInModelViewer, forKey: "useBuiltInModelViewer") }
+    }
+
     @Published var language: String {
         didSet {
             let code = (language == "zh") ? "zh-Hans" : language
@@ -57,6 +61,7 @@ final class AppSettings: ObservableObject {
         self.openAfterExtract = defaults.object(forKey: "openAfterExtract") as? Bool ?? false
         self.showRemoteMarkers = defaults.object(forKey: "showRemoteMarkers") as? Bool ?? true
         self.useBuiltInImageViewer = defaults.object(forKey: "useBuiltInImageViewer") as? Bool ?? true
+        self.useBuiltInModelViewer = defaults.object(forKey: "useBuiltInModelViewer") as? Bool ?? true
         let storedTheme = defaults.string(forKey: "appTheme") ?? "system"
         self.theme = AppTheme(rawValue: storedTheme) ?? .system
         let storedLang = defaults.string(forKey: "appLanguage") ?? Locale.current.languageCode ?? "en"
@@ -81,6 +86,7 @@ final class AppSettings: ObservableObject {
         openAfterExtract = false
         showRemoteMarkers = true
         useBuiltInImageViewer = true
+        useBuiltInModelViewer = true
         theme = .system
         let lang = Locale.current.languageCode ?? "en"
         language = lang

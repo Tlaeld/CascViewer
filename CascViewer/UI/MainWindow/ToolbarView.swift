@@ -197,6 +197,8 @@ struct SettingsView: View {
                     Toggle(L("use_builtin_image_viewer"), isOn: $settings.useBuiltInImageViewer)
                         .help(L("use_builtin_image_viewer_help"))
 
+                    Toggle(L("use_builtin_model_viewer"), isOn: $settings.useBuiltInModelViewer)
+
                     Picker(L("theme"), selection: $settings.theme) {
                         ForEach(AppTheme.allCases) { theme in
                             Text(L(theme.localizationKey)).tag(theme)

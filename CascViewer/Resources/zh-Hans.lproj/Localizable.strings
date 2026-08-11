@@ -244,3 +244,10 @@
 "listfile_prompt_message" = "检测到该存储缺少文件名映射，是否加载列表文件来显示正确文件名？";
 "listfile_prompt_ok" = "加载";
 "listfile_prompt_cancel" = "暂不";
+
+/* Model Viewer */
+"open_model_viewer" = "在模型查看器中打开";
+"animation_label" = "动画";
+"no_animations" = "无动画";
+"model_load_failed" = "模型加载失败:%@";
+"use_builtin_model_viewer" = "使用内置模型查看器";
