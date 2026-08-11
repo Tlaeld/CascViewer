@@ -171,9 +171,11 @@ final class ModelLoaderServiceTests: XCTestCase {
         let cameraNode = SCNNode()
         cameraNode.camera = SCNCamera()
         let size = scene.boundsMax - scene.boundsMin
-        let center = (scene.boundsMax + scene.boundsMin) / 2
+        let center = ModelSceneBuilder.visualCenter(of: scene)
         let radius = max(simd_length(size) / 2, 0.001)
-        cameraNode.position = SCNVector3(center.x, center.y, center.z + radius * 3)
+        cameraNode.position = SCNVector3(center.x, center.y + radius * 0.4,
+                                         center.z - radius * 2.5)
+        cameraNode.look(at: SCNVector3(center.x, center.y, center.z))
         scnScene.rootNode.addChildNode(cameraNode)
 
         let renderer = SCNRenderer(device: nil, options: nil)
@@ -244,9 +246,11 @@ final class ModelLoaderServiceTests: XCTestCase {
             let zcam = SCNNode()
             zcam.camera = SCNCamera()
             let zsize = scene.boundsMax - scene.boundsMin
-            let zcenter = (scene.boundsMax + scene.boundsMin) / 2
+            let zcenter = ModelSceneBuilder.visualCenter(of: scene)
             let zradius = max(simd_length(zsize) / 2, 0.001)
-            zcam.position = SCNVector3(zcenter.x, zcenter.y, zcenter.z + zradius * 3)
+            zcam.position = SCNVector3(zcenter.x, zcenter.y + zradius * 0.4,
+                                       zcenter.z - zradius * 2.5)
+            zcam.look(at: SCNVector3(zcenter.x, zcenter.y, zcenter.z))
             zs.rootNode.addChildNode(zcam)
             let zr = SCNRenderer(device: nil, options: nil)
             zr.scene = zs
@@ -283,11 +287,44 @@ final class ModelLoaderServiceTests: XCTestCase {
         let built = ModelSceneBuilder.build(scene)
         let skinnedRest = try render(built.rootNode, "/tmp/zealot_skinned_rest.png")
 
-        // 3. 蒙皮 + Stand t=500ms 渲染(动画装配检查,人工看 PNG)
+        // 3. 蒙皮 + Stand 多个时间点渲染(动画装配与动态检查,人工看 PNG)
         let player = ModelAnimationPlayer(scene: scene, built: built)
-        player.selectAnimation(index: 0)
-        player.update(timeMs: 500)
-        _ = try render(built.rootNode, "/tmp/zealot_skinned_anim.png")
+        let standIndex = scene.animations.firstIndex(where: { $0.name == "Stand" }) ?? 0
+        player.selectAnimation(index: standIndex)
+        for (t, file) in [(Float(500), "/tmp/zealot_anim_t500.png"),
+                          (Float(1500), "/tmp/zealot_anim_t1500.png"),
+                          (Float(3000), "/tmp/zealot_anim_t3000.png")] {
+            player.update(timeMs: t)
+            _ = try render(built.rootNode, file)
+        }
+
+        // 4. 侧面近景(检查腿脚姿态)
+        do {
+            player.update(timeMs: 1500)
+            let zs = SCNScene()
+            zs.rootNode.addChildNode(built.rootNode)
+            let zcam = SCNNode()
+            zcam.camera = SCNCamera()
+            let zsize = scene.boundsMax - scene.boundsMin
+            let zcenter = ModelSceneBuilder.visualCenter(of: scene)
+            let zradius = max(simd_length(zsize) / 2, 0.001)
+            // 侧面 + 稍低机位,距离拉近
+            zcam.position = SCNVector3(zcenter.x + zradius * 1.8,
+                                       zcenter.y + zradius * 0.3,
+                                       zcenter.z - zradius * 0.6)
+            zcam.look(at: SCNVector3(zcenter.x, zcenter.y, zcenter.z))
+            zs.rootNode.addChildNode(zcam)
+            let zr = SCNRenderer(device: nil, options: nil)
+            zr.scene = zs
+            zr.pointOfView = zcam
+            let img = zr.snapshot(atTime: 0, with: CGSize(width: 512, height: 512),
+                                  antialiasingMode: .none)
+            if let t = img.tiffRepresentation,
+               let rep = NSBitmapImageRep(data: t),
+               let png = rep.representation(using: .png, properties: [:]) {
+                try png.write(to: URL(fileURLWithPath: "/tmp/zealot_side.png"))
+            }
+        }
 
         // rest 蒙皮 ≈ 无蒙皮:逐像素平均差应很小
         XCTAssertEqual(unskinned.count, skinnedRest.count)

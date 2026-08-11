@@ -107,14 +107,17 @@ final class ModelViewerViewModel: ObservableObject {
         }
     }
 
-    /// 相机取景:按包围盒对角线把默认相机拉远。
+    /// 相机取景:按包围盒对角线把默认相机拉远(中心经 Z-up→Y-up 旋转校正)。
     private func frameCamera(to scene: ModelScene) {
         let cameraNode = SCNNode()
         cameraNode.camera = SCNCamera()
         let size = scene.boundsMax - scene.boundsMin
-        let center = (scene.boundsMax + scene.boundsMin) / 2
+        let center = ModelSceneBuilder.visualCenter(of: scene)
         let radius = max(simd_length(size) / 2, 0.001)
-        cameraNode.position = SCNVector3(center.x, center.y, center.z + radius * 3)
+        // 模型旋转后正面朝 -Z,相机放 -Z 一侧看正面
+        cameraNode.position = SCNVector3(center.x, center.y + radius * 0.4,
+                                         center.z - radius * 2.5)
+        cameraNode.look(at: SCNVector3(center.x, center.y, center.z))
         cameraNode.camera?.automaticallyAdjustsZRange = true
         // SCNScene 无 pointOfView(属 SCNSceneRenderer);SCNView 默认使用
         // 场景中的第一个相机节点,本场景仅此一个相机,行为确定。

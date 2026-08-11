@@ -13,14 +13,14 @@ namespace WhiteoutBridge {
 
 namespace {
 
-constexpr float kM3FramesPerSecond = 30.0f;  // M3 时间戳为帧,按 30fps 折算毫秒
-
+// M3 时间戳单位即毫秒——以真实文件验证(Walk 循环 733、Attack 2000、Death 10000,
+// 均为合理毫秒时长;SEQS.blendTime 字段同样以 ms 计)。不做帧率换算。
 WOVec2 toWO(const Vector2f& v) { return {v.x, v.y}; }
 WOVec3 toWO(const Vector3f& v) { return {v.x, v.y, v.z}; }
 WOVec4 toWO(const Quaternion& q) { return {q.x, q.y, q.z, q.w}; }
 
 uint32_t frameToMs(i32 frame) {
-    return frame > 0 ? (uint32_t)((float)frame * 1000.0f / kM3FramesPerSecond) : 0;
+    return frame > 0 ? (uint32_t)frame : 0;
 }
 
 // 在指定 STC 中解析 AnimRef → AnimBlock(slot/index 解码)。

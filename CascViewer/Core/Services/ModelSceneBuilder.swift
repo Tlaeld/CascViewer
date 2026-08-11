@@ -9,8 +9,19 @@ struct BuiltModelScene {
 
 enum ModelSceneBuilder {
 
+    /// MDX/M3/M2 均为 Z-up 坐标系;SceneKit 为 Y-up。
+    /// 内容根节点统一施加 -90°X 旋转(+Z → +Y,+Y → -Z)。
+    static let zUpToYUp = simd_quatf(angle: -.pi / 2, axis: SIMD3<Float>(1, 0, 0))
+
+    /// 模型包围盒中心经 Z-up→Y-up 旋转后的视觉中心(相机取景用)。
+    static func visualCenter(of scene: ModelScene) -> SIMD3<Float> {
+        zUpToYUp.act((scene.boundsMax + scene.boundsMin) / 2)
+    }
+
     static func build(_ scene: ModelScene) -> BuiltModelScene {
         let root = SCNNode()
+        // Z-up → Y-up:统一在内容根上旋转,骨骼树与网格都在其下,变换一致
+        root.simdTransform = simd_float4x4(zUpToYUp)
 
         // ── 骨骼节点树(rest 变换;MDX/M2 的锚点公式在 AnimationPlayer 中处理,
         //    这里 rest 局部变换统一为 T(restTranslation) R(restRotation) S(restScale),
