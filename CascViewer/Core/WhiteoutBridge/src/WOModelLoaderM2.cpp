@@ -1,4 +1,5 @@
 #include "WOModelLoader.h"
+#include "WOStringUtils.h"
 
 #include <whiteout/models/m2/m2.h>
 #include <whiteout/models/m2/parser.h>
@@ -98,7 +99,7 @@ WOModel WOModelLoader::parseM2(const uint8_t* data, size_t length,
         return out;
     }
 
-    out.name = model.modelName;
+    out.name = sanitized(model.modelName);
     out.boundsMin = toWO(model.bounding.minimum);
     out.boundsMax = toWO(model.bounding.maximum);
 
@@ -175,7 +176,7 @@ WOModel WOModelLoader::parseM2(const uint8_t* data, size_t length,
                         if (mesh.materialIndex >= 0 &&
                             (size_t)mesh.materialIndex < out.materials.size()) {
                             auto& wm = out.materials[mesh.materialIndex];
-                            if (!tex.filename.empty()) wm.texturePath = tex.filename;
+                            if (!tex.filename.empty()) wm.texturePath = sanitized(tex.filename);
                             if (texIdx < model.texture_ids.size())
                                 wm.textureFileDataId = model.texture_ids[texIdx];
                         }

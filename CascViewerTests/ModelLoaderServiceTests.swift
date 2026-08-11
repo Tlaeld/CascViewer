@@ -98,4 +98,40 @@ final class ModelLoaderServiceTests: XCTestCase {
         let scene = try await service.load(path: modelPath, format: .m3)
         XCTAssertNotNil(scene.materials[0].diffuseTexture)
     }
+
+    /// 真实存储端到端验证(SC2 在本机存在才运行,否则跳过)。
+    /// 覆盖:真实 CascLib 打开 + 全量枚举 + 跨 mod 索引 + 真实 DDS 解码。
+    func testRealSC2StorageCrossModTexture() async throws {
+        let storagePath = "/Users/dev/Desktop/StarCraft II"
+        guard FileManager.default.fileExists(atPath: storagePath + "/.build.info") else {
+            throw XCTSkip("真实 SC2 存储不存在,跳过")
+        }
+        var handle = CascBridge.CascStorageHandle.createLocal()
+        let openError = handle.open(std.string(storagePath))
+        guard openError == .None else {
+            throw XCTSkip("存储打开失败: \(openError)")
+        }
+        defer { handle.close() }
+
+        var listError = CascBridge.CascError.None
+        let rawEntries = handle.listDirectory(std.string(""), &listError)
+        XCTAssertEqual(listError, .None)
+        var paths: [String] = []
+        paths.reserveCapacity(rawEntries.size())
+        for i in 0..<rawEntries.size() {
+            paths.append(String(rawEntries[i].fullPath)
+                .replacingOccurrences(of: "\\", with: "/"))
+        }
+
+        let provider = CascModelFileProvider(handle: handle, allPaths: paths)
+        let service = ModelLoaderService(provider: provider)
+        let scene = try await service.load(
+            path: "campaigns/liberty.sc2campaign/base.sc2assets/assets/campaign/terran/artifact1/artifact1.m3",
+            format: .m3)
+        XCTAssertGreaterThan(scene.materials.count, 0)
+        // 回归:WhiteoutLib 对真实 M3 的 CHAR ref 会带结尾 NUL,桥内必须清除,
+        // 否则 assets 索引查找永不命中(此用例在修复前失败)
+        XCTAssertNotNil(scene.materials[0].diffuseTexture,
+                        "主材质纹理应经跨 mod 索引解析并解码成功")
+    }
 }

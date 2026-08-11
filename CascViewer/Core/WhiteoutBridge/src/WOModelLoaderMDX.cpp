@@ -1,4 +1,5 @@
 #include "WOModelLoader.h"
+#include "WOStringUtils.h"
 
 #include <whiteout/models/mdx/mdx.h>
 
@@ -119,7 +120,7 @@ WOModel WOModelLoader::parseMDX(const uint8_t* data, size_t length, WOError& err
         return out;
     }
 
-    out.name = model.modelName;
+    out.name = sanitized(model.modelName);
     out.boundsMin = toWO(model.modelExtent.minimum);
     out.boundsMax = toWO(model.modelExtent.maximum);
 
@@ -129,7 +130,7 @@ WOModel WOModelLoader::parseMDX(const uint8_t* data, size_t length, WOError& err
         if (!mat.layers.empty()) {
             const auto& layer = mat.layers[0];
             if (layer.textureId < model.textures.size())
-                wm.texturePath = model.textures[layer.textureId].fileName;
+                wm.texturePath = sanitized(model.textures[layer.textureId].fileName);
             switch (layer.filterMode) {
                 case mdx::Layer::FilterMode::None:
                     wm.blendMode = WOBlendMode::Opaque; break;
@@ -156,7 +157,7 @@ WOModel WOModelLoader::parseMDX(const uint8_t* data, size_t length, WOError& err
     for (size_t i = 0; i < model.bones.size(); ++i) {
         const auto& b = model.bones[i];
         WOBone wb;
-        wb.name = b.node.name;
+        wb.name = sanitized(b.node.name);
         if (b.node.objectId < model.pivotPoints.size())
             wb.pivot = toWO(model.pivotPoints[b.node.objectId]);
         nodeToBone[b.node.objectId] = (int32_t)i;
@@ -257,7 +258,7 @@ WOModel WOModelLoader::parseMDX(const uint8_t* data, size_t length, WOError& err
     // ── 动画(MDX 时间戳即毫秒;按序列区间过滤并 rebase)──
     for (const auto& seq : model.sequences) {
         WOAnimation anim;
-        anim.name = seq.name;
+        anim.name = sanitized(seq.name);
         anim.durationMs = (seq.intervalEnd > seq.intervalStart)
                               ? seq.intervalEnd - seq.intervalStart : 0;
         anim.loops = (static_cast<u32>(seq.flags) & 0x1) == 0;  // Flag::NonLooping

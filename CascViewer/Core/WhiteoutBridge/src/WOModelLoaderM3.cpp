@@ -1,4 +1,5 @@
 #include "WOModelLoader.h"
+#include "WOStringUtils.h"
 
 #include <whiteout/models/m3/m3.h>
 #include <whiteout/models/m3/parser.h>
@@ -92,7 +93,7 @@ WOModel WOModelLoader::parseM3(const uint8_t* data, size_t length, WOError& erro
         return out;
     }
 
-    out.name = model.name;
+    out.name = sanitized(model.name);
     out.boundsMin = toWO(model.bounds.min);
     out.boundsMax = toWO(model.bounds.max);
 
@@ -103,7 +104,7 @@ WOModel WOModelLoader::parseM3(const uint8_t* data, size_t length, WOError& erro
         if (mm.materialType == m3::MaterialType::Standard &&
             mm.materialIndex < model.standardMaterials.size()) {
             const auto& sm = model.standardMaterials[mm.materialIndex];
-            if (sm.diffuseLayer) wm.texturePath = sm.diffuseLayer->texturePath;
+            if (sm.diffuseLayer) wm.texturePath = sanitized(sm.diffuseLayer->texturePath);
             switch (sm.blendMode) {
                 case m3::BlendMode::Opaque:     wm.blendMode = WOBlendMode::Opaque; break;
                 case m3::BlendMode::AlphaBlend: wm.blendMode = WOBlendMode::Blend; break;
@@ -122,7 +123,7 @@ WOModel WOModelLoader::parseM3(const uint8_t* data, size_t length, WOError& erro
     // ── 骨骼 ──
     for (const auto& b : model.bones) {
         WOBone wb;
-        wb.name = b.name;
+        wb.name = sanitized(b.name);
         wb.parentIndex = (b.parentIndex == 0xFFFF) ? -1 : (int32_t)b.parentIndex;
         wb.restTranslation = toWO(b.position.initValue);
         wb.restRotation = toWO(b.rotation.initValue);
@@ -203,7 +204,7 @@ WOModel WOModelLoader::parseM3(const uint8_t* data, size_t length, WOError& erro
             stc = &model.subTrackCollections[pairByIndex ? si : 0];
 
         WOAnimation anim;
-        anim.name = seq.name;
+        anim.name = sanitized(seq.name);
         anim.durationMs = frameToMs((i32)(seq.endFrame > seq.startFrame
                                               ? seq.endFrame - seq.startFrame : 0));
         anim.loops = true;  // v1:M3 一律循环
