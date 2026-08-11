@@ -9,6 +9,9 @@ actor ModelLoaderService {
     protocol FileProvider: Sendable {
         func readFile(path: String) -> Data?
         func readFileByDataId(_ id: UInt32) -> Data?
+        /// 把 assets 虚拟根相对引用(如 "Assets/Textures/X.dds")解析为存储内
+        /// 实际存在的完整路径(跨 mod 兜底);无索引或找不到返回 nil。
+        func resolveAssetsPath(_ ref: String) -> String?
     }
 
     enum LoadError: Error {
@@ -108,6 +111,13 @@ actor ModelLoaderService {
                         break
                     }
                 }
+                // 跨 mod 兜底:引用只存在于其他 mod(如战役模型引用基础 mod 共享纹理)
+                if data == nil {
+                    let ref = mat.texturePath.replacingOccurrences(of: "\\", with: "/")
+                    if let resolved = provider.resolveAssetsPath(ref) {
+                        data = provider.readFile(path: resolved)
+                    }
+                }
             }
             // 路径读取失败(M2 常空路径)时回退 FileDataId
             if data == nil, mat.textureFileDataId != 0 {
@@ -137,7 +147,16 @@ private final class M2ReadBox: @unchecked Sendable {
 /// 生产环境 FileProvider:同步读 C++ 存储句柄(句柄内部有锁,线程安全)。
 final class CascModelFileProvider: ModelLoaderService.FileProvider, @unchecked Sendable {
     private var handle: CascBridge.CascStorageHandle
-    init(handle: CascBridge.CascStorageHandle) { self.handle = handle }
+    /// 存储内全部已知路径(CASCStorageService.entriesByPath 的键);空 = 无索引。
+    private let allPaths: [String]
+    /// 懒建 assets 索引:键 = 从 assets 段起的小写路径,值 = 完整原始路径。
+    private var assetsIndex: [String: String]?
+    private let indexLock = NSLock()
+
+    init(handle: CascBridge.CascStorageHandle, allPaths: [String] = []) {
+        self.handle = handle
+        self.allPaths = allPaths
+    }
 
     func readFile(path: String) -> Data? {
         var error = CascBridge.CascError.None
@@ -149,6 +168,22 @@ final class CascModelFileProvider: ModelLoaderService.FileProvider, @unchecked S
     func readFileByDataId(_ id: UInt32) -> Data? {
         readFile(path: String(format: "FILE%08X.dat", id))
     }
+
+    func resolveAssetsPath(_ ref: String) -> String? {
+        indexLock.lock()
+        if assetsIndex == nil {
+            var index: [String: String] = [:]
+            for path in allPaths {
+                guard let range = path.range(of: "/assets/", options: .caseInsensitive) else { continue }
+                let fromAssets = String(path[range.lowerBound...].dropFirst())
+                index[fromAssets.lowercased()] = path
+            }
+            assetsIndex = index
+        }
+        let index = assetsIndex
+        indexLock.unlock()
+        return index?[ref.lowercased()]
+    }
 }
 
 #if DEBUG
@@ -156,5 +191,14 @@ final class MockModelFileProvider: ModelLoaderService.FileProvider, @unchecked S
     var files: [String: Data] = [:]
     func readFile(path: String) -> Data? { files[path] }
     func readFileByDataId(_ id: UInt32) -> Data? { files[String(format: "FILE%08X.dat", id)] }
+    func resolveAssetsPath(_ ref: String) -> String? {
+        let key = ref.lowercased()
+        for path in files.keys {
+            guard let range = path.range(of: "/assets/", options: .caseInsensitive) else { continue }
+            let fromAssets = String(path[range.lowerBound...].dropFirst())
+            if fromAssets.lowercased() == key { return path }
+        }
+        return nil
+    }
 }
 #endif

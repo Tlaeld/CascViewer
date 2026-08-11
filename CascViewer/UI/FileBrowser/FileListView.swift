@@ -179,7 +179,8 @@ struct FileListContent: View {
                 let ext = (safeName as NSString).pathExtension.lowercased()
                 let format: ModelScene.Format = (ext == "m2") ? .m2 : (ext == "mdx" ? .mdx : .m3)
                 Task { @MainActor in
-                    let provider = CascModelFileProvider(handle: storage.handle)
+                    let provider = CascModelFileProvider(handle: storage.handle,
+                                                         allPaths: Array(storage.entriesByPath.keys))
                     let service = ModelLoaderService(provider: provider)
                     if let scene = try? await service.load(path: entry.normalizedPath, format: format) {
                         let built = ModelSceneBuilder.build(scene)

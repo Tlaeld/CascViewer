@@ -153,7 +153,8 @@ struct FilePreviewPanel: View {
         if AppSettings.shared.useBuiltInModelViewer {
             let ext = (entry.name as NSString).pathExtension.lowercased()
             let format: ModelScene.Format = (ext == "m2") ? .m2 : (ext == "mdx" ? .mdx : .m3)
-            let provider = CascModelFileProvider(handle: storageService.handle)
+            let provider = CascModelFileProvider(handle: storageService.handle,
+                                                 allPaths: Array(storageService.entriesByPath.keys))
             let service = ModelLoaderService(provider: provider)
             do {
                 let scene = try await service.load(path: entry.normalizedPath, format: format)
