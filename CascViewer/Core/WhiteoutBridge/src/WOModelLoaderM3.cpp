@@ -256,8 +256,9 @@ std::vector<uint8_t> WOEncodeTestM3() {
         u8* base = vb.data.data() + v * stride;
         std::memcpy(base, pos[v], 12);            // position
         base[12] = 255;                           // weight0 = 255,其余 0
-        base[16] = 127;                           // normal z (i8 归一)
-        // boneIndices(20-23)全 0;uv(24-27)全 0;tangent(28-31)全 0
+        base[16] = 127;                           // boneIndices[0](实际布局:权重 12-15,boneIndices 16-19,normal 20-23);
+                                                  // 127 经 boneLookup(大小 1)查找越界回退为 0,不影响断言
+        // normal(20-23)全 0;uv(24-27)全 0;tangent(28-31)全 0
     }
     model.vertices = vb;
     model.vertices.initialize();

@@ -1,5 +1,6 @@
 #pragma once
 #include "WOTypes.h"
+#include <cstddef>
 
 namespace WhiteoutBridge {
 

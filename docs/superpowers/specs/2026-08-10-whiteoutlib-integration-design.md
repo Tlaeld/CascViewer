@@ -119,3 +119,9 @@ SwiftUI ──> Swift 服务层 ──> WhiteoutBridge(新薄 C++ 桥)──> Wh
 - **M2 实验性**:部分 WoW 模型解析失败属预期,走错误路径;在 UI 文案中如实提示。
 - **M2 纹理引用解析**:WoW 纹理常以 FileDataId 或变体名引用,解析规则需在实施时按实际样本验证,失败时降级为占位材质。
 - **WhiteoutLib beta**:API 可能跨版本变动;子模块 pin 到具体 commit,升级单独评估。
+
+## 实施裁剪记录
+
+- 时间滑块未实现(序列选择器 + 播放/暂停已含)。
+- 解析失败为全局错误提示,而非"无法解析该模型"占位面板。
+- WhiteoutLib issue list 的 DEBUG 日志未实现(issue list 不向上暴露,也未打日志)。

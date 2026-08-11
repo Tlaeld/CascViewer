@@ -3,6 +3,7 @@
 #include <whiteout/textures/blp/blp.h>
 #include <cstdio>
 #include <cstring>
+#include <span>
 
 using namespace whiteout;
 using namespace whiteout::textures;

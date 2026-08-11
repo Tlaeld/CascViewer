@@ -165,15 +165,16 @@ struct FilePreviewPanel: View {
             return
         }
 
-        // 设置关闭时回退到系统打开(复用 openImageFile 的提取路径)
-        await openImageFile(entry: entry)
+        // 设置关闭时回退到系统打开(复用 openImageFile 的提取路径,跳过内置图像查看器)
+        await openImageFile(entry: entry, skipBuiltInViewer: true)
     }
 
     @MainActor
-    private func openImageFile(entry: CASCFileEntry) async {
+    private func openImageFile(entry: CASCFileEntry, skipBuiltInViewer: Bool = false) async {
         guard let storageService = appState.currentStorage else { return }
 
-        if AppSettings.shared.useBuiltInImageViewer,
+        if !skipBuiltInViewer,
+           AppSettings.shared.useBuiltInImageViewer,
            let data = await storageService.readFileData(forPath: entry.normalizedPath) {
             openImageViewerWindow(fileName: entry.name, imageData: data)
             return
