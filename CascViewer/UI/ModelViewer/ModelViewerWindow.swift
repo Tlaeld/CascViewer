@@ -70,7 +70,11 @@ final class ModelViewerViewModel: ObservableObject {
     @Published var scnScene = SCNScene()
     @Published var isPlaying = false
     @Published var selectedAnimation = 0 {
-        didSet { player.selectAnimation(index: selectedAnimation); currentTimeMs = 0 }
+        didSet {
+            player.selectAnimation(index: selectedAnimation)
+            currentTimeMs = 0
+            startTime = 0  // 触发 tick() 里的重锚定(if startTime == 0),否则非循环动画卡最后一帧
+        }
     }
 
     private(set) var player = ModelAnimationPlayer(scene: ModelScene(
