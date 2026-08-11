@@ -27,27 +27,15 @@ enum ModelSceneBuilder {
             && bone.parentIndex < boneNodes.count {
             boneNodes[bone.parentIndex].addChildNode(boneNodes[i])
         }
-        var rootBoneNodes: [SCNNode] = []
         for (i, bone) in scene.bones.enumerated() where bone.parentIndex < 0 {
             root.addChildNode(boneNodes[i])
-            rootBoneNodes.append(boneNodes[i])
         }
 
-        // ── 网格 ──
-        // 结构契约(ModelSceneBuilderTests):root 的直接子节点是骨骼树根,
-        // 几何/蒙皮挂在它上面(单一网格 + 单一根骨骼时 root 恰有 1 个子节点)。
-        // 因此网格按序绑到根骨骼节点;根骨骼不够用时(多网格模型)溢出网格
-        // 作为 root 的普通子节点,保证不丢网格。
-        for (m, mesh) in scene.meshes.enumerated() {
+        // ── 网格:全部作为 root 的直接子节点(与骨骼树平级)。
+        // 蒙皮网格挂到骨骼节点下会引入额外/不确定的节点变换,标准做法是与骨架平级。
+        for mesh in scene.meshes {
             let geometry = buildGeometry(mesh)
-            let node: SCNNode
-            if m < rootBoneNodes.count {
-                node = rootBoneNodes[m]
-            } else {
-                node = SCNNode()
-                root.addChildNode(node)
-            }
-            node.geometry = geometry
+            let node = SCNNode(geometry: geometry)
             node.geometry?.firstMaterial = buildMaterial(
                 mesh.materialIndex >= 0 && mesh.materialIndex < scene.materials.count
                     ? scene.materials[mesh.materialIndex] : nil
@@ -58,22 +46,22 @@ enum ModelSceneBuilder {
                                             baseGeometry: geometry)
                 node.skinner?.skeleton = root
             }
+            root.addChildNode(node)
         }
 
-        // 基础光照,避免全黑(挂在骨骼树根下以维持上述结构契约;无骨骼时挂 root)
-        let lightParent = rootBoneNodes.first ?? root
+        // 基础光照,避免全黑
         let light = SCNLight()
         light.type = .omni
         let lightNode = SCNNode()
         lightNode.light = light
         lightNode.position = SCNVector3(5, 10, 5)
-        lightParent.addChildNode(lightNode)
+        root.addChildNode(lightNode)
         let ambient = SCNLight()
         ambient.type = .ambient
         ambient.intensity = 400
         let ambientNode = SCNNode()
         ambientNode.light = ambient
-        lightParent.addChildNode(ambientNode)
+        root.addChildNode(ambientNode)
 
         return BuiltModelScene(rootNode: root, boneNodes: boneNodes)
     }

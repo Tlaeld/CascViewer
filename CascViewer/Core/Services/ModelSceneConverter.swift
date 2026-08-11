@@ -43,6 +43,17 @@ enum ModelSceneConverter {
             )
         }
 
+        // M3:实测 WhiteoutLib 对部分文件(如 MODL v23)解析出的 IREF 是单位阵
+        // (平移全零),直接用作 inverseBind 会把顶点按骨骼世界变换甩出去(模型散开)。
+        // 改为从 rest 姿态链自算:worldBind = 父链 TRS 组合,inverseBind = 其逆。
+        // 构造上保证 boneWorld(rest) * inverseBind = I,即静止姿态 = 绑定姿态。
+        if format == .m3 && !scene.bones.isEmpty {
+            let binds = computeInverseBindsFromRest(scene.bones)
+            for i in scene.bones.indices {
+                scene.bones[i].inverseBind = binds[i]
+            }
+        }
+
         scene.meshes = (0..<cpp.meshes.size()).map { i in
             let m = cpp.meshes[i]
             let vcount = m.positions.size()
@@ -138,5 +149,42 @@ enum ModelSceneConverter {
         case .Hermite: return .hermite
         default: return .bezier
         }
+    }
+
+    /// 从 rest 姿态链计算 inverseBind(M3 用)。
+    /// worldBind[i] = worldBind[parent] * (T·R·S)(rest[i]);inverseBind = simd_inverse(worldBind)。
+    /// 与 ModelSceneBuilder/AnimationPlayer 的 TRS 组合顺序一致(平移·旋转·缩放)。
+    static func computeInverseBindsFromRest(_ bones: [ModelScene.Bone]) -> [simd_float4x4] {
+        var cache = [Int: simd_float4x4]()
+        cache.reserveCapacity(bones.count)
+
+        func localRest(_ b: ModelScene.Bone) -> simd_float4x4 {
+            var t = matrix_identity_float4x4
+            t[3, 0] = b.restTranslation.x; t[3, 1] = b.restTranslation.y; t[3, 2] = b.restTranslation.z
+            var s = matrix_identity_float4x4
+            s[0, 0] = b.restScale.x; s[1, 1] = b.restScale.y; s[2, 2] = b.restScale.z
+            return t * simd_float4x4(b.restRotation) * s
+        }
+
+        // 带备忘的递归;parentIndex 越界或成环时按无父处理
+        func worldBind(_ i: Int, _ visiting: inout Set<Int>) -> simd_float4x4 {
+            if let cached = cache[i] { return cached }
+            let b = bones[i]
+            let local = localRest(b)
+            let parent = b.parentIndex
+            let world: simd_float4x4
+            if parent >= 0 && parent < bones.count && parent != i && !visiting.contains(parent) {
+                visiting.insert(i)
+                world = worldBind(parent, &visiting) * local
+                visiting.remove(i)
+            } else {
+                world = local
+            }
+            cache[i] = world
+            return world
+        }
+
+        var visiting = Set<Int>()
+        return bones.indices.map { simd_inverse(worldBind($0, &visiting)) }
     }
 }

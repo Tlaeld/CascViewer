@@ -41,17 +41,18 @@ final class ModelSceneBuilderTests: XCTestCase {
     func testBuildStructure() {
         let built = ModelSceneBuilder.build(makeScene())
         XCTAssertEqual(built.boneNodes.count, 2)
-        // 父子关系:child 挂在 root 下,root 挂在场景根下
-        XCTAssertEqual(built.rootNode.childNodes.count, 1)
-        XCTAssertEqual(built.rootNode.childNodes[0].childNodes.first?.name, "child")
-        // 网格节点带几何与蒙皮器
+        // 骨骼树根是 root 的直接子节点,child 骨骼挂在它下面
+        let boneRoot = built.rootNode.childNodes.first { $0.name == "root" }
+        XCTAssertNotNil(boneRoot)
+        XCTAssertEqual(boneRoot?.childNodes.first?.name, "child")
+        // 网格节点与骨骼树平级,直接挂 root(蒙皮网格的标准结构)
         let geometryNodes = built.rootNode.childNodes.filter { $0.geometry != nil }
-        // 网格直接挂场景根(不是骨骼下)
         XCTAssertEqual(geometryNodes.count, 1)
         let skinner = geometryNodes[0].skinner
         XCTAssertNotNil(skinner)
         XCTAssertEqual(skinner?.bones.count, 2)
         XCTAssertEqual(skinner?.boneInverseBindTransforms?.count, 2)
+        XCTAssertTrue(skinner?.skeleton === built.rootNode)
     }
 
     func testVertexPayloadRoundTrip() {

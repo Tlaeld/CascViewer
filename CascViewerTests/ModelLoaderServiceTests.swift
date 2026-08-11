@@ -212,4 +212,93 @@ final class ModelLoaderServiceTests: XCTestCase {
         // alpha 修复前因透明化处理整片近黑(max=4)。阈值取 20 作为回归信号。
         XCTAssertGreaterThan(maxLum, 20, "渲染近黑(max=\(maxLum)),纹理 alpha 可能被误作透明度")
     }
+
+    /// 蒙皮正确性验证(SC2 在本机存在才运行):
+    /// rest 姿态的蒙皮渲染必须与无蒙皮(绑定空间)渲染几乎一致——
+    /// 因为 boneWorld(rest) * inverseBind 应等于单位阵。同时导出 Stand 动画中段渲染。
+    func testZealotSkinnedRestMatchesUnskinned() async throws {
+        let storagePath = "/Users/dev/Desktop/StarCraft II"
+        guard FileManager.default.fileExists(atPath: storagePath + "/.build.info") else {
+            throw XCTSkip("真实 SC2 存储不存在,跳过")
+        }
+        var handle = CascBridge.CascStorageHandle.createLocal()
+        guard handle.open(std.string(storagePath)) == .None else { throw XCTSkip("存储打开失败") }
+        defer { handle.close() }
+        var listError = CascBridge.CascError.None
+        let rawEntries = handle.listDirectory(std.string(""), &listError)
+        var paths: [String] = []
+        paths.reserveCapacity(rawEntries.size())
+        for i in 0..<rawEntries.size() {
+            paths.append(String(rawEntries[i].fullPath).replacingOccurrences(of: "\\", with: "/"))
+        }
+        let provider = CascModelFileProvider(handle: handle, allPaths: paths)
+        let service = ModelLoaderService(provider: provider)
+        let scene = try await service.load(
+            path: "mods/liberty.sc2mod/base.sc2assets/assets/units/protoss/zealot/zealot.m3",
+            format: .m3)
+
+        // 渲染辅助:把节点包装成场景、按包围盒取景、离屏渲染,返回 RGBA 字节并写 PNG
+        func render(_ root: SCNNode, _ file: String) throws -> [UInt8] {
+            let zs = SCNScene()
+            zs.rootNode.addChildNode(root)
+            let zcam = SCNNode()
+            zcam.camera = SCNCamera()
+            let zsize = scene.boundsMax - scene.boundsMin
+            let zcenter = (scene.boundsMax + scene.boundsMin) / 2
+            let zradius = max(simd_length(zsize) / 2, 0.001)
+            zcam.position = SCNVector3(zcenter.x, zcenter.y, zcenter.z + zradius * 3)
+            zs.rootNode.addChildNode(zcam)
+            let zr = SCNRenderer(device: nil, options: nil)
+            zr.scene = zs
+            zr.pointOfView = zcam
+            let img = zr.snapshot(atTime: 0, with: CGSize(width: 512, height: 512),
+                                  antialiasingMode: .none)
+            guard let tiff = img.tiffRepresentation,
+                  let rep = NSBitmapImageRep(data: tiff),
+                  let png = rep.representation(using: .png, properties: [:]) else {
+                XCTFail("渲染产物转换失败")
+                return []
+            }
+            try png.write(to: URL(fileURLWithPath: file))
+            guard let cg = rep.cgImage else { return [] }
+            let w = cg.width, h = cg.height
+            var buf = [UInt8](repeating: 0, count: w * h * 4)
+            let cs = CGColorSpace(name: CGColorSpace.sRGB)!
+            guard let ctx = CGContext(data: &buf, width: w, height: h, bitsPerComponent: 8,
+                                      bytesPerRow: w * 4, space: cs,
+                                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+            else { return [] }
+            ctx.draw(cg, in: CGRect(x: 0, y: 0, width: w, height: h))
+            return buf
+        }
+
+        // 1. 无蒙皮(绑定空间)渲染:单独构建一份并剥掉 skinner
+        let builtUnskinned = ModelSceneBuilder.build(scene)
+        for child in builtUnskinned.rootNode.childNodes where child.geometry != nil {
+            child.skinner = nil
+        }
+        let unskinned = try render(builtUnskinned.rootNode, "/tmp/zealot_unskinned.png")
+
+        // 2. 蒙皮 + rest 姿态渲染(应≈无蒙皮)
+        let built = ModelSceneBuilder.build(scene)
+        let skinnedRest = try render(built.rootNode, "/tmp/zealot_skinned_rest.png")
+
+        // 3. 蒙皮 + Stand t=500ms 渲染(动画装配检查,人工看 PNG)
+        let player = ModelAnimationPlayer(scene: scene, built: built)
+        player.selectAnimation(index: 0)
+        player.update(timeMs: 500)
+        _ = try render(built.rootNode, "/tmp/zealot_skinned_anim.png")
+
+        // rest 蒙皮 ≈ 无蒙皮:逐像素平均差应很小
+        XCTAssertEqual(unskinned.count, skinnedRest.count)
+        guard !unskinned.isEmpty, unskinned.count == skinnedRest.count else { return }
+        var diffSum = 0
+        for i in 0..<unskinned.count {
+            diffSum += abs(Int(unskinned[i]) - Int(skinnedRest[i]))
+        }
+        let meanDiff = Double(diffSum) / Double(unskinned.count)
+        print("SKIN meanPixelDiff=\(meanDiff)")
+        XCTAssertLessThan(meanDiff, 3.0,
+                          "rest 蒙皮渲染与绑定空间渲染差异过大(\(meanDiff)),inverseBind 不正确")
+    }
 }
