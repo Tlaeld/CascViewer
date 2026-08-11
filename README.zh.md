@@ -83,7 +83,13 @@ git clone --recursive https://github.com/yourusername/CascViewer.git
 cd CascViewer
 ```
 
-> **注意：** `--recursive` 参数用于获取 [CascLib](https://github.com/ladislav-zezula/CascLib) 子模块。
+> **注意：** `--recursive` 参数用于获取 [CascLib](https://github.com/ladislav-zezula/CascLib) 和 [WhiteoutLib](https://github.com/FernandoS27/WhiteoutLib) 子模块。
+
+> **注意：** 首次构建前需拉取子模块并构建 WhiteoutLib 静态库：
+>
+> ```bash
+> git submodule update --init --recursive && tools/build_whiteout.sh
+> ```
 
 ### 使用 Xcode 构建
 
@@ -157,35 +163,25 @@ sudo xattr -r -d com.apple.quarantine /Applications/CascViewer.app
 ## 🏗 架构
 
 ```
-┌─────────────────────────────────────────────┐
-│           SwiftUI 前端层                    │
-│  (文件浏览器、搜索、BLP查看器、设置)         │
-└────────────────────┬────────────────────────┘
-                     │
-┌────────────────────▼────────────────────────┐
-│           Swift 服务层                      │
-│  CASCStorageService   CASCSearchService     │
-│  CASCExtractService   BLPDecoderCoordinator │
-│  CDNProductService                          │
-└────────────────────┬────────────────────────┘
-                     │
-┌────────────────────▼────────────────────────┐
-│           C++ 桥接层                        │
-│  ICascStorage (本地 / 在线)                 │
-│  BLPDecoderBridge                           │
-└────────────────────┬────────────────────────┘
-                     │
-┌────────────────────▼────────────────────────┐
-│           第三方库                          │
-│  CascLib (MIT)     CDN 缓存管理器           │
-└─────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────┐
+│                  SwiftUI 视图层                  │
+├─────────────────────────────────────────────────┤
+│  Swift 服务层（存储、搜索、提取、                 │
+│  ModelLoader、ModelSceneBuilder、AnimationPlayer）│
+├──────────────────────┬──────────────────────────┤
+│  C++ 桥接层 (CascLib)│  WhiteoutBridge          │
+├──────────────────────┼──────────────────────────┤
+│  CascLib + CDN 缓存  │  WhiteoutLib（纹理 +      │
+│                      │  模型，静态库）            │
+└──────────────────────┴──────────────────────────┘
 ```
 
 ### 核心组件
 
-- **C++ 桥接层** — 封装 [CascLib](https://github.com/ladislav-zezula/CascLib)，通过统一的 `ICascStorage` 接口同时支持本地和在线存储
-- **Swift 服务层** — 存储、搜索、提取和图像解码的业务逻辑
-- **SwiftUI 前端** — 原生 macOS 三栏布局 UI，支持 SwiftUI 与 AppKit 互操作以实现高级表格视图
+- **C++ 桥接层（CascLib）** — 封装 [CascLib](https://github.com/ladislav-zezula/CascLib)，通过统一的 `ICascStorage` 接口同时支持本地和在线存储；CASC 存储访问仍由 CascLib 提供
+- **WhiteoutBridge** — 桥接 [WhiteoutLib](https://github.com/FernandoS27/WhiteoutLib)（Git 子模块，通过 `tools/build_whiteout.sh` 以 CMake 构建为静态库）的 C++ 桥接层，提供 BLP/DDS 纹理解码与 MDX/M3/M2 模型解析
+- **Swift 服务层** — 存储、搜索、提取、图像解码以及模型加载（`ModelLoaderService`、`ModelSceneBuilder`、`ModelAnimationPlayer`）的业务逻辑
+- **SwiftUI 前端** — 原生 macOS 三栏布局 UI，支持 SwiftUI 与 AppKit 互操作以实现高级表格视图，并内置支持骨骼动画播放（SceneKit + SCNSkinner）的 3D 模型查看器
 
 ## 🤝 贡献指南
 
