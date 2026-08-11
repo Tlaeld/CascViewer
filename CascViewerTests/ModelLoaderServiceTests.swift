@@ -84,4 +84,18 @@ final class ModelLoaderServiceTests: XCTestCase {
                                                  texturePath: "A\\B.dds").first,
             "A/B.dds")
     }
+
+    /// 跨 mod 引用:战役模型引用基础 mod 的共享纹理
+    /// (artifact1.m3 引用只存在于 mods/liberty.sc2mod 下的贴图)。
+    func testCrossModTextureFallback() async throws {
+        let provider = MockModelFileProvider()
+        let modelPath = "campaigns/liberty.sc2campaign/base.sc2assets/assets/campaign/terran/artifact1/artifact1.m3"
+        provider.files[modelPath] = Data(WhiteoutBridge.WOEncodeTestM3())
+        // 夹具纹理引用是 "Assets/Textures/test.dds",只存在于另一个 mod 下
+        provider.files["mods/liberty.sc2mod/base.sc2assets/Assets/Textures/test.dds"] =
+            Data(WhiteoutBridge.WOEncodeTestImage(8, 8, 2))
+        let service = ModelLoaderService(provider: provider)
+        let scene = try await service.load(path: modelPath, format: .m3)
+        XCTAssertNotNil(scene.materials[0].diffuseTexture)
+    }
 }
