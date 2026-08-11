@@ -1,5 +1,7 @@
 import XCTest
 import CascBridge
+import SceneKit
+import AppKit
 @testable import CascViewer
 
 final class ModelLoaderServiceTests: XCTestCase {
@@ -133,5 +135,81 @@ final class ModelLoaderServiceTests: XCTestCase {
         // 否则 assets 索引查找永不命中(此用例在修复前失败)
         XCTAssertNotNil(scene.materials[0].diffuseTexture,
                         "主材质纹理应经跨 mod 索引解析并解码成功")
+    }
+
+    /// 真实存储 + 离屏渲染验证:artifact1 的渲染结果不应近黑
+    /// (SC2 纹理 alpha 是遮罩非透明度,若被当透明度处理会渲染成近黑色)。
+    /// 渲染 PNG 同时写到 /tmp/artifact_render.png 供人工查看。
+    func testOffscreenRenderArtifact() async throws {
+        let storagePath = "/Users/dev/Desktop/StarCraft II"
+        guard FileManager.default.fileExists(atPath: storagePath + "/.build.info") else {
+            throw XCTSkip("真实 SC2 存储不存在,跳过")
+        }
+        var handle = CascBridge.CascStorageHandle.createLocal()
+        guard handle.open(std.string(storagePath)) == .None else {
+            throw XCTSkip("存储打开失败")
+        }
+        defer { handle.close() }
+
+        var listError = CascBridge.CascError.None
+        let rawEntries = handle.listDirectory(std.string(""), &listError)
+        var paths: [String] = []
+        paths.reserveCapacity(rawEntries.size())
+        for i in 0..<rawEntries.size() {
+            paths.append(String(rawEntries[i].fullPath)
+                .replacingOccurrences(of: "\\", with: "/"))
+        }
+        let provider = CascModelFileProvider(handle: handle, allPaths: paths)
+        let service = ModelLoaderService(provider: provider)
+        let scene = try await service.load(
+            path: "campaigns/liberty.sc2campaign/base.sc2assets/assets/campaign/terran/artifact1/artifact1.m3",
+            format: .m3)
+
+        let built = ModelSceneBuilder.build(scene)
+        let scnScene = SCNScene()
+        scnScene.rootNode.addChildNode(built.rootNode)
+        let cameraNode = SCNNode()
+        cameraNode.camera = SCNCamera()
+        let size = scene.boundsMax - scene.boundsMin
+        let center = (scene.boundsMax + scene.boundsMin) / 2
+        let radius = max(simd_length(size) / 2, 0.001)
+        cameraNode.position = SCNVector3(center.x, center.y, center.z + radius * 3)
+        scnScene.rootNode.addChildNode(cameraNode)
+
+        let renderer = SCNRenderer(device: nil, options: nil)
+        renderer.scene = scnScene
+        renderer.pointOfView = cameraNode
+        let image = renderer.snapshot(atTime: 0, with: CGSize(width: 512, height: 512),
+                                      antialiasingMode: .none)
+
+        guard let tiff = image.tiffRepresentation,
+              let rep = NSBitmapImageRep(data: tiff),
+              let png = rep.representation(using: .png, properties: [:]) else {
+            XCTFail("离屏渲染产物转换失败")
+            return
+        }
+        try png.write(to: URL(fileURLWithPath: "/tmp/artifact_render.png"))
+
+        // 亮度统计:修复前因 alpha 当透明度,模型区近黑
+        guard let cg = rep.cgImage else { XCTFail("无 cgImage"); return }
+        let w = cg.width, h = cg.height
+        var buf = [UInt8](repeating: 0, count: w * h * 4)
+        let cs = CGColorSpace(name: CGColorSpace.sRGB)!
+        guard let ctx = CGContext(data: &buf, width: w, height: h, bitsPerComponent: 8,
+                                  bytesPerRow: w * 4, space: cs,
+                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+        else { XCTFail("上下文创建失败"); return }
+        ctx.draw(cg, in: CGRect(x: 0, y: 0, width: w, height: h))
+        var sum = 0, maxLum = 0
+        for i in stride(from: 0, to: w * h * 4, by: 4) {
+            let lum = (Int(buf[i]) + Int(buf[i + 1]) + Int(buf[i + 2])) / 3
+            sum += lum
+            maxLum = max(maxLum, lum)
+        }
+        let mean = sum / (w * h)
+        print("RENDER mean=\(mean) max=\(maxLum)")
+        // artifact1 的 diffuse 本身就是近黑深蓝纹(diffuse-only 渲染 max≈33);
+        // alpha 修复前因透明化处理整片近黑(max=4)。阈值取 20 作为回归信号。
+        XCTAssertGreaterThan(maxLum, 20, "渲染近黑(max=\(maxLum)),纹理 alpha 可能被误作透明度")
     }
 }

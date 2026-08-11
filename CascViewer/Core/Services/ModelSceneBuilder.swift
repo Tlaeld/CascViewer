@@ -157,10 +157,13 @@ enum ModelSceneBuilder {
             material.diffuse.contents = NSColor.systemGray  // 占位
             return material
         }
-        if let tex = mat.diffuseTexture, let image = tex.cgImage {
-            material.diffuse.contents = image
-        } else {
-            material.diffuse.contents = NSColor.systemGray
+        // 注意:部分格式(如 SC2 DDS)的纹理 alpha 是遮罩而非透明度,
+        // 不透明/additive/modulate 材质必须忽略 alpha,否则被当透明度渲染成近黑。
+        switch mat.blendMode {
+        case .blend, .alphaTest:
+            material.diffuse.contents = mat.diffuseTexture?.cgImage ?? NSColor.systemGray
+        case .opaque, .additive, .modulate:
+            material.diffuse.contents = mat.diffuseTexture?.cgImageOpaque ?? NSColor.systemGray
         }
         material.isDoubleSided = mat.twoSided
         material.lightingModel = mat.unlit ? .constant : .blinn

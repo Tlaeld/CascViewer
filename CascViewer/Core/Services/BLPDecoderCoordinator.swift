@@ -131,6 +131,27 @@ struct ImageDecodeResult: Sendable {
                 intent: .defaultIntent
             )
         }
+
+        /// 忽略 alpha 通道的变体(SC2 等游戏纹理的 alpha 是遮罩而非透明度,
+        /// 供不透明/additive/modulate 材质使用,避免被 SceneKit 当透明度处理)。
+        var cgImageOpaque: CGImage? {
+            let bytesPerPixel = 4
+            let bytesPerRow = Int(width) * bytesPerPixel
+            guard let provider = CGDataProvider(data: imageData as CFData) else { return nil }
+            return CGImage(
+                width: Int(width),
+                height: Int(height),
+                bitsPerComponent: 8,
+                bitsPerPixel: 32,
+                bytesPerRow: bytesPerRow,
+                space: ImageFrame.sharedColorSpace,
+                bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.noneSkipLast.rawValue),
+                provider: provider,
+                decode: nil,
+                shouldInterpolate: false,
+                intent: .defaultIntent
+            )
+        }
     }
 
     init(cppResult: WhiteoutBridge.WOImageDecodeResult) {
