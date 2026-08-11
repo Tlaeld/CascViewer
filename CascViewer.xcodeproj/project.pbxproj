@@ -14,6 +14,7 @@
 		A60000000000000000000002 /* ModelScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = A60000000000000000000001 /* ModelScene.swift */; };
 		A60000000000000000000004 /* ModelLoaderService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A60000000000000000000003 /* ModelLoaderService.swift */; };
 		A6000000000000000000000C /* ModelSceneBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6000000000000000000000B /* ModelSceneBuilder.swift */; };
+		A6000000000000000000000E /* ModelAnimationPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6000000000000000000000D /* ModelAnimationPlayer.swift */; };
 		A60000000000000000000006 /* ModelSceneConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A60000000000000000000005 /* ModelSceneConverter.swift */; };
 		0BADAAEC3C84D033D5264282 /* CDNProduct.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5028BB24E307C519C0130E0E /* CDNProduct.swift */; };
 		172E6E146C2A14931A56F7FF /* MainWindowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B6BCE37A9280E35F34F1154 /* MainWindowView.swift */; };
@@ -27,6 +28,7 @@
 		A40000000000000000000008 /* WhiteoutBridgeModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A40000000000000000000007 /* WhiteoutBridgeModelTests.swift */; };
 		A60000000000000000000008 /* ModelLoaderServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A60000000000000000000007 /* ModelLoaderServiceTests.swift */; };
 		A6000000000000000000000A /* ModelSceneBuilderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A60000000000000000000009 /* ModelSceneBuilderTests.swift */; };
+		A60000000000000000000010 /* ModelAnimationPlayerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6000000000000000000000F /* ModelAnimationPlayerTests.swift */; };
 		A40000000000000000000006 /* WOModelLoaderMDX.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A40000000000000000000004 /* WOModelLoaderMDX.cpp */; };
 		A4000000000000000000000A /* WOModelLoaderM3.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A40000000000000000000009 /* WOModelLoaderM3.cpp */; };
 		A4000000000000000000000C /* WOModelLoaderM2.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A4000000000000000000000B /* WOModelLoaderM2.cpp */; };
@@ -126,6 +128,7 @@
 		A60000000000000000000001 /* ModelScene.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ModelScene.swift; sourceTree = "<group>"; };
 		A60000000000000000000003 /* ModelLoaderService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ModelLoaderService.swift; sourceTree = "<group>"; };
 		A6000000000000000000000B /* ModelSceneBuilder.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ModelSceneBuilder.swift; sourceTree = "<group>"; };
+		A6000000000000000000000D /* ModelAnimationPlayer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ModelAnimationPlayer.swift; sourceTree = "<group>"; };
 		A60000000000000000000005 /* ModelSceneConverter.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ModelSceneConverter.swift; sourceTree = "<group>"; };
 		05E59819253EFC49AE0D6ECD /* SearchParserTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SearchParserTests.swift; sourceTree = "<group>"; };
 		09735D48B9B53C7CD4B0B5A385536583 /* FileTreeView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FileTreeView.swift; sourceTree = "<group>"; };
@@ -162,6 +165,7 @@
 		A40000000000000000000007 /* WhiteoutBridgeModelTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WhiteoutBridgeModelTests.swift; sourceTree = "<group>"; };
 		A60000000000000000000007 /* ModelLoaderServiceTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ModelLoaderServiceTests.swift; sourceTree = "<group>"; };
 		A60000000000000000000009 /* ModelSceneBuilderTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ModelSceneBuilderTests.swift; sourceTree = "<group>"; };
+		A6000000000000000000000F /* ModelAnimationPlayerTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ModelAnimationPlayerTests.swift; sourceTree = "<group>"; };
 		A40000000000000000000001 /* WOModel.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = WOModel.h; sourceTree = "<group>"; };
 		A40000000000000000000002 /* WOModelLoader.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = WOModelLoader.h; sourceTree = "<group>"; };
 		A40000000000000000000004 /* WOModelLoaderMDX.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; path = WOModelLoaderMDX.cpp; sourceTree = "<group>"; };
@@ -326,6 +330,7 @@
 				A60000000000000000000003 /* ModelLoaderService.swift */,
 				A60000000000000000000005 /* ModelSceneConverter.swift */,
 				A6000000000000000000000B /* ModelSceneBuilder.swift */,
+				A6000000000000000000000D /* ModelAnimationPlayer.swift */,
 			);
 			name = Services;
 			path = Services;
@@ -441,6 +446,7 @@
 				A40000000000000000000007 /* WhiteoutBridgeModelTests.swift */,
 				A60000000000000000000007 /* ModelLoaderServiceTests.swift */,
 				A60000000000000000000009 /* ModelSceneBuilderTests.swift */,
+				A6000000000000000000000F /* ModelAnimationPlayerTests.swift */,
 				A7ACAD71F179479399D317B5 /* ServiceTests.swift */,
 				7B49513BF7A5406AAAD097452DF39E98 /* IntegrationTests.swift */,
 				3F0CE6201AD76D5461554E67 /* Info.plist */,
@@ -801,6 +807,7 @@
 				A60000000000000000000004 /* ModelLoaderService.swift in Sources */,
 				A60000000000000000000006 /* ModelSceneConverter.swift in Sources */,
 				A6000000000000000000000C /* ModelSceneBuilder.swift in Sources */,
+				A6000000000000000000000E /* ModelAnimationPlayer.swift in Sources */,
 				E382BD244FF12FB87B867307 /* CDNConfigService.swift in Sources */,
 				5EC3A512D07F6354CF6B6F69 /* CASCFileEntry.swift in Sources */,
 				4D15C10CC39F79093455C089 /* CASCStorageInfo.swift in Sources */,
@@ -847,6 +854,7 @@
 				A40000000000000000000008 /* WhiteoutBridgeModelTests.swift in Sources */,
 				A60000000000000000000008 /* ModelLoaderServiceTests.swift in Sources */,
 				A6000000000000000000000A /* ModelSceneBuilderTests.swift in Sources */,
+				A60000000000000000000010 /* ModelAnimationPlayerTests.swift in Sources */,
 				3FC64AAADCAC494DBC9CD0BB /* ServiceTests.swift in Sources */,
 				A4362CE38EE34B8B9FDACA56261F029F /* IntegrationTests.swift in Sources */,
 				3B9267AB2BDDE21301D7B864 /* ChildrenMapTests.swift in Sources */,
