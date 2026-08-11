@@ -31,7 +31,7 @@ struct ModelViewerWindow: View {
 
             Divider()
 
-            ModelViewerView(scene: viewModel.scnScene)
+            ModelViewerView(scene: viewModel.scnScene, pointOfView: viewModel.cameraNode)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             Divider()
@@ -68,6 +68,8 @@ private let modelDisplayLinkCallback: CVDisplayLinkOutputCallback = { _, _, _, _
 @MainActor
 final class ModelViewerViewModel: ObservableObject {
     @Published var scnScene = SCNScene()
+    /// 取景相机(须显式赋给 SCNView.pointOfView,否则 SCNView 用自带默认相机角度)
+    @Published var cameraNode: SCNNode?
     @Published var isPlaying = false
     @Published var selectedAnimation = 0 {
         didSet {
@@ -119,9 +121,8 @@ final class ModelViewerViewModel: ObservableObject {
                                          center.z - radius * 2.5)
         cameraNode.look(at: SCNVector3(center.x, center.y, center.z))
         cameraNode.camera?.automaticallyAdjustsZRange = true
-        // SCNScene 无 pointOfView(属 SCNSceneRenderer);SCNView 默认使用
-        // 场景中的第一个相机节点,本场景仅此一个相机,行为确定。
         scnScene.rootNode.addChildNode(cameraNode)
+        self.cameraNode = cameraNode
     }
 
     func togglePlayback() {
