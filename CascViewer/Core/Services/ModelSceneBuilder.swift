@@ -162,7 +162,7 @@ enum ModelSceneBuilder {
         case .blend, .alphaTest:
             material.diffuse.contents = mat.diffuseTexture?.cgImage ?? NSColor.systemGray
         case .opaque, .additive, .modulate:
-            material.diffuse.contents = mat.diffuseTexture?.cgImageOpaque ?? NSColor.systemGray
+            material.diffuse.contents = mat.diffuseTexture?.cgImageOpaque ?? placeholderColor(for: mat)
         }
         material.isDoubleSided = mat.twoSided
         material.lightingModel = mat.unlit ? .constant : .blinn
@@ -180,6 +180,20 @@ enum ModelSceneBuilder {
             material.blendMode = .multiply
         }
         return material
+    }
+
+    /// 无纹理时的占位色,取各混合模式的"不可见"恒等色:
+    /// additive 用黑色(加 0)、modulate 用白色(乘 1),其余用灰色标示"无纹理"。
+    /// 避免缺失纹理的发光/特效网格渲染成巨大白色块或黑色块。
+    private static func placeholderColor(for mat: ModelScene.Material) -> NSColor {
+        switch mat.blendMode {
+        case .additive:
+            return NSColor.black
+        case .modulate:
+            return NSColor.white
+        case .opaque, .alphaTest, .blend:
+            return NSColor.systemGray
+        }
     }
 
     private static func translationMatrix(_ t: SIMD3<Float>) -> simd_float4x4 {

@@ -151,6 +151,22 @@ WOModel WOModelLoader::parseM3(const uint8_t* data, size_t length, WOError& erro
         const auto& div = model.divisions[0];
         for (size_t ri = 0; ri < div.regions.size(); ++ri) {
             const auto& region = div.regions[ri];
+            // 只渲染 Standard / Composite 材质的 region。Displacement、Terrain、
+            // Volume、Creep 等是地面压平/特效网格(以真实文件验证:zealot_golden_death
+            // 的 Displacement region 渲染成一块大灰椭圆),直接跳过。
+            bool renderable = true;
+            for (const auto& batch : div.batches) {
+                if (batch.regionIndex == ri) {
+                    if (batch.materialIndex < model.materialMaps.size()) {
+                        const auto mt = model.materialMaps[batch.materialIndex].materialType;
+                        renderable = (mt == m3::MaterialType::Standard ||
+                                      mt == m3::MaterialType::Composite);
+                    }
+                    break;
+                }
+            }
+            if (!renderable) continue;
+
             WOMesh mesh;
             const size_t v0 = region.firstVertex;
             const size_t vc = region.vertexCount;
@@ -167,8 +183,12 @@ WOModel WOModelLoader::parseM3(const uint8_t* data, size_t length, WOError& erro
 
             const size_t i0 = region.firstIndex;
             const size_t ic = region.indexCount;
-            for (size_t k = i0; k < i0 + ic && k < div.faces.size(); ++k)
-                mesh.indices.push_back((uint32_t)div.faces[k] - (uint32_t)v0);
+            // M3 面下标是 region 局部索引(已相对 firstVertex),直接使用。
+            // 以真实文件验证:region 面引用范围恰为 [0, vertexCount)。
+            for (size_t k = i0; k < i0 + ic && k < div.faces.size(); ++k) {
+                const u32 local = div.faces[k];
+                if (local < vc) mesh.indices.push_back(local);
+            }
 
             // 材质:找引用该 region 的 batch
             for (const auto& batch : div.batches) {

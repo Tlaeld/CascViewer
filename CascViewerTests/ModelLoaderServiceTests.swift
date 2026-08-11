@@ -168,6 +168,7 @@ final class ModelLoaderServiceTests: XCTestCase {
         let built = ModelSceneBuilder.build(scene)
         let scnScene = SCNScene()
         scnScene.rootNode.addChildNode(built.rootNode)
+        scnScene.background.contents = NSColor(white: 0.1, alpha: 1)  // 不透明背景,避免 additive 合成伪影
         let cameraNode = SCNNode()
         cameraNode.camera = SCNCamera()
         let size = scene.boundsMax - scene.boundsMin
@@ -243,6 +244,7 @@ final class ModelLoaderServiceTests: XCTestCase {
         func render(_ root: SCNNode, _ file: String) throws -> [UInt8] {
             let zs = SCNScene()
             zs.rootNode.addChildNode(root)
+            zs.background.contents = NSColor(white: 0.1, alpha: 1)  // 不透明背景,避免 additive 合成伪影
             let zcam = SCNNode()
             zcam.camera = SCNCamera()
             let zsize = scene.boundsMax - scene.boundsMin
@@ -337,5 +339,62 @@ final class ModelLoaderServiceTests: XCTestCase {
         print("SKIN meanPixelDiff=\(meanDiff)")
         XCTAssertLessThan(meanDiff, 3.0,
                           "rest 蒙皮渲染与绑定空间渲染差异过大(\(meanDiff)),inverseBind 不正确")
+    }
+
+    /// 多 region 模型的网格完整性验证(zealot_golden_death 有 8 个 region,
+    /// M3 面下标是 region 局部索引,修复前 region≥1 的网格全是乱三角形)。
+    func testGoldenDeathRender() async throws {
+        let storagePath = "/Users/dev/Desktop/StarCraft II"
+        guard FileManager.default.fileExists(atPath: storagePath + "/.build.info") else {
+            throw XCTSkip("真实 SC2 存储不存在,跳过")
+        }
+        var handle = CascBridge.CascStorageHandle.createLocal()
+        guard handle.open(std.string(storagePath)) == .None else { throw XCTSkip("存储打开失败") }
+        defer { handle.close() }
+        var listError = CascBridge.CascError.None
+        let rawEntries = handle.listDirectory(std.string(""), &listError)
+        var paths: [String] = []
+        paths.reserveCapacity(rawEntries.size())
+        for i in 0..<rawEntries.size() {
+            paths.append(String(rawEntries[i].fullPath).replacingOccurrences(of: "\\", with: "/"))
+        }
+        let provider = CascModelFileProvider(handle: handle, allPaths: paths)
+        let service = ModelLoaderService(provider: provider)
+        let scene = try await service.load(
+            path: "mods/liberty.sc2mod/base.sc2assets/assets/units/protoss/zealot_golden_death/zealot_golden_death.m3",
+            format: .m3)
+        // 8 个 region 中 1 个是 Displacement(地面压平)材质,不可渲染已跳过
+        XCTAssertEqual(scene.meshes.count, 7)
+        // 修复前 region≥1 的索引会下溢成巨大值;此处直接断言索引界内
+        for (mi, mesh) in scene.meshes.enumerated() {
+            XCTAssertTrue(mesh.indices.allSatisfy { Int($0) < mesh.positions.count },
+                          "mesh[\(mi)] 索引越界")
+        }
+        // 离屏渲染存档(人工查看)
+        let built = ModelSceneBuilder.build(scene)
+        let zs = SCNScene()
+        zs.rootNode.addChildNode(built.rootNode)
+        // 必须不透明背景:snapshot 在透明背景下 additive 混合会因 alpha
+        // 累积产生纯黑像素(合成伪影),与真实 SCNView 表现不符
+        zs.background.contents = NSColor(white: 0.1, alpha: 1)
+        let zcam = SCNNode()
+        zcam.camera = SCNCamera()
+        let zsize = scene.boundsMax - scene.boundsMin
+        let zcenter = ModelSceneBuilder.visualCenter(of: scene)
+        let zradius = max(simd_length(zsize) / 2, 0.001)
+        zcam.position = SCNVector3(zcenter.x, zcenter.y + zradius * 0.4,
+                                   zcenter.z - zradius * 2.5)
+        zcam.look(at: SCNVector3(zcenter.x, zcenter.y, zcenter.z))
+        zs.rootNode.addChildNode(zcam)
+        let zr = SCNRenderer(device: nil, options: nil)
+        zr.scene = zs
+        zr.pointOfView = zcam
+        let img = zr.snapshot(atTime: 0, with: CGSize(width: 512, height: 512),
+                              antialiasingMode: .none)
+        if let t = img.tiffRepresentation,
+           let rep = NSBitmapImageRep(data: t),
+           let png = rep.representation(using: .png, properties: [:]) {
+            try png.write(to: URL(fileURLWithPath: "/tmp/golden_death_render.png"))
+        }
     }
 }
