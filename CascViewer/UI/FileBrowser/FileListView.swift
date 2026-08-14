@@ -183,7 +183,7 @@ struct FileListContent: View {
                                                          allPaths: Array(storage.entriesByPath.keys))
                     let service = ModelLoaderService(provider: provider)
                     if let scene = try? await service.load(path: entry.normalizedPath, format: format) {
-                        let built = ModelSceneBuilder.build(scene)
+                        let built = ModelSceneBuilder.build(scene, hiddenMaterialTypes: AppSettings.shared.hiddenM3MaterialTypes)
                         openModelViewerWindow(fileName: safeName, modelScene: scene, built: built)
                     } else {
                         NSWorkspace.shared.open(destURL)

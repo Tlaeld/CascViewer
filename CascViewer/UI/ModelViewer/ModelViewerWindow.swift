@@ -7,6 +7,7 @@ struct ModelViewerWindow: View {
     let modelScene: ModelScene
     let built: BuiltModelScene
     @StateObject private var viewModel = ModelViewerViewModel()
+    @State private var showRenderSettings = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -25,6 +26,21 @@ struct ModelViewerWindow: View {
                     }
                 } else {
                     Text(L("no_animations")).foregroundColor(.secondary)
+                }
+                if modelScene.format == .m3 {
+                    Button { showRenderSettings.toggle() } label: {
+                        Image(systemName: "gearshape")
+                    }
+                    .popover(isPresented: $showRenderSettings, arrowEdge: .bottom) {
+                        ModelRenderSettingsPopover(
+                            modelScene: modelScene,
+                            initialHidden: AppSettings.shared.hiddenM3MaterialTypes
+                        ) { hidden in
+                            AppSettings.shared.hiddenM3MaterialTypes = hidden
+                            viewModel.rebuild(with: ModelSceneBuilder.build(
+                                modelScene, hiddenMaterialTypes: hidden))
+                        }
+                    }
                 }
             }
             .padding()
@@ -84,6 +100,7 @@ final class ModelViewerViewModel: ObservableObject {
         boundsMin: .zero, boundsMax: .zero),
         built: BuiltModelScene(rootNode: SCNNode(), boneNodes: []))
 
+    private var modelScene: ModelScene?
     private var displayLink: CVDisplayLink?
     private var displayLinkContext: UnsafeMutableRawPointer?
     private var startTime: CFTimeInterval = 0
@@ -100,6 +117,7 @@ final class ModelViewerViewModel: ObservableObject {
     }
 
     func setup(scene: ModelScene, built: BuiltModelScene) {
+        modelScene = scene
         player = ModelAnimationPlayer(scene: scene, built: built)
         scnScene.rootNode.addChildNode(built.rootNode)
         frameCamera(to: scene)
@@ -128,6 +146,25 @@ final class ModelViewerViewModel: ObservableObject {
     func togglePlayback() {
         isPlaying.toggle()
         if isPlaying { startAnimation() } else { stopAnimation() }
+    }
+
+    /// 材质可见性变化后,用同一 ModelScene 重建的场景替换当前场景。
+    /// 保留动画索引与播放/暂停状态(进度重置为 0);相机节点复用,保留用户视角。
+    func rebuild(with built: BuiltModelScene) {
+        guard let scene = modelScene else { return }
+        let wasPlaying = isPlaying
+        if wasPlaying { stopAnimation() }
+        let camera = cameraNode
+        camera?.removeFromParentNode()
+        let newScene = SCNScene()
+        newScene.rootNode.addChildNode(built.rootNode)
+        if let camera { newScene.rootNode.addChildNode(camera) }
+        scnScene = newScene
+        player = ModelAnimationPlayer(scene: scene, built: built)
+        if !scene.animations.isEmpty {
+            player.selectAnimation(index: selectedAnimation)
+            if wasPlaying { startAnimation() }
+        }
     }
 
     func tick() {
@@ -213,4 +250,47 @@ final class ModelViewerWindowController: NSWindowController, NSWindowDelegate {
 @MainActor
 func openModelViewerWindow(fileName: String, modelScene: ModelScene, built: BuiltModelScene) {
     _ = ModelViewerWindowController(fileName: fileName, modelScene: modelScene, built: built)
+}
+
+/// 渲染设置弹层:12 种 M3 材质类型的可见性开关(全局持久,存 AppSettings)。
+private struct ModelRenderSettingsPopover: View {
+    let modelScene: ModelScene
+    let onChange: (Set<Int>) -> Void
+    @State private var hidden: Set<Int>
+
+    init(modelScene: ModelScene, initialHidden: Set<Int>,
+         onChange: @escaping (Set<Int>) -> Void) {
+        self.modelScene = modelScene
+        self.onChange = onChange
+        _hidden = State(initialValue: initialHidden)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(L("render_settings")).font(.headline)
+            ForEach(M3MaterialKind.allCases) { kind in
+                let count = modelScene.meshes.filter { $0.materialType == kind.rawValue }.count
+                Toggle(isOn: binding(for: kind)) {
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("\(kind.displayName) · \(count)")
+                        Text(L(kind.descriptionKey))
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+        }
+        .padding()
+        .frame(width: 300)
+    }
+
+    private func binding(for kind: M3MaterialKind) -> Binding<Bool> {
+        Binding(
+            get: { !hidden.contains(kind.rawValue) },
+            set: { visible in
+                if visible { hidden.remove(kind.rawValue) } else { hidden.insert(kind.rawValue) }
+                onChange(hidden)
+            }
+        )
+    }
 }

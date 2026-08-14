@@ -158,7 +158,7 @@ struct FilePreviewPanel: View {
             let service = ModelLoaderService(provider: provider)
             do {
                 let scene = try await service.load(path: entry.normalizedPath, format: format)
-                let built = ModelSceneBuilder.build(scene)
+                let built = ModelSceneBuilder.build(scene, hiddenMaterialTypes: AppSettings.shared.hiddenM3MaterialTypes)
                 openModelViewerWindow(fileName: entry.name, modelScene: scene, built: built)
             } catch {
                 appState.errorMessage = L("model_load_failed", error.localizedDescription)

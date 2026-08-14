@@ -111,3 +111,45 @@ final class ModelSceneBuilderTests: XCTestCase {
         XCTAssertEqual(filtered.rootNode.childNodes.filter { $0.geometry != nil }.count, 1)
     }
 }
+
+@MainActor
+final class ModelViewerViewModelTests: XCTestCase {
+
+    private func makeScene() -> ModelScene {
+        let mesh = ModelScene.Mesh(
+            positions: [SIMD3(0, 0, 0), SIMD3(1, 0, 0), SIMD3(0, 1, 0)],
+            normals: [SIMD3(0, 0, 1), SIMD3(0, 0, 1), SIMD3(0, 0, 1)],
+            uvs: [SIMD2(0, 0), SIMD2(1, 0), SIMD2(0, 1)],
+            indices: [0, 1, 2],
+            boneIndices: [], boneWeights: [],
+            materialIndex: 0
+        )
+        let material = ModelScene.Material(
+            texturePath: "", textureFileDataId: 0, blendMode: .opaque,
+            twoSided: false, unlit: false, diffuseTexture: nil
+        )
+        return ModelScene(
+            name: "t", format: .m3, meshes: [mesh], materials: [material],
+            bones: [], animations: [],
+            boundsMin: .zero, boundsMax: SIMD3(1, 1, 1)
+        )
+    }
+
+    /// 重建后:场景被替换、隐藏类型不再有几何节点、相机节点复用(保留用户视角)
+    func testRebuildSwapsSceneKeepsCameraAndFilters() {
+        let vm = ModelViewerViewModel()
+        let scene = makeScene()
+        vm.setup(scene: scene, built: ModelSceneBuilder.build(scene))
+        let camera = vm.cameraNode
+        XCTAssertNotNil(camera)
+        // 隐藏唯一网格的类型(1),重建后场景中不应再有几何节点
+        vm.rebuild(with: ModelSceneBuilder.build(scene, hiddenMaterialTypes: [1]))
+        XCTAssertTrue(vm.cameraNode === camera)
+        XCTAssertTrue(vm.scnScene.rootNode.childNodes.contains { $0 === camera })
+        var geoCount = 0
+        vm.scnScene.rootNode.enumerateChildNodes { node, _ in
+            if node.geometry != nil { geoCount += 1 }
+        }
+        XCTAssertEqual(geoCount, 0)
+    }
+}
