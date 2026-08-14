@@ -401,4 +401,63 @@ final class ModelLoaderServiceTests: XCTestCase {
             try png.write(to: URL(fileURLWithPath: "/tmp/golden_death_render.png"))
         }
     }
+
+    /// assets 索引构建:键为 assets 段起的小写路径,大小写不敏感
+    func testBuildAssetsIndex() {
+        let index = CascModelFileProvider.buildAssetsIndex(fromPaths: [
+            "mods/a.sc2mod/base.sc2assets/Assets/Textures/Foo.dds",
+            "mods/b.sc2mod/base.sc2assets/assets/textures/bar.dds",
+            "noassets/x.txt",
+        ])
+        XCTAssertEqual(index["assets/textures/foo.dds"],
+                       "mods/a.sc2mod/base.sc2assets/Assets/Textures/Foo.dds")
+        XCTAssertEqual(index["assets/textures/bar.dds"],
+                       "mods/b.sc2mod/base.sc2assets/assets/textures/bar.dds")
+        XCTAssertNil(index["x.txt"])
+    }
+
+    /// 性能回归:大存储(HotS,1.6M 路径)上的模型打开耗时有界。
+    /// 2026-08 排查:转换阶段因桥接 C++ vector 逐访问整体拷贝耗 56s、
+    /// assets 索引每次打开重建 16s、纹理串行解码 9.4s;
+    /// 修复后首次加载 ~3.7s、共享索引后二次加载 ~0.5s。取宽松上界防回归。
+    func testHotSModelLoadPerformance() async throws {
+        let storagePath = "<hots-storage>"
+        guard FileManager.default.fileExists(atPath: storagePath + "/.build.info") else {
+            throw XCTSkip("HotS 存储不存在,跳过")
+        }
+        var handle = CascBridge.CascStorageHandle.createLocal()
+        guard handle.open(std.string(storagePath)) == .None else { throw XCTSkip("存储打开失败") }
+        defer { handle.close() }
+        var listError = CascBridge.CascError.None
+        let rawEntries = handle.listDirectory(std.string(""), &listError)
+        var paths: [String] = []
+        paths.reserveCapacity(rawEntries.size())
+        for i in 0..<rawEntries.size() {
+            paths.append(String(rawEntries[i].fullPath).replacingOccurrences(of: "\\", with: "/"))
+        }
+        // 镜像 app 流程:assets 索引只建一次,跨模型打开共享
+        let assetsIndex = CascModelFileProvider.buildAssetsIndex(fromPaths: paths)
+        let modelPath = "mods/heroes.stormmod/zhcn.stormassets/assets/buildings/"
+            + "storm_building_kingscrest_core_ravenlord_death/"
+            + "storm_building_kingscrest_core_ravenlord_death.m3"
+
+        var t0 = Date()
+        let service1 = ModelLoaderService(
+            provider: CascModelFileProvider(handle: handle, assetsIndex: assetsIndex))
+        let scene = try await service1.load(path: modelPath, format: .m3)
+        let firstLoad = Date().timeIntervalSince(t0)
+        print("PERF first load: \(firstLoad)s meshes=\(scene.meshes.count) mats=\(scene.materials.count)")
+
+        // 第二次打开(新 provider 共享索引):不应再有索引构建开销
+        t0 = Date()
+        let service2 = ModelLoaderService(
+            provider: CascModelFileProvider(handle: handle, assetsIndex: assetsIndex))
+        _ = try await service2.load(path: modelPath, format: .m3)
+        let secondLoad = Date().timeIntervalSince(t0)
+        print("PERF second load: \(secondLoad)s")
+
+        XCTAssertEqual(scene.meshes.count, 6)
+        XCTAssertLessThan(firstLoad, 30, "首次加载耗时回归(修复前 ~79s)")
+        XCTAssertLessThan(secondLoad, 30, "二次加载耗时回归")
+    }
 }

@@ -153,8 +153,10 @@ struct FilePreviewPanel: View {
         if AppSettings.shared.useBuiltInModelViewer {
             let ext = (entry.name as NSString).pathExtension.lowercased()
             let format: ModelScene.Format = (ext == "m2") ? .m2 : (ext == "mdx" ? .mdx : .m3)
+            // assets 索引由存储层共享构建(后台线程,只建一次),不再每次打开重建
+            let assetsIndex = await storageService.sharedAssetsIndex()
             let provider = CascModelFileProvider(handle: storageService.handle,
-                                                 allPaths: Array(storageService.entriesByPath.keys))
+                                                 assetsIndex: assetsIndex)
             let service = ModelLoaderService(provider: provider)
             do {
                 let scene = try await service.load(path: entry.normalizedPath, format: format)

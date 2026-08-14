@@ -98,35 +98,52 @@ actor ModelLoaderService {
     }
 
     /// 逐材质解析纹理引用并从存储读取解码;失败保留 nil(占位材质)。
+    /// 各材质并行(读 + 解码),每任务独立解码器(静态纹理缓存共享,
+    /// NSCache 线程安全;存储句柄内部有锁)。实测串行 18 张纹理 ~9.4s。
     private func resolveTextures(_ scene: inout ModelScene, modelPath: String) async {
-        let coordinator = BLPDecoderCoordinator()
-        for i in scene.materials.indices {
-            let mat = scene.materials[i]
-            var data: Data? = nil
-            if !mat.texturePath.isEmpty {
-                for candidate in Self.textureCandidates(modelPath: modelPath,
-                                                        texturePath: mat.texturePath) {
-                    if let d = provider.readFile(path: candidate) {
-                        data = d
-                        break
+        let materials = scene.materials
+        let provider = self.provider
+        let frames = await withTaskGroup(of: (Int, ImageDecodeResult.ImageFrame?).self) { group in
+            for i in materials.indices {
+                group.addTask {
+                    let mat = materials[i]
+                    var data: Data? = nil
+                    if !mat.texturePath.isEmpty {
+                        for candidate in Self.textureCandidates(modelPath: modelPath,
+                                                                texturePath: mat.texturePath) {
+                            if let d = provider.readFile(path: candidate) {
+                                data = d
+                                break
+                            }
+                        }
+                        // 跨 mod 兜底:引用只存在于其他 mod(如战役模型引用基础 mod 共享纹理)
+                        if data == nil {
+                            let ref = mat.texturePath.replacingOccurrences(of: "\\", with: "/")
+                            if let resolved = provider.resolveAssetsPath(ref) {
+                                data = provider.readFile(path: resolved)
+                            }
+                        }
                     }
-                }
-                // 跨 mod 兜底:引用只存在于其他 mod(如战役模型引用基础 mod 共享纹理)
-                if data == nil {
-                    let ref = mat.texturePath.replacingOccurrences(of: "\\", with: "/")
-                    if let resolved = provider.resolveAssetsPath(ref) {
-                        data = provider.readFile(path: resolved)
+                    // 路径读取失败(M2 常空路径)时回退 FileDataId
+                    if data == nil, mat.textureFileDataId != 0 {
+                        data = provider.readFileByDataId(mat.textureFileDataId)
                     }
+                    guard let textureData = data else { return (i, nil) }
+                    let coordinator = BLPDecoderCoordinator()
+                    guard let decoded = try? await coordinator.decode(data: textureData) else {
+                        return (i, nil)
+                    }
+                    return (i, decoded.frames.first)
                 }
             }
-            // 路径读取失败(M2 常空路径)时回退 FileDataId
-            if data == nil, mat.textureFileDataId != 0 {
-                data = provider.readFileByDataId(mat.textureFileDataId)
+            var result: [Int: ImageDecodeResult.ImageFrame] = [:]
+            for await (i, frame) in group {
+                if let frame { result[i] = frame }
             }
-            guard let textureData = data,
-                  let decoded = try? await coordinator.decode(data: textureData),
-                  let mip0 = decoded.frames.first else { continue }
-            scene.materials[i].diffuseTexture = mip0
+            return result
+        }
+        for (i, frame) in frames {
+            scene.materials[i].diffuseTexture = frame
         }
     }
 }
@@ -147,15 +164,30 @@ private final class M2ReadBox: @unchecked Sendable {
 /// 生产环境 FileProvider:同步读 C++ 存储句柄(句柄内部有锁,线程安全)。
 final class CascModelFileProvider: ModelLoaderService.FileProvider, @unchecked Sendable {
     private var handle: CascBridge.CascStorageHandle
-    /// 存储内全部已知路径(CASCStorageService.entriesByPath 的键);空 = 无索引。
-    private let allPaths: [String]
-    /// 懒建 assets 索引:键 = 从 assets 段起的小写路径,值 = 完整原始路径。
-    private var assetsIndex: [String: String]?
-    private let indexLock = NSLock()
+    /// 预建 assets 索引:键 = 从 assets 段起的小写路径,值 = 完整原始路径。
+    /// 大存储(如 HotS,1.6M 路径)构建一次 ~16s,必须由存储层共享,
+    /// 不能每次打开模型重建。
+    private let assetsIndex: [String: String]
 
-    init(handle: CascBridge.CascStorageHandle, allPaths: [String] = []) {
+    init(handle: CascBridge.CascStorageHandle, assetsIndex: [String: String] = [:]) {
         self.handle = handle
-        self.allPaths = allPaths
+        self.assetsIndex = assetsIndex
+    }
+
+    /// 小规模/测试用:从路径列表立即构建索引。
+    convenience init(handle: CascBridge.CascStorageHandle, allPaths: [String]) {
+        self.init(handle: handle, assetsIndex: Self.buildAssetsIndex(fromPaths: allPaths))
+    }
+
+    /// 从完整路径列表构建 assets 索引(键为小写,支持大小写不敏感查找)。
+    static func buildAssetsIndex(fromPaths paths: [String]) -> [String: String] {
+        var index: [String: String] = [:]
+        for path in paths {
+            guard let range = path.range(of: "/assets/", options: .caseInsensitive) else { continue }
+            let fromAssets = String(path[range.lowerBound...].dropFirst())
+            index[fromAssets.lowercased()] = path
+        }
+        return index
     }
 
     func readFile(path: String) -> Data? {
@@ -170,19 +202,7 @@ final class CascModelFileProvider: ModelLoaderService.FileProvider, @unchecked S
     }
 
     func resolveAssetsPath(_ ref: String) -> String? {
-        indexLock.lock()
-        if assetsIndex == nil {
-            var index: [String: String] = [:]
-            for path in allPaths {
-                guard let range = path.range(of: "/assets/", options: .caseInsensitive) else { continue }
-                let fromAssets = String(path[range.lowerBound...].dropFirst())
-                index[fromAssets.lowercased()] = path
-            }
-            assetsIndex = index
-        }
-        let index = assetsIndex
-        indexLock.unlock()
-        return index?[ref.lowercased()]
+        assetsIndex[ref.lowercased()]
     }
 }
 

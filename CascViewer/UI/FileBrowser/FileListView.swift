@@ -179,8 +179,10 @@ struct FileListContent: View {
                 let ext = (safeName as NSString).pathExtension.lowercased()
                 let format: ModelScene.Format = (ext == "m2") ? .m2 : (ext == "mdx" ? .mdx : .m3)
                 Task { @MainActor in
+                    // assets 索引由存储层共享构建(后台线程,只建一次),不再每次打开重建
+                    let assetsIndex = await storage.sharedAssetsIndex()
                     let provider = CascModelFileProvider(handle: storage.handle,
-                                                         allPaths: Array(storage.entriesByPath.keys))
+                                                         assetsIndex: assetsIndex)
                     let service = ModelLoaderService(provider: provider)
                     if let scene = try? await service.load(path: entry.normalizedPath, format: format) {
                         // 材质类型过滤仅适用于 M3;MDX/M2 网格恒为 Standard,套用 M3 设置会被全部隐藏
