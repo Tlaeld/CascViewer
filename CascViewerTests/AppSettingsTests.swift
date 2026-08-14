@@ -105,6 +105,7 @@ final class AppSettingsTests: XCTestCase {
         XCTAssertFalse(settings.hiddenM3MaterialTypes.contains(1))  // Standard 默认可见
         XCTAssertFalse(settings.hiddenM3MaterialTypes.contains(3))  // Composite 默认可见
         XCTAssertTrue(settings.hiddenM3MaterialTypes.contains(2))   // Displacement 默认隐藏
+        XCTAssertFalse(settings.hiddenM3MaterialTypes.contains(4))  // Terrain 默认可见(terrain object 主材质)
     }
 
     func testHiddenM3MaterialTypesPersistence() {

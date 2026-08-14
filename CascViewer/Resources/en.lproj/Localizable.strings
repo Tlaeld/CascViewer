@@ -250,3 +250,4 @@
 "m3mat_desc_12" = "Additional data buffer";
 "model_no_mesh" = "This file contains no meshes (animation library)";
 "model_all_hidden" = "All meshes are hidden by render settings — use the gear button to re-enable";
+"render_settings_reset" = "Reset to Default";

@@ -34,7 +34,8 @@ Volume、VolumeNoise、Creep、Hair、SplatTerrainBake、Reflection、LensFlare�
 
 - `AppSettings` 新增 `@Published var hiddenM3MaterialTypes: Set<Int>`,
   UserDefaults 键 `hiddenM3MaterialTypes`(Int 数组)。
-- 默认值 `[2,4,5,6,7,8,9,10,11,12]`(即现状:仅 Standard/Composite 可见)。
+- 默认值 `[2,5,6,7,8,9,10,11,12]`(Standard/Composite/Terrain 可见;
+  Terrain 是 terrain object 的主材质,藏掉会让整个模型消失——初版默认隐藏 4 是误判)。
 - `resetToDefaults()` 一并重置。
 
 ### 3. 预览器 UI

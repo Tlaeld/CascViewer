@@ -296,6 +296,11 @@ private struct ModelRenderSettingsPopover: View {
                     }
                 }
             }
+            Divider()
+            Button(L("render_settings_reset")) {
+                hidden = M3MaterialKind.defaultHidden
+                onChange(hidden)
+            }
         }
         .padding()
         .frame(width: 300)

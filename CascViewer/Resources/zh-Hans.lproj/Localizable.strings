@@ -267,3 +267,4 @@
 "m3mat_desc_12" = "附加数据缓冲";
 "model_no_mesh" = "该文件不含网格(动画库)";
 "model_all_hidden" = "所有网格都被渲染设置隐藏,点右上角齿轮开启";
+"render_settings_reset" = "重置为默认";
