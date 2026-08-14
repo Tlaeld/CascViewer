@@ -166,6 +166,10 @@ enum ModelSceneBuilder {
             material.diffuse.contents = mat.diffuseTexture?.cgImageOpaque ?? placeholderColor(for: mat)
         }
         material.isDoubleSided = mat.twoSided
+        // M3 贴图可按层设置 UV 环绕;超出 [0,1] 的平铺 UV(HotS 常见)
+        // 若 clamp 会采样边缘像素,整模型涂成边缘色带
+        material.diffuse.wrapS = mat.wrapU ? .repeat : .clamp
+        material.diffuse.wrapT = mat.wrapV ? .repeat : .clamp
         material.lightingModel = mat.unlit ? .constant : .blinn
         switch mat.blendMode {
         case .opaque:

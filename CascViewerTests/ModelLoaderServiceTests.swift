@@ -460,4 +460,81 @@ final class ModelLoaderServiceTests: XCTestCase {
         XCTAssertLessThan(firstLoad, 30, "首次加载耗时回归(修复前 ~79s)")
         XCTAssertLessThan(secondLoad, 30, "二次加载耗时回归")
     }
+
+    /// HotS nova_widow 渲染回归:REGN v5 每 region UV 缩放/偏移 + LAYR wrap 标志。
+    /// 修复前 UV 越界(绝对值 ~15),clamp 采样边缘像素,整模型涂成暗色带。
+    func testNovaWidowRender() async throws {
+        let storagePath = "<hots-storage>"
+        guard FileManager.default.fileExists(atPath: storagePath + "/.build.info") else {
+            throw XCTSkip("HotS 存储不存在,跳过")
+        }
+        var handle = CascBridge.CascStorageHandle.createLocal()
+        guard handle.open(std.string(storagePath)) == .None else { throw XCTSkip("存储打开失败") }
+        defer { handle.close() }
+        var listError = CascBridge.CascError.None
+        let rawEntries = handle.listDirectory(std.string(""), &listError)
+        var paths: [String] = []
+        paths.reserveCapacity(rawEntries.size())
+        for i in 0..<rawEntries.size() {
+            paths.append(String(rawEntries[i].fullPath).replacingOccurrences(of: "\\", with: "/"))
+        }
+        let assetsIndex = CascModelFileProvider.buildAssetsIndex(fromPaths: paths)
+        let service = ModelLoaderService(
+            provider: CascModelFileProvider(handle: handle, assetsIndex: assetsIndex))
+        let scene = try await service.load(
+            path: "mods/heroes.stormmod/base.stormassets/assets/units/heroes/storm_hero_nova_widow/storm_hero_nova_widow_v05.m3",
+            format: .m3)
+
+        // M3 LAYR wrap 标志必须透传:该模型 UV 越界平铺,clamp 会采样边缘像素导致颜色异常
+        XCTAssertTrue(scene.materials[0].wrapU)
+        XCTAssertTrue(scene.materials[0].wrapV)
+
+        // UV 回归:修复前 region 未应用 uvScale/uvOffset,原始值绝对值达 ~15;
+        // 修复后应落在合理平铺范围内(本模型实测 |u|≤2,|v|≤1.1)
+        for (mi, mesh) in scene.meshes.enumerated() {
+            for (vi, uv) in mesh.uvs.enumerated() {
+                XCTAssertLessThanOrEqual(abs(uv.x), 4, "mesh[\(mi)] uv[\(vi)].u 越界 \(uv.x)")
+                XCTAssertLessThanOrEqual(abs(uv.y), 4, "mesh[\(mi)] uv[\(vi)].v 越界 \(uv.y)")
+            }
+        }
+        // 纹理应成功解析(校验渲染有真贴图而非占位色)
+        XCTAssertNotNil(scene.materials[0].diffuseTexture)
+
+        func render(_ built: BuiltModelScene, _ file: String) throws {
+            let zs = SCNScene()
+            zs.rootNode.addChildNode(built.rootNode)
+            zs.background.contents = NSColor(white: 0.1, alpha: 1)
+            let zcam = SCNNode()
+            zcam.camera = SCNCamera()
+            let zsize = scene.boundsMax - scene.boundsMin
+            let zcenter = ModelSceneBuilder.visualCenter(of: scene)
+            let zradius = max(simd_length(zsize) / 2, 0.001)
+            zcam.position = SCNVector3(zcenter.x, zcenter.y + zradius * 0.2,
+                                       zcenter.z - zradius * 2.2)
+            zcam.look(at: SCNVector3(zcenter.x, zcenter.y, zcenter.z))
+            zs.rootNode.addChildNode(zcam)
+            let zr = SCNRenderer(device: nil, options: nil)
+            zr.scene = zs
+            zr.pointOfView = zcam
+            let img = zr.snapshot(atTime: 0, with: CGSize(width: 640, height: 640),
+                                  antialiasingMode: .none)
+            if let t = img.tiffRepresentation,
+               let rep = NSBitmapImageRep(data: t),
+               let png = rep.representation(using: .png, properties: [:]) {
+                try png.write(to: URL(fileURLWithPath: file))
+            }
+        }
+
+        let built = ModelSceneBuilder.build(scene, hiddenMaterialTypes: M3MaterialKind.defaultHidden)
+        try render(built, "/tmp/nova_lit.png")
+
+        // unlit 版本:所有材质强制 constant 光照,显示纯贴图颜色
+        let built2 = ModelSceneBuilder.build(scene, hiddenMaterialTypes: M3MaterialKind.defaultHidden)
+        built2.rootNode.enumerateChildNodes { node, _ in
+            if let geo = node.geometry {
+                for m in geo.materials { m.lightingModel = .constant }
+            }
+        }
+        try render(built2, "/tmp/nova_unlit.png")
+    }
 }

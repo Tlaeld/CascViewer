@@ -33,6 +33,9 @@ struct ModelScene: Sendable {
         var blendMode: BlendMode
         var twoSided: Bool
         var unlit: Bool
+        /// UV 环绕(M3 LAYR.UVWrapX/Y);false = clamp。默认 false 保持既有构造点不变。
+        var wrapU: Bool = false
+        var wrapV: Bool = false
         var diffuseTexture: ImageDecodeResult.ImageFrame?  // 加载阶段填充,nil = 缺失
     }
 

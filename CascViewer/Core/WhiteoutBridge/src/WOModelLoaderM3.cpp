@@ -104,7 +104,12 @@ WOModel WOModelLoader::parseM3(const uint8_t* data, size_t length, WOError& erro
         if (mm.materialType == m3::MaterialType::Standard &&
             mm.materialIndex < model.standardMaterials.size()) {
             const auto& sm = model.standardMaterials[mm.materialIndex];
-            if (sm.diffuseLayer) wm.texturePath = sanitized(sm.diffuseLayer->texturePath);
+            if (sm.diffuseLayer) {
+                wm.texturePath = sanitized(sm.diffuseLayer->texturePath);
+                const u32 lf = static_cast<u32>(sm.diffuseLayer->flags);
+                wm.wrapU = (lf & 0x4) != 0;  // TextureLayerFlag::UVWrapX
+                wm.wrapV = (lf & 0x8) != 0;  // TextureLayerFlag::UVWrapY
+            }
             switch (sm.blendMode) {
                 case m3::BlendMode::Opaque:     wm.blendMode = WOBlendMode::Opaque; break;
                 case m3::BlendMode::AlphaBlend: wm.blendMode = WOBlendMode::Blend; break;
@@ -143,7 +148,6 @@ WOModel WOModelLoader::parseM3(const uint8_t* data, size_t length, WOError& erro
     // ── 网格:顶点缓冲按 Region 拆分,骨骼索引经 boneLookup 重映射 ──
     auto positions = model.vertices.getPositions();
     auto normals = model.vertices.getNormals();
-    auto uvs = model.vertices.getUVs(0);
     auto boneIdx = model.vertices.getBoneIndices();   // region-local
     auto boneWts = model.vertices.getBoneWeights();   // 合计 255
 
@@ -161,6 +165,16 @@ WOModel WOModelLoader::parseM3(const uint8_t* data, size_t length, WOError& erro
             mesh.normals.reserve(vc);
             for (size_t k = v0; k < v0 + vc; ++k)
                 mesh.normals.push_back(k < normals.size() ? toWO(normals[k]) : WOVec3{0, 0, 1});
+            // UV:REGN v5+ 携带每 region 缩放/偏移,uv = raw_i16 × uvScale/32768 + uvOffset
+            // (scale=16, offset=0 时等价于旧版 /2048;以真实文件验证:
+            // golden_death 16/0 与新行为一致,nova 0.999/0.999 修复越界 UV)。
+            // v5 之前无此字段,沿用 /2048。
+            float uvMul = 1.0f / 2048.0f, uvOff = 0.0f;
+            if (region.getVersion() >= 5) {
+                uvMul = region.uvScale / 32768.0f;
+                uvOff = region.uvOffset;
+            }
+            auto uvs = model.vertices.getUVs(0, uvMul, uvOff);
             mesh.uvs.reserve(vc);
             for (size_t k = v0; k < v0 + vc; ++k)
                 mesh.uvs.push_back(k < uvs.size() ? toWO(uvs[k]) : WOVec2{0, 0});

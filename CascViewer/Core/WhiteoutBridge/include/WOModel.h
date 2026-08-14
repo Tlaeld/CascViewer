@@ -56,6 +56,8 @@ struct WOMaterial {
     WOBlendMode blendMode = WOBlendMode::Opaque;
     bool twoSided = false;
     bool unlit = false;
+    bool wrapU = false;                 // M3 LAYR.UVWrapX;false = clamp
+    bool wrapV = false;                 // M3 LAYR.UVWrapY
 };
 
 struct WOAnimation {

@@ -25,6 +25,8 @@ enum ModelSceneConverter {
                 blendMode: convertBlend(m.blendMode),
                 twoSided: m.twoSided,
                 unlit: m.unlit,
+                wrapU: m.wrapU,
+                wrapV: m.wrapV,
                 diffuseTexture: nil
             )
         }
