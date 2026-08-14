@@ -75,3 +75,46 @@ struct ModelScene: Sendable {
         var scales: [Vec3Track]
     }
 }
+
+/// M3 材质类型(MAT_ 等 chunk 的 materialType 原始值)。
+/// 仅用于按类型过滤渲染;MDX/M2 无此概念,网格恒为 1(Standard)。
+enum M3MaterialKind: Int, CaseIterable, Identifiable {
+    case standard = 1
+    case displacement = 2
+    case composite = 3
+    case terrain = 4
+    case volume = 5
+    case volumeNoise = 6
+    case creep = 7
+    case hair = 8
+    case splatTerrainBake = 9
+    case reflection = 10
+    case lensFlare = 11
+    case bufferMaterial = 12
+
+    var id: Int { rawValue }
+
+    /// 默认隐藏的类型:非实体表面(地形系统/体积特效/数据缓冲等)。
+    /// 即 Standard(1)与 Composite(3)之外的全部。
+    static let defaultHidden: Set<Int> = [2, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+
+    var displayName: String {
+        switch self {
+        case .standard: return "Standard"
+        case .displacement: return "Displacement"
+        case .composite: return "Composite"
+        case .terrain: return "Terrain"
+        case .volume: return "Volume"
+        case .volumeNoise: return "Volume Noise"
+        case .creep: return "Creep"
+        case .hair: return "Hair"
+        case .splatTerrainBake: return "Splat Terrain Bake"
+        case .reflection: return "Reflection"
+        case .lensFlare: return "Lens Flare"
+        case .bufferMaterial: return "Buffer Material"
+        }
+    }
+
+    /// Localizable.strings 中的说明文案键(m3mat_desc_1 ~ m3mat_desc_12)
+    var descriptionKey: String { "m3mat_desc_\(rawValue)" }
+}

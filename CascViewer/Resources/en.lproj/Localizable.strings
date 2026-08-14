@@ -234,3 +234,17 @@
 "no_animations" = "No animations";
 "model_load_failed" = "Failed to load model: %@";
 "use_builtin_model_viewer" = "Use built-in model viewer";
+
+"render_settings" = "Render Settings";
+"m3mat_desc_1" = "Standard material (solid surface)";
+"m3mat_desc_2" = "Ground-flattening mesh, usually not displayed";
+"m3mat_desc_3" = "Composite multi-layer material (rendered as placeholder)";
+"m3mat_desc_4" = "Terrain material";
+"m3mat_desc_5" = "Volume effect mesh (smoke, clouds)";
+"m3mat_desc_6" = "Volume noise effect";
+"m3mat_desc_7" = "Creep projection";
+"m3mat_desc_8" = "Hair (defunct)";
+"m3mat_desc_9" = "Splat terrain bake";
+"m3mat_desc_10" = "Reflection material";
+"m3mat_desc_11" = "Lens flare";
+"m3mat_desc_12" = "Additional data buffer";

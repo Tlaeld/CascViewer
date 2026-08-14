@@ -98,4 +98,27 @@ final class AppSettingsTests: XCTestCase {
 
         XCTAssertFalse(fm.fileExists(atPath: dummyFile.path))
     }
+
+    func testHiddenM3MaterialTypesDefault() {
+        let settings = AppSettings(defaults: defaults)
+        XCTAssertEqual(settings.hiddenM3MaterialTypes, M3MaterialKind.defaultHidden)
+        XCTAssertFalse(settings.hiddenM3MaterialTypes.contains(1))  // Standard 默认可见
+        XCTAssertFalse(settings.hiddenM3MaterialTypes.contains(3))  // Composite 默认可见
+        XCTAssertTrue(settings.hiddenM3MaterialTypes.contains(2))   // Displacement 默认隐藏
+    }
+
+    func testHiddenM3MaterialTypesPersistence() {
+        var settings: AppSettings? = AppSettings(defaults: defaults)
+        settings?.hiddenM3MaterialTypes = [5]
+        settings = nil
+        let reloaded = AppSettings(defaults: defaults)
+        XCTAssertEqual(reloaded.hiddenM3MaterialTypes, [5])
+    }
+
+    func testHiddenM3MaterialTypesReset() {
+        let settings = AppSettings(defaults: defaults)
+        settings.hiddenM3MaterialTypes = []
+        settings.resetToDefaults()
+        XCTAssertEqual(settings.hiddenM3MaterialTypes, M3MaterialKind.defaultHidden)
+    }
 }
