@@ -93,6 +93,23 @@ WOModel WOModelLoader::parseM3(const uint8_t* data, size_t length, WOError& erro
         return out;
     }
 
+    // 顶点缓冲自愈:部分文件(如 HotS terrain object)MODL 顶点标志与真实
+    // 数据布局不符,按标志算的 stride 不能整除数据块,逐顶点读取滑位出 NaN
+    // (实测 jungle_a_to:7596B % 32 = 12;补 VertexColor 位后 7596/36 = 211,
+    // 恰等于 region 顶点数)。不可整除时补 VertexColor 位重新初始化,仍不行则还原。
+    {
+        auto& vb = model.vertices;
+        if (vb.vertexSize() > 0 && vb.data.size() % vb.vertexSize() != 0) {
+            const auto origFlags = vb.flags;
+            vb.flags = origFlags | m3::VertexFormatFlag::VertexColor;
+            vb.initialize();
+            if (vb.vertexSize() == 0 || vb.data.size() % vb.vertexSize() != 0) {
+                vb.flags = origFlags;
+                vb.initialize();
+            }
+        }
+    }
+
     out.name = sanitized(model.name);
     out.boundsMin = toWO(model.bounds.min);
     out.boundsMax = toWO(model.bounds.max);
@@ -139,6 +156,17 @@ WOModel WOModelLoader::parseM3(const uint8_t* data, size_t length, WOError& erro
                 wm.wrapU = (lf & 0x4) != 0;
                 wm.wrapV = (lf & 0x8) != 0;
                 break;
+            }
+        }
+        // Terrain:单一地形贴图层(terrain object 的主材质,如 jungle doodad)
+        if (mm.materialType == m3::MaterialType::Terrain &&
+            mm.materialIndex < model.terrainMaterials.size()) {
+            const auto& tm = model.terrainMaterials[mm.materialIndex];
+            if (tm.terrainMap) {
+                wm.texturePath = sanitized(tm.terrainMap->texturePath);
+                const u32 lf = static_cast<u32>(tm.terrainMap->flags);
+                wm.wrapU = (lf & 0x4) != 0;
+                wm.wrapV = (lf & 0x8) != 0;
             }
         }
         out.materials.push_back(std::move(wm));

@@ -704,4 +704,63 @@ final class ModelLoaderServiceTests: XCTestCase {
             try png.write(to: URL(fileURLWithPath: "/tmp/orphea_ragdoll.png"))
         }
     }
+
+    /// HotS terrain object 顶点自愈回归:MODL 顶点标志与实际布局不符时,
+    /// 按标志算的 stride 不能整除数据块(7596B % 32 = 12),补 VertexColor 位后
+    /// 7596/36 = 211 恰等于 region 顶点数;修复前近半顶点 NaN、几何错乱。
+    /// Terrain 材质本身不含贴图路径(地形贴图由地图贴图集运行时指定)。
+    func testJungleDoodadVertexRepair() async throws {
+        let storagePath = "<hots-storage>"
+        guard FileManager.default.fileExists(atPath: storagePath + "/.build.info") else {
+            throw XCTSkip("HotS 存储不存在,跳过")
+        }
+        var handle = CascBridge.CascStorageHandle.createLocal()
+        guard handle.open(std.string(storagePath)) == .None else { throw XCTSkip("存储打开失败") }
+        defer { handle.close() }
+        var listError = CascBridge.CascError.None
+        let rawEntries = handle.listDirectory(std.string(""), &listError)
+        var paths: [String] = []
+        paths.reserveCapacity(rawEntries.size())
+        for i in 0..<rawEntries.size() {
+            paths.append(String(rawEntries[i].fullPath).replacingOccurrences(of: "\\", with: "/"))
+        }
+        let assetsIndex = CascModelFileProvider.buildAssetsIndex(fromPaths: paths)
+        let service = ModelLoaderService(
+            provider: CascModelFileProvider(handle: handle, assetsIndex: assetsIndex))
+        let scene = try await service.load(
+            path: "mods/heroes.stormmod/base.stormassets/assets/terrainobjects/storm_doodad_hell1_jungle_a_to/storm_doodad_hell1_jungle_a_to.m3",
+            format: .m3)
+        XCTAssertEqual(scene.meshes.count, 1)
+        XCTAssertEqual(scene.meshes[0].positions.count, 211)
+        XCTAssertFalse(scene.meshes[0].positions.contains { $0.x.isNaN || $0.y.isNaN || $0.z.isNaN },
+                       "顶点仍含 NaN,stride 自愈未生效")
+        XCTAssertEqual(scene.meshes[0].materialType, 4)  // Terrain
+        let mat = scene.materials[scene.meshes[0].materialIndex]
+        // 该文件的 Terrain 材质不含贴图路径(全文无 .dds 引用):
+        // 地形贴图由地图的贴图集在运行时指定,文件内本就没有 —— 白膜是数据使然
+        XCTAssertTrue(mat.texturePath.isEmpty)
+        // 离屏渲染存档(人工查看)
+        let built = ModelSceneBuilder.build(scene, hiddenMaterialTypes: M3MaterialKind.defaultHidden)
+        let zs = SCNScene()
+        zs.rootNode.addChildNode(built.rootNode)
+        zs.background.contents = NSColor(white: 0.1, alpha: 1)
+        let zcam = SCNNode()
+        zcam.camera = SCNCamera()
+        let (zcenter, zradius) = ModelSceneBuilder.framingBounds(
+            of: scene, hiddenMaterialTypes: M3MaterialKind.defaultHidden)
+        zcam.position = SCNVector3(zcenter.x, zcenter.y + zradius * 0.2,
+                                   zcenter.z + zradius * 2.2)
+        zcam.look(at: SCNVector3(zcenter.x, zcenter.y, zcenter.z))
+        zs.rootNode.addChildNode(zcam)
+        let zr = SCNRenderer(device: nil, options: nil)
+        zr.scene = zs
+        zr.pointOfView = zcam
+        let img = zr.snapshot(atTime: 0, with: CGSize(width: 640, height: 640),
+                              antialiasingMode: .none)
+        if let tif = img.tiffRepresentation,
+           let rep = NSBitmapImageRep(data: tif),
+           let png = rep.representation(using: .png, properties: [:]) {
+            try png.write(to: URL(fileURLWithPath: "/tmp/jungle_doodad.png"))
+        }
+    }
 }
