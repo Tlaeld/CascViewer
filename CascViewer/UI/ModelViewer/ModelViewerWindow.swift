@@ -144,13 +144,13 @@ final class ModelViewerViewModel: ObservableObject {
         }
     }
 
-    /// 相机取景:按包围盒对角线把默认相机拉远(中心经 Z-up→Y-up 旋转校正)。
+    /// 相机取景:按可见网格范围把默认相机拉远(网格范围比 M3 头部包围盒贴合,
+    /// 头部包围盒常含特效范围,会让模型显得特别小)。
     private func frameCamera(to scene: ModelScene) {
         let cameraNode = SCNNode()
         cameraNode.camera = SCNCamera()
-        let size = scene.boundsMax - scene.boundsMin
-        let center = ModelSceneBuilder.visualCenter(of: scene)
-        let radius = max(simd_length(size) / 2, 0.001)
+        let hidden = (scene.format == .m3) ? AppSettings.shared.hiddenM3MaterialTypes : []
+        let (center, radius) = ModelSceneBuilder.framingBounds(of: scene, hiddenMaterialTypes: hidden)
         // M3 模型正面朝模型空间 -Y;经 Z-up→Y-up 旋转后正面朝 +Z,相机放 +Z 一侧看正面
         cameraNode.position = SCNVector3(center.x, center.y + radius * 0.4,
                                          center.z + radius * 2.5)

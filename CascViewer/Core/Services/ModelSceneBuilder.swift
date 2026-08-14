@@ -13,9 +13,26 @@ enum ModelSceneBuilder {
     /// 内容根节点统一施加 -90°X 旋转(+Z → +Y,+Y → -Z)。
     static let zUpToYUp = simd_quatf(angle: -.pi / 2, axis: SIMD3<Float>(1, 0, 0))
 
-    /// 模型包围盒中心经 Z-up→Y-up 旋转后的视觉中心(相机取景用)。
-    static func visualCenter(of scene: ModelScene) -> SIMD3<Float> {
-        zUpToYUp.act((scene.boundsMax + scene.boundsMin) / 2)
+    /// 取景范围:按可见网格顶点计算中心与半径(经 Z-up→Y-up 旋转)。
+    /// M3 头部包围盒常包含特效/动画运动范围,实测可达网格范围的 2 倍
+    /// (如 ravenlord_death 70.7 vs 36.3),用它取景模型会显得特别小。
+    /// 无可见网格时回退到头部包围盒。
+    static func framingBounds(of scene: ModelScene,
+                              hiddenMaterialTypes: Set<Int> = [])
+        -> (center: SIMD3<Float>, radius: Float) {
+        var mn = SIMD3<Float>(repeating: .infinity)
+        var mx = SIMD3<Float>(repeating: -.infinity)
+        for mesh in scene.meshes where !hiddenMaterialTypes.contains(mesh.materialType) {
+            for p in mesh.positions {
+                mn = simd_min(mn, p)
+                mx = simd_max(mx, p)
+            }
+        }
+        if !mn.x.isFinite {
+            mn = scene.boundsMin
+            mx = scene.boundsMax
+        }
+        return (zUpToYUp.act((mn + mx) / 2), max(simd_length(mx - mn) / 2, 0.001))
     }
 
     static func build(_ scene: ModelScene, hiddenMaterialTypes: Set<Int> = []) -> BuiltModelScene {

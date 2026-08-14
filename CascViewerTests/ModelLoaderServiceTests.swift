@@ -171,9 +171,8 @@ final class ModelLoaderServiceTests: XCTestCase {
         scnScene.background.contents = NSColor(white: 0.1, alpha: 1)  // 不透明背景,避免 additive 合成伪影
         let cameraNode = SCNNode()
         cameraNode.camera = SCNCamera()
-        let size = scene.boundsMax - scene.boundsMin
-        let center = ModelSceneBuilder.visualCenter(of: scene)
-        let radius = max(simd_length(size) / 2, 0.001)
+        let (center, radius) = ModelSceneBuilder.framingBounds(
+            of: scene, hiddenMaterialTypes: M3MaterialKind.defaultHidden)
         cameraNode.position = SCNVector3(center.x, center.y + radius * 0.4,
                                          center.z + radius * 2.5)
         cameraNode.look(at: SCNVector3(center.x, center.y, center.z))
@@ -247,9 +246,8 @@ final class ModelLoaderServiceTests: XCTestCase {
             zs.background.contents = NSColor(white: 0.1, alpha: 1)  // 不透明背景,避免 additive 合成伪影
             let zcam = SCNNode()
             zcam.camera = SCNCamera()
-            let zsize = scene.boundsMax - scene.boundsMin
-            let zcenter = ModelSceneBuilder.visualCenter(of: scene)
-            let zradius = max(simd_length(zsize) / 2, 0.001)
+            let (zcenter, zradius) = ModelSceneBuilder.framingBounds(
+                of: scene, hiddenMaterialTypes: M3MaterialKind.defaultHidden)
             zcam.position = SCNVector3(zcenter.x, zcenter.y + zradius * 0.4,
                                        zcenter.z + zradius * 2.5)
             zcam.look(at: SCNVector3(zcenter.x, zcenter.y, zcenter.z))
@@ -307,9 +305,8 @@ final class ModelLoaderServiceTests: XCTestCase {
             zs.rootNode.addChildNode(built.rootNode)
             let zcam = SCNNode()
             zcam.camera = SCNCamera()
-            let zsize = scene.boundsMax - scene.boundsMin
-            let zcenter = ModelSceneBuilder.visualCenter(of: scene)
-            let zradius = max(simd_length(zsize) / 2, 0.001)
+            let (zcenter, zradius) = ModelSceneBuilder.framingBounds(
+                of: scene, hiddenMaterialTypes: M3MaterialKind.defaultHidden)
             // 侧面 + 稍低机位,距离拉近
             zcam.position = SCNVector3(zcenter.x + zradius * 1.8,
                                        zcenter.y + zradius * 0.3,
@@ -383,9 +380,8 @@ final class ModelLoaderServiceTests: XCTestCase {
         zs.background.contents = NSColor(white: 0.1, alpha: 1)
         let zcam = SCNNode()
         zcam.camera = SCNCamera()
-        let zsize = scene.boundsMax - scene.boundsMin
-        let zcenter = ModelSceneBuilder.visualCenter(of: scene)
-        let zradius = max(simd_length(zsize) / 2, 0.001)
+        let (zcenter, zradius) = ModelSceneBuilder.framingBounds(
+            of: scene, hiddenMaterialTypes: M3MaterialKind.defaultHidden)
         zcam.position = SCNVector3(zcenter.x, zcenter.y + zradius * 0.4,
                                    zcenter.z + zradius * 2.5)
         zcam.look(at: SCNVector3(zcenter.x, zcenter.y, zcenter.z))
@@ -491,9 +487,8 @@ final class ModelLoaderServiceTests: XCTestCase {
         zs.background.contents = NSColor(white: 0.1, alpha: 1)
         let zcam = SCNNode()
         zcam.camera = SCNCamera()
-        let zsize = scene.boundsMax - scene.boundsMin
-        let zcenter = ModelSceneBuilder.visualCenter(of: scene)
-        let zradius = max(simd_length(zsize) / 2, 0.001)
+        let (zcenter, zradius) = ModelSceneBuilder.framingBounds(
+            of: scene, hiddenMaterialTypes: M3MaterialKind.defaultHidden)
         zcam.position = SCNVector3(zcenter.x, zcenter.y + zradius * 0.2,
                                    zcenter.z + zradius * 2.2)
         zcam.look(at: SCNVector3(zcenter.x, zcenter.y, zcenter.z))
@@ -623,9 +618,8 @@ final class ModelLoaderServiceTests: XCTestCase {
             zs.background.contents = NSColor(white: 0.1, alpha: 1)
             let zcam = SCNNode()
             zcam.camera = SCNCamera()
-            let zsize = scene.boundsMax - scene.boundsMin
-            let zcenter = ModelSceneBuilder.visualCenter(of: scene)
-            let zradius = max(simd_length(zsize) / 2, 0.001)
+            let (zcenter, zradius) = ModelSceneBuilder.framingBounds(
+                of: scene, hiddenMaterialTypes: M3MaterialKind.defaultHidden)
             // 模型正面朝 +Z(以 nova 实测验证),相机放 +Z 一侧看正面
             zcam.position = SCNVector3(zcenter.x, zcenter.y + zradius * 0.2,
                                        zcenter.z + zradius * 2.2)
@@ -693,9 +687,8 @@ final class ModelLoaderServiceTests: XCTestCase {
         zs.background.contents = NSColor(white: 0.1, alpha: 1)
         let zcam = SCNNode()
         zcam.camera = SCNCamera()
-        let zsize = scene.boundsMax - scene.boundsMin
-        let zcenter = ModelSceneBuilder.visualCenter(of: scene)
-        let zradius = max(simd_length(zsize) / 2, 0.001)
+        let (zcenter, zradius) = ModelSceneBuilder.framingBounds(
+            of: scene, hiddenMaterialTypes: M3MaterialKind.defaultHidden)
         zcam.position = SCNVector3(zcenter.x, zcenter.y + zradius * 0.2,
                                    zcenter.z + zradius * 2.2)
         zcam.look(at: SCNVector3(zcenter.x, zcenter.y, zcenter.z))

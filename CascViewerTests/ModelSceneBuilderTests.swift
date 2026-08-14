@@ -110,6 +110,36 @@ final class ModelSceneBuilderTests: XCTestCase {
         let filtered = ModelSceneBuilder.build(scene, hiddenMaterialTypes: [2])
         XCTAssertEqual(filtered.rootNode.childNodes.filter { $0.geometry != nil }.count, 1)
     }
+
+    /// 取景范围按可见网格顶点计算,而非头部包围盒(头部常含特效范围,模型显小);
+    /// 隐藏类型的网格不参与;无网格时回退头部包围盒
+    func testFramingBounds() {
+        var scene = makeScene()  // 1 三角形,顶点 (0,0,0) (1,0,0) (0,1,0)
+        // 头部包围盒故意放大,不应影响取景
+        scene.boundsMin = SIMD3(-10, -10, -10)
+        scene.boundsMax = SIMD3(10, 10, 10)
+        let (c0, r0) = ModelSceneBuilder.framingBounds(of: scene)
+        // 网格范围 (0,0,0)-(1,1,0),中心 (0.5,0.5,0) 经 -90°X 旋转 → (0.5,0,-0.5)
+        XCTAssertEqual(c0.x, 0.5, accuracy: 1e-6)
+        XCTAssertEqual(c0.y, 0, accuracy: 1e-6)
+        XCTAssertEqual(c0.z, -0.5, accuracy: 1e-6)
+        XCTAssertEqual(r0, sqrt(2) / 2, accuracy: 1e-6)
+
+        // 加一个 materialType=2 的远处网格:默认参与取景;隐藏后回到原范围
+        var far = scene.meshes[0]
+        far.materialType = 2
+        far.positions = far.positions.map { $0 + SIMD3<Float>(100, 0, 0) }
+        scene.meshes.append(far)
+        let (_, rFar) = ModelSceneBuilder.framingBounds(of: scene)
+        XCTAssertGreaterThan(rFar, 10)
+        let (_, rHidden) = ModelSceneBuilder.framingBounds(of: scene, hiddenMaterialTypes: [2])
+        XCTAssertEqual(rHidden, sqrt(2) / 2, accuracy: 1e-6)
+
+        // 无网格场景:回退头部包围盒
+        scene.meshes = []
+        let (_, rEmpty) = ModelSceneBuilder.framingBounds(of: scene)
+        XCTAssertEqual(rEmpty, simd_length(SIMD3<Float>(20, 20, 20)) / 2, accuracy: 1e-4)
+    }
 }
 
 @MainActor
