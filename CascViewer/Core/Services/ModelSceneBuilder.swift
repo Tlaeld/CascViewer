@@ -178,7 +178,7 @@ enum ModelSceneBuilder {
         // 不透明/additive/modulate 材质必须忽略 alpha,否则被当透明度渲染成近黑。
         switch mat.blendMode {
         case .blend, .alphaTest:
-            material.diffuse.contents = mat.diffuseTexture?.cgImage ?? NSColor.systemGray
+            material.diffuse.contents = mat.diffuseTexture?.cgImage ?? placeholderColor(for: mat)
         case .opaque, .additive, .modulate:
             material.diffuse.contents = mat.diffuseTexture?.cgImageOpaque ?? placeholderColor(for: mat)
         }
@@ -205,15 +205,18 @@ enum ModelSceneBuilder {
     }
 
     /// 无纹理时的占位色,取各混合模式的"不可见"恒等色:
-    /// additive 用黑色(加 0)、modulate 用白色(乘 1),其余用灰色标示"无纹理"。
-    /// 避免缺失纹理的发光/特效网格渲染成巨大白色块或黑色块。
+    /// additive 用黑色(加 0)、modulate 用白色(乘 1)、blend 用透明;
+    /// 其余(opaque/alphaTest)无法隐形,用灰色标示"无纹理"。
+    /// 避免缺失纹理的发光/特效/水面网格渲染成巨大白色块或灰板。
     private static func placeholderColor(for mat: ModelScene.Material) -> NSColor {
         switch mat.blendMode {
         case .additive:
             return NSColor.black
         case .modulate:
             return NSColor.white
-        case .opaque, .alphaTest, .blend:
+        case .blend:
+            return NSColor.clear
+        case .opaque, .alphaTest:
             return NSColor.systemGray
         }
     }

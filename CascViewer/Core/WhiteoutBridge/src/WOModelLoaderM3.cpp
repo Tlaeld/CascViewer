@@ -76,6 +76,40 @@ TrackT resolveBoneTrack(const m3::SubTrackContainer* stc, u32 animId, u16 interp
     return out;
 }
 
+// 贴图路径是否为可解码位图(DDS/BLP/ImageIO 位图);.ogv 视频等不可解码
+bool isDecodableImagePath(const std::string& p) {
+    std::string ext;
+    const size_t dot = p.find_last_of('.');
+    if (dot != std::string::npos) {
+        ext = p.substr(dot);
+        for (auto& c : ext) c = (char)tolower((unsigned char)c);
+    }
+    static const char* kExts[] = {".dds", ".blp", ".tga", ".png", ".jpg", ".jpeg", ".bmp"};
+    for (auto* e : kExts) if (ext == e) return true;
+    return false;
+}
+
+// 把 StandardMaterial 的显示属性填进 WOMaterial(贴图/wrap/混合模式/双面/unlit)
+void applyStandardMaterial(WOMaterial& wm, const m3::StandardMaterial& sm) {
+    if (sm.diffuseLayer) {
+        wm.texturePath = sanitized(sm.diffuseLayer->texturePath);
+        const u32 lf = static_cast<u32>(sm.diffuseLayer->flags);
+        wm.wrapU = (lf & 0x4) != 0;  // TextureLayerFlag::UVWrapX
+        wm.wrapV = (lf & 0x8) != 0;  // TextureLayerFlag::UVWrapY
+    }
+    switch (sm.blendMode) {
+        case m3::BlendMode::Opaque:     wm.blendMode = WOBlendMode::Opaque; break;
+        case m3::BlendMode::AlphaBlend: wm.blendMode = WOBlendMode::Blend; break;
+        case m3::BlendMode::Add:
+        case m3::BlendMode::AlphaAdd:   wm.blendMode = WOBlendMode::Additive; break;
+        case m3::BlendMode::Mod:
+        case m3::BlendMode::Mod2x:      wm.blendMode = WOBlendMode::Modulate; break;
+    }
+    const u32 mf = static_cast<u32>(sm.flags);
+    wm.twoSided = (mf & 0x8) != 0;   // MaterialFlag::TwoSided
+    wm.unlit = (mf & 0x10) != 0;     // MaterialFlag::Unshaded
+}
+
 } // namespace
 
 WOModel WOModelLoader::parseM3(const uint8_t* data, size_t length, WOError& error) {
@@ -120,30 +154,15 @@ WOModel WOModelLoader::parseM3(const uint8_t* data, size_t length, WOError& erro
         WOMaterial wm;
         if (mm.materialType == m3::MaterialType::Standard &&
             mm.materialIndex < model.standardMaterials.size()) {
-            const auto& sm = model.standardMaterials[mm.materialIndex];
-            if (sm.diffuseLayer) {
-                wm.texturePath = sanitized(sm.diffuseLayer->texturePath);
-                const u32 lf = static_cast<u32>(sm.diffuseLayer->flags);
-                wm.wrapU = (lf & 0x4) != 0;  // TextureLayerFlag::UVWrapX
-                wm.wrapV = (lf & 0x8) != 0;  // TextureLayerFlag::UVWrapY
-            }
-            switch (sm.blendMode) {
-                case m3::BlendMode::Opaque:     wm.blendMode = WOBlendMode::Opaque; break;
-                case m3::BlendMode::AlphaBlend: wm.blendMode = WOBlendMode::Blend; break;
-                case m3::BlendMode::Add:
-                case m3::BlendMode::AlphaAdd:   wm.blendMode = WOBlendMode::Additive; break;
-                case m3::BlendMode::Mod:
-                case m3::BlendMode::Mod2x:      wm.blendMode = WOBlendMode::Modulate; break;
-            }
-            const u32 mf = static_cast<u32>(sm.flags);
-            wm.twoSided = (mf & 0x8) != 0;   // MaterialFlag::TwoSided
-            wm.unlit = (mf & 0x10) != 0;     // MaterialFlag::Unshaded
+            applyStandardMaterial(wm, model.standardMaterials[mm.materialIndex]);
         }
-        // Composite:取第一个带贴图的 Standard 子材质的漫反射层作为显示贴图
-        // (其余 section 多为发光/溶解特效层;以 orphea_deathragdoll 验证:
-        // Mat_Dissipate 的 MATM[2]=Mat_Dissolve 携带 Orphea_Base_Diff.dds)
+        // Composite:从带贴图的 Standard 子材质中优先取可解码位图(跳过 .ogv 视频等),
+        // 并继承其混合模式(贴图不可解码时占位色按混合模式不可见)。
+        // 以 orphea_deathragdoll 验证:Mat_Dissipate 的 MATM[2]=Mat_Dissolve 携带贴图
         if (mm.materialType == m3::MaterialType::Composite &&
             mm.materialIndex < model.compositeMaterials.size()) {
+            const m3::StandardMaterial* fallback = nullptr;
+            const m3::StandardMaterial* pick = nullptr;
             for (const auto& sec : model.compositeMaterials[mm.materialIndex].sections) {
                 if (sec.materialIndex >= model.materialMaps.size()) continue;
                 const auto& smm = model.materialMaps[sec.materialIndex];
@@ -151,12 +170,11 @@ WOModel WOModelLoader::parseM3(const uint8_t* data, size_t length, WOError& erro
                     smm.materialIndex >= model.standardMaterials.size()) continue;
                 const auto& sm = model.standardMaterials[smm.materialIndex];
                 if (!sm.diffuseLayer || sm.diffuseLayer->texturePath.empty()) continue;
-                wm.texturePath = sanitized(sm.diffuseLayer->texturePath);
-                const u32 lf = static_cast<u32>(sm.diffuseLayer->flags);
-                wm.wrapU = (lf & 0x4) != 0;
-                wm.wrapV = (lf & 0x8) != 0;
-                break;
+                if (!fallback) fallback = &sm;
+                if (isDecodableImagePath(sm.diffuseLayer->texturePath)) { pick = &sm; break; }
             }
+            if (const m3::StandardMaterial* sm = pick ? pick : fallback)
+                applyStandardMaterial(wm, *sm);
         }
         // Terrain:单一地形贴图层(terrain object 的主材质,如 jungle doodad)
         if (mm.materialType == m3::MaterialType::Terrain &&

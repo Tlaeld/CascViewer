@@ -763,4 +763,157 @@ final class ModelLoaderServiceTests: XCTestCase {
             try png.write(to: URL(fileURLWithPath: "/tmp/jungle_doodad.png"))
         }
     }
+
+    /// war3 shrine 回归:Composite 材质的子材质是 .ogv 视频(不可解码),
+    /// 修复前继承默认 opaque → 大灰板;现在继承子材质的 blend 模式,占位透明
+    func testWar3ShrineCompositeBlend() async throws {
+        let storagePath = "/Users/dev/Desktop/StarCraft II"
+        guard FileManager.default.fileExists(atPath: storagePath + "/.build.info") else {
+            throw XCTSkip("真实 SC2 存储不存在,跳过")
+        }
+        var handle = CascBridge.CascStorageHandle.createLocal()
+        guard handle.open(std.string(storagePath)) == .None else { throw XCTSkip("存储打开失败") }
+        defer { handle.close() }
+        var listError = CascBridge.CascError.None
+        let rawEntries = handle.listDirectory(std.string(""), &listError)
+        var paths: [String] = []
+        paths.reserveCapacity(rawEntries.size())
+        for i in 0..<rawEntries.size() {
+            paths.append(String(rawEntries[i].fullPath).replacingOccurrences(of: "\\", with: "/"))
+        }
+        let provider = CascModelFileProvider(handle: handle, allPaths: paths)
+        let service = ModelLoaderService(provider: provider)
+        let scene = try await service.load(
+            path: "mods/war3.sc2mod/base.sc2assets/assets/buildings/naga/war3_shrineofashjara/war3_shrineofashjara.m3",
+            format: .m3)
+        // region[3] 是 Composite(materialMaps[3]);其子材质 Mat 引用 .ogv 视频贴图
+        let compositeMeshes = scene.meshes.filter { $0.materialType == 3 }
+        XCTAssertFalse(compositeMeshes.isEmpty)
+        for mesh in compositeMeshes {
+            let mat = scene.materials[mesh.materialIndex]
+            XCTAssertTrue(mat.texturePath.hasSuffix(".ogv"), "应继承子材质的视频贴图路径")
+            XCTAssertEqual(mat.blendMode, .blend, "应继承子材质的 AlphaBlend")
+            XCTAssertNil(mat.diffuseTexture, "ogv 不可解码,纹理应为空(占位透明)")
+        }
+    }
+
+    /// 批量巡检(仅当 /tmp/survey_enabled 存在时跑):两个存储按 assets 子目录分组抽样,
+    /// 每个模型走完整管线 + 异常检测 + 离屏渲染原始 RGBA 落盘(/tmp/survey/NNN.rgba),
+    /// 供人工拼图目检。不进常规套件(太慢)。
+    func testModelSurvey() async throws {
+        guard FileManager.default.fileExists(atPath: "/tmp/survey_enabled") else {
+            throw XCTSkip("巡检模式未开启(touch /tmp/survey_enabled)")
+        }
+        try? FileManager.default.removeItem(atPath: "/tmp/survey")
+        try FileManager.default.createDirectory(atPath: "/tmp/survey", withIntermediateDirectories: true)
+
+        let storages: [(String, String)] = [
+            ("SC2", "/Users/dev/Desktop/StarCraft II"),
+            ("HotS", "<hots-storage>"),
+        ]
+        var seq = 0
+        for (tag, storagePath) in storages {
+            guard FileManager.default.fileExists(atPath: storagePath + "/.build.info") else { continue }
+            var handle = CascBridge.CascStorageHandle.createLocal()
+            guard handle.open(std.string(storagePath)) == .None else { continue }
+            var listError = CascBridge.CascError.None
+            let rawEntries = handle.listDirectory(std.string(""), &listError)
+            var paths: [String] = []
+            paths.reserveCapacity(rawEntries.size())
+            for i in 0..<rawEntries.size() {
+                paths.append(String(rawEntries[i].fullPath).replacingOccurrences(of: "\\", with: "/"))
+            }
+            let assetsIndex = CascModelFileProvider.buildAssetsIndex(fromPaths: paths)
+
+            // 按 assets/ 下前两级目录分组,每组均匀抽至多 4 个
+            func groupKey(_ p: String) -> String {
+                guard let r = p.range(of: "/assets/", options: .caseInsensitive) else { return "" }
+                let comps = p[r.upperBound...].split(separator: "/")
+                return comps.prefix(2).joined(separator: "/")
+            }
+            var groups: [String: [String]] = [:]
+            for p in paths where p.lowercased().hasSuffix(".m3") {
+                groups[groupKey(p), default: []].append(p)
+            }
+            var sampled: [(String, String)] = []  // (group, path)
+            for key in groups.keys.sorted() {
+                let list = groups[key]!.sorted()
+                let n = min(2, list.count)  // 每组 2 个,控制总时长
+                for k in 0..<n {
+                    sampled.append((key, list[k * list.count / n]))
+                }
+            }
+            print("SURVEY \(tag): \(groups.count) 组,抽 \(sampled.count) 个")
+
+            for (group, modelPath) in sampled {
+                let provider = CascModelFileProvider(handle: handle, assetsIndex: assetsIndex)
+                let service = ModelLoaderService(provider: provider)
+                seq += 1
+                guard let scene = try? await service.load(path: modelPath, format: .m3) else {
+                    print("SURVEY \(seq) [\(tag) \(group)] \((modelPath as NSString).lastPathComponent) LOAD_FAIL")
+                    continue
+                }
+                // 异常检测
+                var flags: [String] = []
+                var totalVerts = 0
+                var hasNaN = false, idxOOB = false, uvBad = false
+                for mesh in scene.meshes {
+                    totalVerts += mesh.positions.count
+                    for p in mesh.positions where !hasNaN {
+                        if p.x.isNaN || p.y.isNaN || p.z.isNaN { hasNaN = true }
+                    }
+                    if mesh.indices.contains(where: { Int($0) >= mesh.positions.count }) { idxOOB = true }
+                    for uv in mesh.uvs where !uvBad {
+                        if abs(uv.x) > 4 || abs(uv.y) > 4 { uvBad = true }
+                    }
+                }
+                if scene.meshes.isEmpty { flags.append("无网格") }
+                if hasNaN { flags.append("NaN") }
+                if idxOOB { flags.append("索引越界") }
+                if uvBad { flags.append("UV越界") }
+                let texMats = scene.materials.filter { !$0.texturePath.isEmpty }
+                let texOK = texMats.filter { $0.diffuseTexture != nil }.count
+                if !texMats.isEmpty && texOK * 2 < texMats.count { flags.append("贴图缺失多(\(texOK)/\(texMats.count))") }
+                let (fc, fr) = ModelSceneBuilder.framingBounds(of: scene, hiddenMaterialTypes: M3MaterialKind.defaultHidden)
+                let headerDiag = simd_length(scene.boundsMax - scene.boundsMin)
+                if headerDiag > fr * 2 * 3 { flags.append("头包围盒虚胖x\(String(format: "%.1f", headerDiag / max(fr * 2, 0.001)))") }
+
+                // 渲染原始 RGBA 落盘
+                let built = ModelSceneBuilder.build(scene, hiddenMaterialTypes: M3MaterialKind.defaultHidden)
+                let zs = SCNScene()
+                zs.rootNode.addChildNode(built.rootNode)
+                zs.background.contents = NSColor(white: 0.1, alpha: 1)
+                let zcam = SCNNode()
+                zcam.camera = SCNCamera()
+                zcam.position = SCNVector3(fc.x, fc.y + fr * 0.2, fc.z + fr * 2.2)
+                zcam.look(at: SCNVector3(fc.x, fc.y, fc.z))
+                zs.rootNode.addChildNode(zcam)
+                let zr = SCNRenderer(device: nil, options: nil)
+                zr.scene = zs
+                zr.pointOfView = zcam
+                let img = zr.snapshot(atTime: 0, with: CGSize(width: 400, height: 400),
+                                      antialiasingMode: .none)
+                if let tif = img.tiffRepresentation,
+                   let rep = NSBitmapImageRep(data: tif),
+                   let cg = rep.cgImage {
+                    var buf = [UInt8](repeating: 0, count: 400 * 400 * 4)
+                    let cs = CGColorSpace(name: CGColorSpace.sRGB)!
+                    if let ctx = CGContext(data: &buf, width: 400, height: 400, bitsPerComponent: 8,
+                                           bytesPerRow: 1600, space: cs,
+                                           bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) {
+                        ctx.draw(cg, in: CGRect(x: 0, y: 0, width: 400, height: 400))
+                        try? buf.withUnsafeBytes {
+                            try? Data($0).write(to: URL(fileURLWithPath: String(format: "/tmp/survey/%03d.rgba", seq)))
+                        }
+                    }
+                }
+                print(String(format: "SURVEY %03d [%@ %@] %@ meshes=%d verts=%d tex=%d/%d %@",
+                             seq, tag, group, (modelPath as NSString).lastPathComponent,
+                             scene.meshes.count, totalVerts, texOK, texMats.count,
+                             flags.joined(separator: ",")))
+            }
+            handle.close()
+        }
+        print("SURVEY 完成,共 \(seq) 个")
+    }
 }

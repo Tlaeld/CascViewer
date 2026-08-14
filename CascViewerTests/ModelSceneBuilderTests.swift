@@ -100,6 +100,16 @@ final class ModelSceneBuilderTests: XCTestCase {
         XCTAssertEqual(material.lightingModel, .blinn)   // 非 unlit
     }
 
+    /// 混合模式的占位色:blend 无贴图必须透明(视频水面等覆盖层否则成灰板)
+    func testBlendPlaceholderIsTransparent() {
+        var scene = makeScene()
+        scene.materials[0].blendMode = .blend
+        let built = ModelSceneBuilder.build(scene)
+        let mat = built.rootNode.childNodes.first { $0.geometry != nil }!.geometry!.firstMaterial!
+        XCTAssertEqual(mat.blendMode, .alpha)
+        XCTAssertEqual((mat.diffuse.contents as? NSColor)?.alphaComponent ?? 1, 0)
+    }
+
     func testBuildFiltersHiddenMaterialTypes() {
         var scene = makeScene()
         var extra = scene.meshes[0]
