@@ -56,38 +56,50 @@ enum ModelSceneConverter {
 
         scene.meshes = (0..<cpp.meshes.size()).map { i in
             let m = cpp.meshes[i]
-            let vcount = m.positions.size()
+            // 桥接的 C++ vector 成员是计算属性,每次访问都会整体拷贝;
+            // 各自只取一次存入局部变量再转换(实测 22k 顶点逐个访问耗时 ~56s)
+            let cppPositions = m.positions
+            let cppNormals = m.normals
+            let cppUVs = m.uvs
+            let cppIndices = m.indices
+            let cppBoneIndices = m.boneIndices
+            let cppBoneWeights = m.boneWeights
+            let vcount = cppPositions.size()
             var mesh = ModelScene.Mesh(
-                positions: (0..<vcount).map { SIMD3(m.positions[$0].x, m.positions[$0].y, m.positions[$0].z) },
-                normals: (0..<m.normals.size()).map { SIMD3(m.normals[$0].x, m.normals[$0].y, m.normals[$0].z) },
-                uvs: (0..<m.uvs.size()).map { SIMD2(m.uvs[$0].x, m.uvs[$0].y) },
-                indices: (0..<m.indices.size()).map { m.indices[$0] },
+                positions: (0..<vcount).map { SIMD3(cppPositions[$0].x, cppPositions[$0].y, cppPositions[$0].z) },
+                normals: (0..<cppNormals.size()).map { SIMD3(cppNormals[$0].x, cppNormals[$0].y, cppNormals[$0].z) },
+                uvs: (0..<cppUVs.size()).map { SIMD2(cppUVs[$0].x, cppUVs[$0].y) },
+                indices: (0..<cppIndices.size()).map { cppIndices[$0] },
                 boneIndices: [],
                 boneWeights: [],
                 materialIndex: Int(m.materialIndex),
                 materialType: Int(m.materialType)
             )
-            let quadCount = m.boneIndices.size() / 4
+            let quadCount = cppBoneIndices.size() / 4
             mesh.boneIndices = (0..<quadCount).map {
-                SIMD4(m.boneIndices[$0 * 4], m.boneIndices[$0 * 4 + 1],
-                      m.boneIndices[$0 * 4 + 2], m.boneIndices[$0 * 4 + 3])
+                SIMD4(cppBoneIndices[$0 * 4], cppBoneIndices[$0 * 4 + 1],
+                      cppBoneIndices[$0 * 4 + 2], cppBoneIndices[$0 * 4 + 3])
             }
-            mesh.boneWeights = (0..<(m.boneWeights.size() / 4)).map {
-                SIMD4(m.boneWeights[$0 * 4], m.boneWeights[$0 * 4 + 1],
-                      m.boneWeights[$0 * 4 + 2], m.boneWeights[$0 * 4 + 3])
+            mesh.boneWeights = (0..<(cppBoneWeights.size() / 4)).map {
+                SIMD4(cppBoneWeights[$0 * 4], cppBoneWeights[$0 * 4 + 1],
+                      cppBoneWeights[$0 * 4 + 2], cppBoneWeights[$0 * 4 + 3])
             }
             return mesh
         }
 
         scene.animations = (0..<cpp.animations.size()).map { i in
             let a = cpp.animations[i]
+            // 同上:vector 成员各取一次
+            let cppTranslations = a.translations
+            let cppRotations = a.rotations
+            let cppScales = a.scales
             return ModelScene.Animation(
                 name: String(a.name),
                 durationMs: Float(a.durationMs),
                 loops: a.loops,
-                translations: (0..<a.translations.size()).map { convertVec3Track(a.translations[$0]) },
-                rotations: (0..<a.rotations.size()).map { convertQuatTrack(a.rotations[$0]) },
-                scales: (0..<a.scales.size()).map { convertVec3Track(a.scales[$0]) }
+                translations: (0..<cppTranslations.size()).map { convertVec3Track(cppTranslations[$0]) },
+                rotations: (0..<cppRotations.size()).map { convertQuatTrack(cppRotations[$0]) },
+                scales: (0..<cppScales.size()).map { convertVec3Track(cppScales[$0]) }
             )
         }
 
@@ -118,27 +130,36 @@ enum ModelSceneConverter {
     }
 
     private static func convertVec3Track(_ t: WhiteoutBridge.WOVec3Track) -> ModelScene.Vec3Track {
-        ModelScene.Vec3Track(
+        // vector 成员各取一次(计算属性,重复访问会整体拷贝)
+        let times = t.times
+        let keys = t.keys
+        let inT = t.inTangents
+        let outT = t.outTangents
+        return ModelScene.Vec3Track(
             interp: convertInterp(t.interp),
-            times: (0..<t.times.size()).map { Float(t.times[$0]) },
-            keys: (0..<t.keys.size()).map { SIMD3(t.keys[$0].x, t.keys[$0].y, t.keys[$0].z) },
-            inTangents: (0..<t.inTangents.size()).map { SIMD3(t.inTangents[$0].x, t.inTangents[$0].y, t.inTangents[$0].z) },
-            outTangents: (0..<t.outTangents.size()).map { SIMD3(t.outTangents[$0].x, t.outTangents[$0].y, t.outTangents[$0].z) }
+            times: (0..<times.size()).map { Float(times[$0]) },
+            keys: (0..<keys.size()).map { SIMD3(keys[$0].x, keys[$0].y, keys[$0].z) },
+            inTangents: (0..<inT.size()).map { SIMD3(inT[$0].x, inT[$0].y, inT[$0].z) },
+            outTangents: (0..<outT.size()).map { SIMD3(outT[$0].x, outT[$0].y, outT[$0].z) }
         )
     }
 
     private static func convertQuatTrack(_ t: WhiteoutBridge.WOQuatTrack) -> ModelScene.QuatTrack {
-        ModelScene.QuatTrack(
+        let times = t.times
+        let keys = t.keys
+        let inT = t.inTangents
+        let outT = t.outTangents
+        return ModelScene.QuatTrack(
             interp: convertInterp(t.interp),
-            times: (0..<t.times.size()).map { Float(t.times[$0]) },
-            keys: (0..<t.keys.size()).map {
-                simd_quatf(ix: t.keys[$0].x, iy: t.keys[$0].y, iz: t.keys[$0].z, r: t.keys[$0].w)
+            times: (0..<times.size()).map { Float(times[$0]) },
+            keys: (0..<keys.size()).map {
+                simd_quatf(ix: keys[$0].x, iy: keys[$0].y, iz: keys[$0].z, r: keys[$0].w)
             },
-            inTangents: (0..<t.inTangents.size()).map {
-                simd_quatf(ix: t.inTangents[$0].x, iy: t.inTangents[$0].y, iz: t.inTangents[$0].z, r: t.inTangents[$0].w)
+            inTangents: (0..<inT.size()).map {
+                simd_quatf(ix: inT[$0].x, iy: inT[$0].y, iz: inT[$0].z, r: inT[$0].w)
             },
-            outTangents: (0..<t.outTangents.size()).map {
-                simd_quatf(ix: t.outTangents[$0].x, iy: t.outTangents[$0].y, iz: t.outTangents[$0].z, r: t.outTangents[$0].w)
+            outTangents: (0..<outT.size()).map {
+                simd_quatf(ix: outT[$0].x, iy: outT[$0].y, iz: outT[$0].z, r: outT[$0].w)
             }
         )
     }
