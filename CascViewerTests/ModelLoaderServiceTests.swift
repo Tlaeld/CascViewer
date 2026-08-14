@@ -175,7 +175,7 @@ final class ModelLoaderServiceTests: XCTestCase {
         let center = ModelSceneBuilder.visualCenter(of: scene)
         let radius = max(simd_length(size) / 2, 0.001)
         cameraNode.position = SCNVector3(center.x, center.y + radius * 0.4,
-                                         center.z - radius * 2.5)
+                                         center.z + radius * 2.5)
         cameraNode.look(at: SCNVector3(center.x, center.y, center.z))
         scnScene.rootNode.addChildNode(cameraNode)
 
@@ -251,7 +251,7 @@ final class ModelLoaderServiceTests: XCTestCase {
             let zcenter = ModelSceneBuilder.visualCenter(of: scene)
             let zradius = max(simd_length(zsize) / 2, 0.001)
             zcam.position = SCNVector3(zcenter.x, zcenter.y + zradius * 0.4,
-                                       zcenter.z - zradius * 2.5)
+                                       zcenter.z + zradius * 2.5)
             zcam.look(at: SCNVector3(zcenter.x, zcenter.y, zcenter.z))
             zs.rootNode.addChildNode(zcam)
             let zr = SCNRenderer(device: nil, options: nil)
@@ -313,7 +313,7 @@ final class ModelLoaderServiceTests: XCTestCase {
             // 侧面 + 稍低机位,距离拉近
             zcam.position = SCNVector3(zcenter.x + zradius * 1.8,
                                        zcenter.y + zradius * 0.3,
-                                       zcenter.z - zradius * 0.6)
+                                       zcenter.z + zradius * 0.6)
             zcam.look(at: SCNVector3(zcenter.x, zcenter.y, zcenter.z))
             zs.rootNode.addChildNode(zcam)
             let zr = SCNRenderer(device: nil, options: nil)
@@ -387,7 +387,7 @@ final class ModelLoaderServiceTests: XCTestCase {
         let zcenter = ModelSceneBuilder.visualCenter(of: scene)
         let zradius = max(simd_length(zsize) / 2, 0.001)
         zcam.position = SCNVector3(zcenter.x, zcenter.y + zradius * 0.4,
-                                   zcenter.z - zradius * 2.5)
+                                   zcenter.z + zradius * 2.5)
         zcam.look(at: SCNVector3(zcenter.x, zcenter.y, zcenter.z))
         zs.rootNode.addChildNode(zcam)
         let zr = SCNRenderer(device: nil, options: nil)
@@ -495,7 +495,7 @@ final class ModelLoaderServiceTests: XCTestCase {
         let zcenter = ModelSceneBuilder.visualCenter(of: scene)
         let zradius = max(simd_length(zsize) / 2, 0.001)
         zcam.position = SCNVector3(zcenter.x, zcenter.y + zradius * 0.2,
-                                   zcenter.z - zradius * 2.2)
+                                   zcenter.z + zradius * 2.2)
         zcam.look(at: SCNVector3(zcenter.x, zcenter.y, zcenter.z))
         zs.rootNode.addChildNode(zcam)
         let zr = SCNRenderer(device: nil, options: nil)
@@ -626,8 +626,9 @@ final class ModelLoaderServiceTests: XCTestCase {
             let zsize = scene.boundsMax - scene.boundsMin
             let zcenter = ModelSceneBuilder.visualCenter(of: scene)
             let zradius = max(simd_length(zsize) / 2, 0.001)
+            // 模型正面朝 +Z(以 nova 实测验证),相机放 +Z 一侧看正面
             zcam.position = SCNVector3(zcenter.x, zcenter.y + zradius * 0.2,
-                                       zcenter.z - zradius * 2.2)
+                                       zcenter.z + zradius * 2.2)
             zcam.look(at: SCNVector3(zcenter.x, zcenter.y, zcenter.z))
             zs.rootNode.addChildNode(zcam)
             let zr = SCNRenderer(device: nil, options: nil)
@@ -696,7 +697,7 @@ final class ModelLoaderServiceTests: XCTestCase {
         let zcenter = ModelSceneBuilder.visualCenter(of: scene)
         let zradius = max(simd_length(zsize) / 2, 0.001)
         zcam.position = SCNVector3(zcenter.x, zcenter.y + zradius * 0.2,
-                                   zcenter.z - zradius * 2.2)
+                                   zcenter.z + zradius * 2.2)
         zcam.look(at: SCNVector3(zcenter.x, zcenter.y, zcenter.z))
         zs.rootNode.addChildNode(zcam)
         let zr = SCNRenderer(device: nil, options: nil)
