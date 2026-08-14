@@ -99,4 +99,15 @@ final class ModelSceneBuilderTests: XCTestCase {
         XCTAssertFalse(material.isDoubleSided)
         XCTAssertEqual(material.lightingModel, .blinn)   // 非 unlit
     }
+
+    func testBuildFiltersHiddenMaterialTypes() {
+        var scene = makeScene()
+        var extra = scene.meshes[0]
+        extra.materialType = 2  // Displacement
+        scene.meshes.append(extra)
+        let unfiltered = ModelSceneBuilder.build(scene)
+        XCTAssertEqual(unfiltered.rootNode.childNodes.filter { $0.geometry != nil }.count, 2)
+        let filtered = ModelSceneBuilder.build(scene, hiddenMaterialTypes: [2])
+        XCTAssertEqual(filtered.rootNode.childNodes.filter { $0.geometry != nil }.count, 1)
+    }
 }

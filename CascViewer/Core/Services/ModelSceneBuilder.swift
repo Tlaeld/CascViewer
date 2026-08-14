@@ -18,7 +18,7 @@ enum ModelSceneBuilder {
         zUpToYUp.act((scene.boundsMax + scene.boundsMin) / 2)
     }
 
-    static func build(_ scene: ModelScene) -> BuiltModelScene {
+    static func build(_ scene: ModelScene, hiddenMaterialTypes: Set<Int> = []) -> BuiltModelScene {
         let root = SCNNode()
         // Z-up → Y-up:统一在内容根上旋转,骨骼树与网格都在其下,变换一致
         root.simdTransform = simd_float4x4(zUpToYUp)
@@ -44,7 +44,8 @@ enum ModelSceneBuilder {
 
         // ── 网格:全部作为 root 的直接子节点(与骨骼树平级)。
         // 蒙皮网格挂到骨骼节点下会引入额外/不确定的节点变换,标准做法是与骨架平级。
-        for mesh in scene.meshes {
+        // 按材质类型过滤(M3 渲染设置控制;默认空集 = 全部可见)
+        for mesh in scene.meshes where !hiddenMaterialTypes.contains(mesh.materialType) {
             let geometry = buildGeometry(mesh)
             let node = SCNNode(geometry: geometry)
             node.geometry?.firstMaterial = buildMaterial(

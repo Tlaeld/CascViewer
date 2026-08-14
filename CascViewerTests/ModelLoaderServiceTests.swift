@@ -372,8 +372,8 @@ final class ModelLoaderServiceTests: XCTestCase {
             XCTAssertTrue(mesh.indices.allSatisfy { Int($0) < mesh.positions.count },
                           "mesh[\(mi)] 索引越界")
         }
-        // 离屏渲染存档(人工查看)
-        let built = ModelSceneBuilder.build(scene)
+        // 离屏渲染存档(人工查看);按默认隐藏集过滤,存档图不含 Displacement 网格
+        let built = ModelSceneBuilder.build(scene, hiddenMaterialTypes: M3MaterialKind.defaultHidden)
         let zs = SCNScene()
         zs.rootNode.addChildNode(built.rootNode)
         // 必须不透明背景:snapshot 在透明背景下 additive 混合会因 alpha
