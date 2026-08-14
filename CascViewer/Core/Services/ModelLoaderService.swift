@@ -78,8 +78,83 @@ actor ModelLoaderService {
 
         var scene = ModelSceneConverter.convert(cppModel, format: format)
         await resolveTextures(&scene, modelPath: path)
+
+        // m3a 动画库:本身无网格。按命名规则找基础模型(如 _facialanims →
+        // storm_hero_orphea_base.m3),把 m3a 动画按骨骼名映射到基础骨架上预览
+        if format == .m3 && scene.meshes.isEmpty && path.lowercased().hasSuffix(".m3a") {
+            for candidate in Self.baseModelCandidates(for: path) {
+                if let base = try? await load(path: candidate, format: .m3),
+                   !base.meshes.isEmpty {
+                    scene = Self.mergeAnimationLibrary(scene, onto: base)
+                    break
+                }
+            }
+        }
+
         cache.setObject(ModelSceneBox(scene: scene), forKey: cacheKey)
         return scene
+    }
+
+    /// m3a 动画库的基础模型候选路径:"…/heroes/X_facialanims/X_facialanims.m3a"
+    /// → 去后缀得 X → 候选 "…/X/X.m3" 与 "…/X_base/X_base.m3"(HotS 命名实测:
+    /// school18_requiredanims 命中前者,orphea_facialanims 命中后者)。
+    static func baseModelCandidates(for m3aPath: String) -> [String] {
+        let norm = m3aPath.replacingOccurrences(of: "\\", with: "/")
+        guard let lastSlash = norm.lastIndex(of: "/") else { return [] }
+        let fileName = String(norm[norm.index(after: lastSlash)...])
+        var stem = (fileName as NSString).deletingPathExtension
+        for suffix in ["_facialanims", "_requiredanims"] {
+            if stem.hasSuffix(suffix) { stem = String(stem.dropLast(suffix.count)); break }
+        }
+        let fileDir = String(norm[..<lastSlash])
+        guard let dirSlash = fileDir.lastIndex(of: "/") else { return [] }
+        let parentDir = String(fileDir[..<dirSlash])
+        return [
+            "\(parentDir)/\(stem)/\(stem).m3",
+            "\(parentDir)/\(stem)_base/\(stem)_base.m3",
+        ]
+    }
+
+    /// 把动画库的动画按骨骼名重映射到基础模型骨架。源/目标轨道数组都与各自
+    /// 骨骼数组平行;名字匹配不上的源轨道丢弃,无对应源骨骼的目标骨骼给空轨道
+    /// (播放时保持 rest 姿态)。
+    static func remapAnimation(_ anim: ModelScene.Animation,
+                               from srcBones: [ModelScene.Bone],
+                               to dstBones: [ModelScene.Bone]) -> ModelScene.Animation {
+        var srcByName: [String: Int] = [:]
+        for (i, b) in srcBones.enumerated() where srcByName[b.name] == nil {
+            srcByName[b.name] = i
+        }
+        let emptyV = ModelScene.Vec3Track(interp: .constant, times: [], keys: [],
+                                          inTangents: [], outTangents: [])
+        let emptyQ = ModelScene.QuatTrack(interp: .constant, times: [], keys: [],
+                                          inTangents: [], outTangents: [])
+        var out = ModelScene.Animation(name: anim.name, durationMs: anim.durationMs,
+                                       loops: anim.loops,
+                                       translations: [], rotations: [], scales: [])
+        out.translations.reserveCapacity(dstBones.count)
+        out.rotations.reserveCapacity(dstBones.count)
+        out.scales.reserveCapacity(dstBones.count)
+        for dstBone in dstBones {
+            guard let si = srcByName[dstBone.name], si < anim.translations.count else {
+                out.translations.append(emptyV)
+                out.rotations.append(emptyQ)
+                out.scales.append(emptyV)
+                continue
+            }
+            out.translations.append(anim.translations[si])
+            out.rotations.append(si < anim.rotations.count ? anim.rotations[si] : emptyQ)
+            out.scales.append(si < anim.scales.count ? anim.scales[si] : emptyV)
+        }
+        return out
+    }
+
+    /// 合成可预览场景:基础模型的网格/材质/骨骼 + 动画库重映射后的动画。
+    static func mergeAnimationLibrary(_ lib: ModelScene, onto base: ModelScene) -> ModelScene {
+        var merged = base
+        merged.name = lib.name
+        merged.animations = lib.animations.map { remapAnimation($0, from: lib.bones, to: base.bones) }
+        return merged
     }
 
     /// 纹理路径候选列表。SC2/HotS 的 M3 纹理引用是相对 assets 虚拟根的逻辑路径

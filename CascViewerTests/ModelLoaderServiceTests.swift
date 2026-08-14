@@ -402,6 +402,123 @@ final class ModelLoaderServiceTests: XCTestCase {
         }
     }
 
+    /// m3a 基础模型候选路径推导(HotS 命名规则)
+    func testBaseModelCandidates() {
+        let c1 = ModelLoaderService.baseModelCandidates(
+            for: "mods/heroes.stormmod/base.stormassets/assets/units/heroes/storm_hero_orphea_facialanims/storm_hero_orphea_facialanims.m3a")
+        XCTAssertEqual(c1, [
+            "mods/heroes.stormmod/base.stormassets/assets/units/heroes/storm_hero_orphea/storm_hero_orphea.m3",
+            "mods/heroes.stormmod/base.stormassets/assets/units/heroes/storm_hero_orphea_base/storm_hero_orphea_base.m3",
+        ])
+        let c2 = ModelLoaderService.baseModelCandidates(
+            for: "a/b/storm_hero_orphea_school18_requiredanims/storm_hero_orphea_school18_requiredanims.m3a")
+        XCTAssertEqual(c2, [
+            "a/b/storm_hero_orphea_school18/storm_hero_orphea_school18.m3",
+            "a/b/storm_hero_orphea_school18_base/storm_hero_orphea_school18_base.m3",
+        ])
+        XCTAssertTrue(ModelLoaderService.baseModelCandidates(for: "noslash.m3a").isEmpty)
+    }
+
+    /// 动画库轨道按骨骼名重映射到目标骨架;无名骨骼给空轨道(播放保持 rest)
+    func testRemapAnimationByBoneName() {
+        func bone(_ name: String) -> ModelScene.Bone {
+            ModelScene.Bone(name: name, parentIndex: -1, pivot: .zero,
+                            inverseBind: matrix_identity_float4x4,
+                            restTranslation: .zero,
+                            restRotation: simd_quatf(ix: 0, iy: 0, iz: 0, r: 1),
+                            restScale: SIMD3(1, 1, 1))
+        }
+        func track(_ x: Float) -> ModelScene.Vec3Track {
+            ModelScene.Vec3Track(interp: .linear, times: [0, 100],
+                                 keys: [SIMD3(x, 0, 0), SIMD3(x + 1, 0, 0)],
+                                 inTangents: [], outTangents: [])
+        }
+        let quat = ModelScene.QuatTrack(interp: .constant, times: [], keys: [],
+                                        inTangents: [], outTangents: [])
+        // 源骨架 a,b;位移轨道 a→10、b→20;缩放轨道 a→30、b→40
+        let anim = ModelScene.Animation(
+            name: "Test", durationMs: 100, loops: true,
+            translations: [track(10), track(20)],
+            rotations: [quat, quat],
+            scales: [track(30), track(40)])
+        let remapped = ModelLoaderService.remapAnimation(
+            anim, from: [bone("a"), bone("b")], to: [bone("b"), bone("a"), bone("c")])
+        XCTAssertEqual(remapped.translations.count, 3)
+        XCTAssertEqual(remapped.translations[0].keys.first?.x, 20)  // b ← 源 b
+        XCTAssertEqual(remapped.translations[1].keys.first?.x, 10)  // a ← 源 a
+        XCTAssertTrue(remapped.translations[2].times.isEmpty)       // c 无对应骨骼
+        XCTAssertEqual(remapped.scales[1].keys.first?.x, 30)
+        XCTAssertEqual(remapped.name, "Test")
+        XCTAssertEqual(remapped.durationMs, 100)
+    }
+
+    /// m3a 增强:自动加载同命名基础模型网格,动画按骨骼名映射(orphea 表情库)
+    func testOrpheaFacialAnimsMerge() async throws {
+        let storagePath = "<hots-storage>"
+        guard FileManager.default.fileExists(atPath: storagePath + "/.build.info") else {
+            throw XCTSkip("HotS 存储不存在,跳过")
+        }
+        var handle = CascBridge.CascStorageHandle.createLocal()
+        guard handle.open(std.string(storagePath)) == .None else { throw XCTSkip("存储打开失败") }
+        defer { handle.close() }
+        var listError = CascBridge.CascError.None
+        let rawEntries = handle.listDirectory(std.string(""), &listError)
+        var paths: [String] = []
+        paths.reserveCapacity(rawEntries.size())
+        for i in 0..<rawEntries.size() {
+            paths.append(String(rawEntries[i].fullPath).replacingOccurrences(of: "\\", with: "/"))
+        }
+        let assetsIndex = CascModelFileProvider.buildAssetsIndex(fromPaths: paths)
+        let service = ModelLoaderService(
+            provider: CascModelFileProvider(handle: handle, assetsIndex: assetsIndex))
+        let scene = try await service.load(
+            path: "mods/heroes.stormmod/base.stormassets/assets/units/heroes/storm_hero_orphea_facialanims/storm_hero_orphea_facialanims.m3a",
+            format: .m3)
+        // 网格与骨架来自基础模型 storm_hero_orphea_base.m3
+        XCTAssertFalse(scene.meshes.isEmpty)
+        // 动画列表只含 m3a 的 11 组表情
+        XCTAssertEqual(scene.animations.count, 11)
+        XCTAssertTrue(scene.animations.contains { $0.name == "HappyEyes" })
+        // 骨骼名映射成功:至少存在非空轨道
+        XCTAssertTrue(scene.animations.contains { anim in
+            anim.rotations.contains { !$0.times.isEmpty }
+                || anim.translations.contains { !$0.times.isEmpty }
+        })
+        // 离屏渲染存档:rest + 应用 HappyEyes 中间帧各一张
+        let built = ModelSceneBuilder.build(scene, hiddenMaterialTypes: M3MaterialKind.defaultHidden)
+        let zs = SCNScene()
+        zs.rootNode.addChildNode(built.rootNode)
+        zs.background.contents = NSColor(white: 0.1, alpha: 1)
+        let zcam = SCNNode()
+        zcam.camera = SCNCamera()
+        let zsize = scene.boundsMax - scene.boundsMin
+        let zcenter = ModelSceneBuilder.visualCenter(of: scene)
+        let zradius = max(simd_length(zsize) / 2, 0.001)
+        zcam.position = SCNVector3(zcenter.x, zcenter.y + zradius * 0.2,
+                                   zcenter.z - zradius * 2.2)
+        zcam.look(at: SCNVector3(zcenter.x, zcenter.y, zcenter.z))
+        zs.rootNode.addChildNode(zcam)
+        let zr = SCNRenderer(device: nil, options: nil)
+        zr.scene = zs
+        zr.pointOfView = zcam
+        func snap(_ file: String) throws {
+            let img = zr.snapshot(atTime: 0, with: CGSize(width: 640, height: 640),
+                                  antialiasingMode: .none)
+            if let tif = img.tiffRepresentation,
+               let rep = NSBitmapImageRep(data: tif),
+               let png = rep.representation(using: .png, properties: [:]) {
+                try png.write(to: URL(fileURLWithPath: file))
+            }
+        }
+        try snap("/tmp/orphea_facial_rest.png")
+        let player = ModelAnimationPlayer(scene: scene, built: built)
+        if let idx = scene.animations.firstIndex(where: { $0.name == "HappyEyes" }) {
+            player.selectAnimation(index: idx)
+            player.update(timeMs: 16)
+            try snap("/tmp/orphea_facial_happy.png")
+        }
+    }
+
     /// assets 索引构建:键为 assets 段起的小写路径,大小写不敏感
     func testBuildAssetsIndex() {
         let index = CascModelFileProvider.buildAssetsIndex(fromPaths: [
