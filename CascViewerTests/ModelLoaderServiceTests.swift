@@ -537,4 +537,60 @@ final class ModelLoaderServiceTests: XCTestCase {
         }
         try render(built2, "/tmp/nova_unlit.png")
     }
+
+    /// orphea 死亡布娃娃回归:Composite 材质取子材质贴图 + 全 Composite 模型可渲染。
+    /// 修复前 Composite 无贴图(占位灰);且用户侧若隐藏 Composite 会整个模型消失。
+    func testOrpheaRagdollRender() async throws {
+        let storagePath = "<hots-storage>"
+        guard FileManager.default.fileExists(atPath: storagePath + "/.build.info") else {
+            throw XCTSkip("HotS 存储不存在,跳过")
+        }
+        var handle = CascBridge.CascStorageHandle.createLocal()
+        guard handle.open(std.string(storagePath)) == .None else { throw XCTSkip("存储打开失败") }
+        defer { handle.close() }
+        var listError = CascBridge.CascError.None
+        let rawEntries = handle.listDirectory(std.string(""), &listError)
+        var paths: [String] = []
+        paths.reserveCapacity(rawEntries.size())
+        for i in 0..<rawEntries.size() {
+            paths.append(String(rawEntries[i].fullPath).replacingOccurrences(of: "\\", with: "/"))
+        }
+        let assetsIndex = CascModelFileProvider.buildAssetsIndex(fromPaths: paths)
+        let service = ModelLoaderService(
+            provider: CascModelFileProvider(handle: handle, assetsIndex: assetsIndex))
+        let scene = try await service.load(
+            path: "mods/heroes.stormmod/base.stormassets/assets/units/heroes/storm_hero_orphea_base_deathragdoll/storm_hero_orphea_base_deathragdoll.m3",
+            format: .m3)
+        // 两个 region 都是 Composite(type=3);贴图应来自其子材质 Mat_Dissolve
+        XCTAssertEqual(scene.meshes.count, 2)
+        XCTAssertEqual(scene.meshes.map(\.materialType), [3, 3])
+        let compMat = scene.materials[scene.meshes[0].materialIndex]
+        XCTAssertTrue(compMat.texturePath.hasSuffix("Storm_Hero_Orphea_Base_Diff.dds"))
+        XCTAssertTrue(compMat.wrapU && compMat.wrapV)
+        XCTAssertNotNil(compMat.diffuseTexture)
+        // 离屏渲染存档(人工查看)
+        let built = ModelSceneBuilder.build(scene, hiddenMaterialTypes: M3MaterialKind.defaultHidden)
+        let zs = SCNScene()
+        zs.rootNode.addChildNode(built.rootNode)
+        zs.background.contents = NSColor(white: 0.1, alpha: 1)
+        let zcam = SCNNode()
+        zcam.camera = SCNCamera()
+        let zsize = scene.boundsMax - scene.boundsMin
+        let zcenter = ModelSceneBuilder.visualCenter(of: scene)
+        let zradius = max(simd_length(zsize) / 2, 0.001)
+        zcam.position = SCNVector3(zcenter.x, zcenter.y + zradius * 0.2,
+                                   zcenter.z - zradius * 2.2)
+        zcam.look(at: SCNVector3(zcenter.x, zcenter.y, zcenter.z))
+        zs.rootNode.addChildNode(zcam)
+        let zr = SCNRenderer(device: nil, options: nil)
+        zr.scene = zs
+        zr.pointOfView = zcam
+        let img = zr.snapshot(atTime: 0, with: CGSize(width: 640, height: 640),
+                              antialiasingMode: .none)
+        if let tif = img.tiffRepresentation,
+           let rep = NSBitmapImageRep(data: tif),
+           let png = rep.representation(using: .png, properties: [:]) {
+            try png.write(to: URL(fileURLWithPath: "/tmp/orphea_ragdoll.png"))
+        }
+    }
 }

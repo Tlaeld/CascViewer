@@ -9,6 +9,13 @@ struct ModelViewerWindow: View {
     @StateObject private var viewModel = ModelViewerViewModel()
     @State private var showRenderSettings = false
 
+    /// 当前设置下实际可见的网格数(材质类型过滤仅对 M3 生效,与打开处逻辑一致)
+    private var visibleMeshCount: Int {
+        guard modelScene.format == .m3 else { return modelScene.meshes.count }
+        let hidden = AppSettings.shared.hiddenM3MaterialTypes
+        return modelScene.meshes.filter { !hidden.contains($0.materialType) }.count
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             HStack {
@@ -47,8 +54,18 @@ struct ModelViewerWindow: View {
 
             Divider()
 
-            ModelViewerView(scene: viewModel.scnScene, pointOfView: viewModel.cameraNode)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            ZStack {
+                ModelViewerView(scene: viewModel.scnScene, pointOfView: viewModel.cameraNode)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                if visibleMeshCount == 0 {
+                    // 空态提示:区分"文件本身无网格"(m3a 动画库)与"全部被渲染设置隐藏"
+                    Text(modelScene.meshes.isEmpty ? L("model_no_mesh") : L("model_all_hidden"))
+                        .foregroundColor(.secondary)
+                        .padding()
+                        .background(.regularMaterial)
+                        .cornerRadius(8)
+                }
+            }
 
             Divider()
 

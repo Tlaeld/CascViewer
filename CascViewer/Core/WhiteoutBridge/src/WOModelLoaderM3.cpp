@@ -122,6 +122,25 @@ WOModel WOModelLoader::parseM3(const uint8_t* data, size_t length, WOError& erro
             wm.twoSided = (mf & 0x8) != 0;   // MaterialFlag::TwoSided
             wm.unlit = (mf & 0x10) != 0;     // MaterialFlag::Unshaded
         }
+        // Composite:取第一个带贴图的 Standard 子材质的漫反射层作为显示贴图
+        // (其余 section 多为发光/溶解特效层;以 orphea_deathragdoll 验证:
+        // Mat_Dissipate 的 MATM[2]=Mat_Dissolve 携带 Orphea_Base_Diff.dds)
+        if (mm.materialType == m3::MaterialType::Composite &&
+            mm.materialIndex < model.compositeMaterials.size()) {
+            for (const auto& sec : model.compositeMaterials[mm.materialIndex].sections) {
+                if (sec.materialIndex >= model.materialMaps.size()) continue;
+                const auto& smm = model.materialMaps[sec.materialIndex];
+                if (smm.materialType != m3::MaterialType::Standard ||
+                    smm.materialIndex >= model.standardMaterials.size()) continue;
+                const auto& sm = model.standardMaterials[smm.materialIndex];
+                if (!sm.diffuseLayer || sm.diffuseLayer->texturePath.empty()) continue;
+                wm.texturePath = sanitized(sm.diffuseLayer->texturePath);
+                const u32 lf = static_cast<u32>(sm.diffuseLayer->flags);
+                wm.wrapU = (lf & 0x4) != 0;
+                wm.wrapV = (lf & 0x8) != 0;
+                break;
+            }
+        }
         out.materials.push_back(std::move(wm));
     }
 
