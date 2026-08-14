@@ -22,6 +22,9 @@ struct ModelScene: Sendable {
         var boneIndices: [SIMD4<UInt8>]  // 每顶点 4 个
         var boneWeights: [SIMD4<UInt8>]  // 每顶点合计 255
         var materialIndex: Int           // -1 = 无
+        /// M3 材质类型原始值(1~12,见 M3MaterialKind);默认 Standard,
+        /// 使现有构造点与 MDX/M2 路径无需修改。
+        var materialType: Int = 1
     }
 
     struct Material: Sendable {

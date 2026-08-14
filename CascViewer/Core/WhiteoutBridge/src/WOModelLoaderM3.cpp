@@ -151,22 +151,6 @@ WOModel WOModelLoader::parseM3(const uint8_t* data, size_t length, WOError& erro
         const auto& div = model.divisions[0];
         for (size_t ri = 0; ri < div.regions.size(); ++ri) {
             const auto& region = div.regions[ri];
-            // 只渲染 Standard / Composite 材质的 region。Displacement、Terrain、
-            // Volume、Creep 等是地面压平/特效网格(以真实文件验证:zealot_golden_death
-            // 的 Displacement region 渲染成一块大灰椭圆),直接跳过。
-            bool renderable = true;
-            for (const auto& batch : div.batches) {
-                if (batch.regionIndex == ri) {
-                    if (batch.materialIndex < model.materialMaps.size()) {
-                        const auto mt = model.materialMaps[batch.materialIndex].materialType;
-                        renderable = (mt == m3::MaterialType::Standard ||
-                                      mt == m3::MaterialType::Composite);
-                    }
-                    break;
-                }
-            }
-            if (!renderable) continue;
-
             WOMesh mesh;
             const size_t v0 = region.firstVertex;
             const size_t vc = region.vertexCount;
@@ -190,10 +174,13 @@ WOModel WOModelLoader::parseM3(const uint8_t* data, size_t length, WOError& erro
                 if (local < vc) mesh.indices.push_back(local);
             }
 
-            // 材质:找引用该 region 的 batch
+            // 材质:找引用该 region 的 batch;记录 M3 材质类型供上层按类型过滤渲染
+            // (无 batch 或索引越界保持默认 1;显式标 0 的语义留给未来,当前不设)
             for (const auto& batch : div.batches) {
                 if (batch.regionIndex == ri) {
                     mesh.materialIndex = (int32_t)batch.materialIndex;  // 与 materialMaps 对齐
+                    if (batch.materialIndex < model.materialMaps.size())
+                        mesh.materialType = (uint32_t)model.materialMaps[batch.materialIndex].materialType;
                     break;
                 }
             }

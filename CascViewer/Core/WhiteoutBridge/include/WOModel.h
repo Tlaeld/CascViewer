@@ -47,6 +47,7 @@ struct WOMesh {
     std::vector<uint8_t> boneIndices;   // 扁平,4 个/顶点
     std::vector<uint8_t> boneWeights;   // 扁平,4 个/顶点,每顶点合计 255
     int32_t materialIndex = -1;
+    uint32_t materialType = 1;      // M3 MaterialType 原始值;0=未知(默认可见);MDX/M2 恒为 1(Standard)
 };
 
 struct WOMaterial {

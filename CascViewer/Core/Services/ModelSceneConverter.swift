@@ -64,7 +64,8 @@ enum ModelSceneConverter {
                 indices: (0..<m.indices.size()).map { m.indices[$0] },
                 boneIndices: [],
                 boneWeights: [],
-                materialIndex: Int(m.materialIndex)
+                materialIndex: Int(m.materialIndex),
+                materialType: Int(m.materialType)
             )
             let quadCount = m.boneIndices.size() / 4
             mesh.boneIndices = (0..<quadCount).map {

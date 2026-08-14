@@ -363,8 +363,10 @@ final class ModelLoaderServiceTests: XCTestCase {
         let scene = try await service.load(
             path: "mods/liberty.sc2mod/base.sc2assets/assets/units/protoss/zealot_golden_death/zealot_golden_death.m3",
             format: .m3)
-        // 8 个 region 中 1 个是 Displacement(地面压平)材质,不可渲染已跳过
-        XCTAssertEqual(scene.meshes.count, 7)
+        // loader 全量加载所有 region;region[5] 是 Displacement(type=2),其余为 Standard(type=1)。
+        // 可见性过滤在构建期(ModelSceneBuilder)进行,不在 loader。
+        XCTAssertEqual(scene.meshes.count, 8)
+        XCTAssertEqual(scene.meshes.map(\.materialType), [1, 1, 1, 1, 1, 2, 1, 1])
         // 修复前 region≥1 的索引会下溢成巨大值;此处直接断言索引界内
         for (mi, mesh) in scene.meshes.enumerated() {
             XCTAssertTrue(mesh.indices.allSatisfy { Int($0) < mesh.positions.count },
