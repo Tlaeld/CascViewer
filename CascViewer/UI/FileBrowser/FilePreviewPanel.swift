@@ -158,7 +158,9 @@ struct FilePreviewPanel: View {
             let service = ModelLoaderService(provider: provider)
             do {
                 let scene = try await service.load(path: entry.normalizedPath, format: format)
-                let built = ModelSceneBuilder.build(scene, hiddenMaterialTypes: AppSettings.shared.hiddenM3MaterialTypes)
+                // 材质类型过滤仅适用于 M3;MDX/M2 网格恒为 Standard,套用 M3 设置会被全部隐藏
+                let hidden = (format == .m3) ? AppSettings.shared.hiddenM3MaterialTypes : []
+                let built = ModelSceneBuilder.build(scene, hiddenMaterialTypes: hidden)
                 openModelViewerWindow(fileName: entry.name, modelScene: scene, built: built)
             } catch {
                 appState.errorMessage = L("model_load_failed", error.localizedDescription)

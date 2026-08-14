@@ -374,6 +374,8 @@ final class ModelLoaderServiceTests: XCTestCase {
         }
         // 离屏渲染存档(人工查看);按默认隐藏集过滤,存档图不含 Displacement 网格
         let built = ModelSceneBuilder.build(scene, hiddenMaterialTypes: M3MaterialKind.defaultHidden)
+        // 默认隐藏集下 Displacement 网格被过滤:8 region → 7 个几何节点
+        XCTAssertEqual(built.rootNode.childNodes.filter { $0.geometry != nil }.count, 7)
         let zs = SCNScene()
         zs.rootNode.addChildNode(built.rootNode)
         // 必须不透明背景:snapshot 在透明背景下 additive 混合会因 alpha

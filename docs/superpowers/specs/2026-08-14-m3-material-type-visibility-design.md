@@ -27,7 +27,7 @@ Volume、VolumeNoise、Creep、Hair、SplatTerrainBake、Reflection、LensFlare�
 - `WOMesh` 与 `ModelScene.Mesh` 新增 `materialType: Int`(M3 原始类型值 1~12)。
 - `WOModelLoaderM3.cpp`:删除 region 跳过逻辑,所有 region 都产出网格;
   region → batch → materialMaps 查得的类型写入 `mesh.materialType`;
-  无 batch 或索引越界 → 0(未知),**未知类型默认可见**(fail-open,不误杀)。
+  无 batch 或索引越界时保持默认值 1(fail-open,可见;不产出 0)。
 - MDX/M2 loader 及 C++ 测试夹具(WOEncodeTestM3/MDX/M2):一律填 1(Standard),保证现有行为与测试不变。
 
 ### 2. 设置存储
@@ -49,7 +49,8 @@ Volume、VolumeNoise、Creep、Hair、SplatTerrainBake、Reflection、LensFlare�
 
 ### 4. 场景构建
 
-- `ModelSceneBuilder.build(_:)` 增加过滤参数(默认读 AppSettings,测试可显式传入):
+- `ModelSceneBuilder.build(_:)` 增加显式 `hiddenMaterialTypes` 参数(默认 `[]`,
+  由调用方传入 AppSettings 中的设置,测试可显式传入):
   `mesh.materialType` 在隐藏集合中的网格不生成节点。
 
 ## 测试
