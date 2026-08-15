@@ -25,6 +25,9 @@ jobs:
           xcrun --show-sdk-path
           xcrun --show-sdk-version
 
+      - name: Build WhiteoutLib
+        run: bash tools/build_whiteout.sh
+
       - name: Build
         run: |
           xcodebuild build \
