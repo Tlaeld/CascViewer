@@ -1,6 +1,5 @@
 import SwiftUI
 import SceneKit
-import CoreVideo
 
 struct ModelViewerWindow: View {
     let fileName: String
@@ -55,7 +54,8 @@ struct ModelViewerWindow: View {
             Divider()
 
             ZStack {
-                ModelViewerView(scene: viewModel.scnScene, pointOfView: viewModel.cameraNode)
+                ModelViewerView(scene: viewModel.scnScene, pointOfView: viewModel.cameraNode,
+                                cameraTarget: viewModel.cameraTarget, viewModel: viewModel)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 if visibleMeshCount == 0 {
                     // 空态提示:区分"文件本身无网格"(m3a 动画库)与"全部被渲染设置隐藏"
@@ -89,21 +89,16 @@ struct ModelViewerWindow: View {
     }
 }
 
-private let modelDisplayLinkCallback: CVDisplayLinkOutputCallback = { _, _, _, _, _, context -> CVReturn in
-    guard let context = context else { return kCVReturnError }
-    let viewModel = Unmanaged<ModelViewerViewModel>.fromOpaque(context).takeUnretainedValue()
-    Task { @MainActor in
-        viewModel.tick()
-    }
-    return kCVReturnSuccess
-}
-
 @MainActor
 final class ModelViewerViewModel: ObservableObject {
     @Published var scnScene = SCNScene()
     /// 取景相机(须显式赋给 SCNView.pointOfView,否则 SCNView 用自带默认相机角度)
     @Published var cameraNode: SCNNode?
-    @Published var isPlaying = false
+    /// 轨道旋转中心(模型取景中心,世界坐标);不设则 SceneKit 默认绕世界原点旋转
+    @Published var cameraTarget = SCNVector3Zero
+    @Published var isPlaying = false {
+        didSet { if isPlaying { startTime = 0 } }  // 播放时从头开始(与原 CVDisplayLink 行为一致)
+    }
     @Published var selectedAnimation = 0 {
         didSet {
             player.selectAnimation(index: selectedAnimation)
@@ -118,20 +113,8 @@ final class ModelViewerViewModel: ObservableObject {
         built: BuiltModelScene(rootNode: SCNNode(), boneNodes: []))
 
     private var modelScene: ModelScene?
-    private var displayLink: CVDisplayLink?
-    private var displayLinkContext: UnsafeMutableRawPointer?
     private var startTime: CFTimeInterval = 0
     private var currentTimeMs: Float = 0
-
-    deinit {
-        if let displayLink = displayLink {
-            CVDisplayLinkStop(displayLink)
-            CVDisplayLinkSetOutputCallback(displayLink, nil, nil)
-        }
-        if let context = displayLinkContext {
-            Unmanaged<ModelViewerViewModel>.fromOpaque(context).release()
-        }
-    }
 
     func setup(scene: ModelScene, built: BuiltModelScene) {
         modelScene = scene
@@ -158,19 +141,18 @@ final class ModelViewerViewModel: ObservableObject {
         cameraNode.camera?.automaticallyAdjustsZRange = true
         scnScene.rootNode.addChildNode(cameraNode)
         self.cameraNode = cameraNode
+        // 轨道旋转中心:不设则默认世界原点,模型偏离原点时旋转会甩视角
+        cameraTarget = SCNVector3(center.x, center.y, center.z)
     }
 
     func togglePlayback() {
         isPlaying.toggle()
-        if isPlaying { startAnimation() } else { stopAnimation() }
     }
 
     /// 材质可见性变化后,用同一 ModelScene 重建的场景替换当前场景。
     /// 保留动画索引与播放/暂停状态(进度重置为 0);相机节点复用,保留用户视角。
     func rebuild(with built: BuiltModelScene) {
         guard let scene = modelScene else { return }
-        let wasPlaying = isPlaying
-        if wasPlaying { stopAnimation() }
         let camera = cameraNode
         camera?.removeFromParentNode()
         let newScene = SCNScene()
@@ -180,40 +162,21 @@ final class ModelViewerViewModel: ObservableObject {
         player = ModelAnimationPlayer(scene: scene, built: built)
         if !scene.animations.isEmpty {
             player.selectAnimation(index: selectedAnimation)
-            if wasPlaying { startAnimation() }
+            startTime = 0
         }
     }
 
+    /// 由 SceneKit 渲染循环每帧驱动(ModelViewerView.delegate)。
     func tick() {
+        guard isPlaying else { return }
         let now = CACurrentMediaTime()
         if startTime == 0 { startTime = now }
         currentTimeMs = Float((now - startTime) * 1000)
         player.update(timeMs: currentTimeMs)
     }
 
-    private func startAnimation() {
-        stopAnimation()
-        startTime = 0
-        var link: CVDisplayLink?
-        guard CVDisplayLinkCreateWithActiveCGDisplays(&link) == kCVReturnSuccess,
-              let displayLink = link else { return }
-        let context = Unmanaged.passRetained(self).toOpaque()
-        displayLinkContext = context
-        CVDisplayLinkSetOutputCallback(displayLink, modelDisplayLinkCallback, context)
-        CVDisplayLinkStart(displayLink)
-        self.displayLink = displayLink
-    }
-
     func stopAnimation() {
-        if let displayLink = displayLink {
-            CVDisplayLinkStop(displayLink)
-            CVDisplayLinkSetOutputCallback(displayLink, nil, nil)
-        }
-        if let context = displayLinkContext {
-            Unmanaged<ModelViewerViewModel>.fromOpaque(context).release()
-            displayLinkContext = nil
-        }
-        displayLink = nil
+        isPlaying = false
     }
 }
 
