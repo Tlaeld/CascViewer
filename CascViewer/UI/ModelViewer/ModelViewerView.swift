@@ -1,16 +1,21 @@
 import SwiftUI
 import SceneKit
 
-/// 自定义滚轮缩放:默认要按住 Option 才能缩放,反直觉。
-/// 鼠标滚轮(非精密滚动)= 直接缩放,按住 Command 加速;
-/// 触控板双指滚动(精密滚动)维持默认手势不变。
+/// 自定义滚轮缩放:SceneKit 默认对精密滚动设备(触控板/Magic Mouse/高分辨率滚轮)
+/// 要按住 Option 才能缩放,反直觉。
+/// 判别要看事件相位而非 hasPreciseScrollingDeltas(高分辨率滚轮也是精密增量):
+/// 触控板双指滚动带 phase/momentumPhase,维持默认手势不变;
+/// 其余一律视为滚轮 = 直接缩放,按住 Command 加速 3 倍。
 final class ModelSceneView: SCNView {
     override func scrollWheel(with event: NSEvent) {
-        guard !event.hasPreciseScrollingDeltas else {
+        let isTouchScroll = event.phase != [] || event.momentumPhase != []
+        guard !isTouchScroll else {
             super.scrollWheel(with: event)
             return
         }
-        let speed: Float = event.modifierFlags.contains(.command) ? 6 : 2
+        // 高分辨率滚轮按点给出小数值增量,普通滚轮按行;系数为经验值
+        let base: Float = event.hasPreciseScrollingDeltas ? 0.3 : 2
+        let speed: Float = event.modifierFlags.contains(.command) ? base * 3 : base
         defaultCameraController.dolly(toTarget: Float(event.scrollingDeltaY) * speed)
     }
 }
