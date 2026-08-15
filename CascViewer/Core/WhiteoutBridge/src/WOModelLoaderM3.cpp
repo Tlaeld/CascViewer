@@ -61,7 +61,7 @@ WOQuatTrack convertSD4Q(const m3::AnimBlock<Quaternion>& block, u16 interpType) 
     return out;
 }
 
-// 骨骼单个属性(位置/旋转/缩放)在 STC 中解析为轨道。
+// 骨骼单个属性(位置/旋转/缩放)在单个 STC 中解析为轨道。
 template <typename TrackT>
 TrackT resolveBoneTrack(const m3::SubTrackContainer* stc, u32 animId, u16 interpType,
                         u32 wantSlot) {
@@ -75,6 +75,18 @@ TrackT resolveBoneTrack(const m3::SubTrackContainer* stc, u32 animId, u16 interp
         if (index < stc->sd4q.size()) return convertSD4Q(stc->sd4q[index], interpType);
     }
     return out;
+}
+
+// 骨骼单个属性(位置/旋转/缩放)的轨道解析:在多个候选 STC 中逐个尝试,
+// 第一个含此 animId 的 STC 胜出(一个动画的轨道可分散在多个 STC 中)。
+template <typename TrackT>
+TrackT resolveBoneTrack(const std::vector<const m3::SubTrackContainer*>& stcs,
+                        u32 animId, u16 interpType, u32 wantSlot) {
+    for (const m3::SubTrackContainer* stc : stcs) {
+        TrackT t = resolveBoneTrack<TrackT>(stc, animId, interpType, wantSlot);
+        if (!t.times.empty()) return t;
+    }
+    return TrackT{};
 }
 
 // 贴图路径是否为可解码位图(DDS/BLP/ImageIO 位图);.ogv 视频等不可解码
@@ -315,13 +327,25 @@ WOModel WOModelLoader::parseM3(const uint8_t* data, size_t length, WOError& erro
         }
     }
 
-    // ── 动画:STC 与 sequence 配对(数量相等按下标,否则用 STC[0])──
+    // ── 动画:SEQ → STC 绑定。优先按 STG 组名匹配 SEQ 名,取组的 subtrackIndices
+    // (一个动画的轨道可分散在多个 STC:实测 orphea_facialanims.m3a 为 22 STC/11 SEQ,
+    // 每组含 "X_Eyes" 骨骼轨道 STC + "X_full" 空 STC;此时数量不等,若一律回退
+    // STC[0],所有动画会解析成完全相同的数据)。
+    // 数量相等时退化为按下标配对,再不行用 STC[0]。
     const bool pairByIndex = (model.subTrackCollections.size() == model.sequences.size());
     for (size_t si = 0; si < model.sequences.size(); ++si) {
         const auto& seq = model.sequences[si];
-        const m3::SubTrackContainer* stc = nullptr;
-        if (!model.subTrackCollections.empty())
-            stc = &model.subTrackCollections[pairByIndex ? si : 0];
+        std::vector<const m3::SubTrackContainer*> stcs;
+        for (const auto& g : model.animationGroups) {
+            if (g.name == seq.name) {
+                for (u32 idx : g.subtrackIndices)
+                    if (idx < model.subTrackCollections.size())
+                        stcs.push_back(&model.subTrackCollections[idx]);
+                break;
+            }
+        }
+        if (stcs.empty() && !model.subTrackCollections.empty())
+            stcs.push_back(&model.subTrackCollections[pairByIndex ? si : 0]);
 
         WOAnimation anim;
         anim.name = sanitized(seq.name);
@@ -330,11 +354,11 @@ WOModel WOModelLoader::parseM3(const uint8_t* data, size_t length, WOError& erro
         anim.loops = true;  // v1:M3 一律循环
         for (const auto& bone : model.bones) {
             anim.translations.push_back(resolveBoneTrack<WOVec3Track>(
-                stc, bone.position.animId, bone.position.interpType, 2 /* sd3v */));
+                stcs, bone.position.animId, bone.position.interpType, 2 /* sd3v */));
             anim.rotations.push_back(resolveBoneTrack<WOQuatTrack>(
-                stc, bone.rotation.animId, bone.rotation.interpType, 3 /* sd4q */));
+                stcs, bone.rotation.animId, bone.rotation.interpType, 3 /* sd4q */));
             anim.scales.push_back(resolveBoneTrack<WOVec3Track>(
-                stc, bone.scale.animId, bone.scale.interpType, 2 /* sd3v */));
+                stcs, bone.scale.animId, bone.scale.interpType, 2 /* sd3v */));
         }
         out.animations.push_back(std::move(anim));
     }

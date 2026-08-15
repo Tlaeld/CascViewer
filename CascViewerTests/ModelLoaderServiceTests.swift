@@ -937,4 +937,41 @@ final class ModelLoaderServiceTests: XCTestCase {
         }
         print("SURVEY 完成,共 \(seq) 个")
     }
+    /// 回归:m3a 动画库各动画必须有差异化轨道(曾因 SEQ→STC 一律回退 STC[0],
+    /// 11 个动画解析成完全相同的数据,切换无效)。以 orphea 表情库验证。
+    func testM3aAnimationsAreDistinct() async throws {
+        let storagePath = TestStoragePaths.path(for: "hots") ?? ""
+        guard FileManager.default.fileExists(atPath: storagePath + "/.build.info") else {
+            throw XCTSkip("HotS 存储不存在,跳过")
+        }
+        var handle = CascBridge.CascStorageHandle.createLocal()
+        guard handle.open(std.string(storagePath)) == .None else { throw XCTSkip("存储打开失败") }
+        defer { handle.close() }
+        var listError = CascBridge.CascError.None
+        let rawEntries = handle.listDirectory(std.string(""), &listError)
+        var paths: [String] = []
+        paths.reserveCapacity(rawEntries.size())
+        for i in 0..<rawEntries.size() {
+            paths.append(String(rawEntries[i].fullPath).replacingOccurrences(of: "\\", with: "/"))
+        }
+        let assetsIndex = CascModelFileProvider.buildAssetsIndex(fromPaths: paths)
+        let service = ModelLoaderService(
+            provider: CascModelFileProvider(handle: handle, assetsIndex: assetsIndex))
+        let scene = try await service.load(
+            path: "mods/heroes.stormmod/base.stormassets/assets/units/heroes/storm_hero_orphea_facialanims/storm_hero_orphea_facialanims.m3a",
+            format: .m3)
+        XCTAssertEqual(scene.animations.count, 11)
+        // 每个动画的非空轨道首帧值拼成签名,11 个动画至少出现 2 个不同签名
+        var signatures = Set<UInt32>()
+        for anim in scene.animations {
+            var hash: UInt32 = 5381
+            for (i, q) in anim.rotations.enumerated() where !q.keys.isEmpty {
+                for v in [Float(i), q.keys[0].vector.x, q.keys[0].vector.y] {
+                    hash = hash &* 33 &+ v.bitPattern
+                }
+            }
+            signatures.insert(hash)
+        }
+        XCTAssertGreaterThan(signatures.count, 1, "所有动画轨道完全相同,SEQ→STC 绑定失效")
+    }
 }
