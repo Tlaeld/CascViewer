@@ -4,6 +4,7 @@
 #include <whiteout/models/m3/m3.h>
 #include <whiteout/models/m3/parser.h>
 
+#include <algorithm>
 #include <cstring>
 #include <type_traits>
 
@@ -127,17 +128,50 @@ WOModel WOModelLoader::parseM3(const uint8_t* data, size_t length, WOError& erro
         return out;
     }
 
-    // 顶点缓冲自愈:部分文件(如 HotS terrain object)MODL 顶点标志与真实
-    // 数据布局不符,按标志算的 stride 不能整除数据块,逐顶点读取滑位出 NaN
-    // (实测 jungle_a_to:7596B % 32 = 12;补 VertexColor 位后 7596/36 = 211,
-    // 恰等于 region 顶点数)。不可整除时补 VertexColor 位重新初始化,仍不行则还原。
+    // 顶点布局自愈:旧资产的 MODL 顶点标志与真实数据布局不符——实测这批文件
+    // (gridfloor/jungle/ground_grate 等)offset 24 起全是 UV 层(i16×2,每层 4B,
+    // 无顶点色),tangent 槽恒为 0xFFFFFFFF;按 WhiteoutLib 标志语义算的 stride
+    // 与 region 顶点引用总数矛盾,逐顶点读取滑位出 NaN、UV 错位。
+    // 以 region 顶点总数为准反推 stride(数据块能整除时),按 24+4×numUVs+4
+    // 反解 UV 层数重设标志;region 信息缺失时退回"不可整除"试探。
     {
         auto& vb = model.vertices;
-        if (vb.vertexSize() > 0 && vb.data.size() % vb.vertexSize() != 0) {
+        if (!vb.data.empty()) {
             const auto origFlags = vb.flags;
-            vb.flags = origFlags | m3::VertexFormatFlag::VertexColor;
-            vb.initialize();
-            if (vb.vertexSize() == 0 || vb.data.size() % vb.vertexSize() != 0) {
+            const size_t curStride = vb.vertexSize();
+
+            auto applyUVCount = [&](int numUVs) {
+                vb.flags = m3::VertexFormatFlag::None;
+                if (numUVs >= 1) vb.flags = vb.flags | m3::VertexFormatFlag::UV1;
+                if (numUVs >= 2) vb.flags = vb.flags | m3::VertexFormatFlag::UV2;
+                if (numUVs >= 3) vb.flags = vb.flags | m3::VertexFormatFlag::UV3;
+                if (numUVs >= 4) vb.flags = vb.flags | m3::VertexFormatFlag::UV4;
+                if (numUVs >= 5) vb.flags = vb.flags | m3::VertexFormatFlag::UV5;
+                vb.initialize();
+            };
+
+            // region 顶点引用是连续分区,取最大 end 即总数
+            size_t regionVerts = 0;
+            if (!model.divisions.empty())
+                for (const auto& r : model.divisions[0].regions)
+                    regionVerts = std::max(regionVerts, size_t(r.firstVertex + r.vertexCount));
+
+            bool healed = false;
+            if (regionVerts > 0 && vb.data.size() % regionVerts == 0) {
+                const size_t want = vb.data.size() / regionVerts;
+                if (want != curStride && want >= 28 && want <= 48 && (want - 28) % 4 == 0) {
+                    applyUVCount(int((want - 28) / 4));
+                    healed = (vb.vertexSize() == want);
+                }
+            }
+            if (!healed && curStride > 0 && vb.data.size() % curStride != 0) {
+                // 兜底:region 不可用但按当前标志不可整除,在 1..5 层 UV 中找能整除的
+                for (int n = 1; n <= 5 && !healed; ++n) {
+                    applyUVCount(n);
+                    healed = (vb.vertexSize() > 0 && vb.data.size() % vb.vertexSize() == 0);
+                }
+            }
+            if (!healed && vb.vertexSize() != curStride) {
                 vb.flags = origFlags;
                 vb.initialize();
             }
