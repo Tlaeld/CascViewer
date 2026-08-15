@@ -725,6 +725,37 @@ final class ModelLoaderServiceTests: XCTestCase {
         }
     }
 
+    /// SC2 剧情场景 emissive 回退回归:sm_charbriefing_02 的网格全是 Composite,
+    /// 子材质 diffuse 全空,贴图在 emissive 层(全息屏 UI)。修复前 Composite 无贴图
+    /// → 渲染全黑;修复后应回退取到子材质 emissive 贴图。
+    func testCharBriefingEmissiveFallback() async throws {
+        let storagePath = TestStoragePaths.path(for: "sc2") ?? ""
+        guard FileManager.default.fileExists(atPath: storagePath + "/.build.info") else {
+            throw XCTSkip("SC2 存储不存在,跳过")
+        }
+        var handle = CascBridge.CascStorageHandle.createLocal()
+        guard handle.open(std.string(storagePath)) == .None else { throw XCTSkip("存储打开失败") }
+        defer { handle.close() }
+        var listError = CascBridge.CascError.None
+        let rawEntries = handle.listDirectory(std.string(""), &listError)
+        var paths: [String] = []
+        paths.reserveCapacity(rawEntries.size())
+        for i in 0..<rawEntries.size() {
+            paths.append(String(rawEntries[i].fullPath).replacingOccurrences(of: "\\", with: "/"))
+        }
+        let assetsIndex = CascModelFileProvider.buildAssetsIndex(fromPaths: paths)
+        let service = ModelLoaderService(
+            provider: CascModelFileProvider(handle: handle, assetsIndex: assetsIndex))
+        let scene = try await service.load(
+            path: "campaigns/liberty.sc2campaign/base.sc2assets/assets/storymodesets/terran/sm_charbriefing/sm_charbriefing_02.m3",
+            format: .m3)
+        XCTAssertEqual(scene.meshes.count, 2)
+        let mat = scene.materials[scene.meshes[0].materialIndex]
+        XCTAssertTrue(mat.texturePath.hasSuffix("SM_hb_starmapui_diff.dds"),
+                      "Composite 应回退到子材质 emissive 贴图,实际: \(mat.texturePath)")
+        XCTAssertNotNil(mat.diffuseTexture, "emissive 贴图应成功解码")
+    }
+
     /// HotS pajamathur 回归:MODL v30 模型的材质全是 MADD(BufferMaterial,无 MAT_/CMP_),
     /// 纹理路径在 MADD.valueData(SCHR 字符串数组)里,取 _Diff 作 diffuse。
     /// 修复前材质无贴图路径 → 整模型白膜;且 defaultHidden 含 12 → 默认直接不渲染。
@@ -1090,5 +1121,152 @@ final class ModelLoaderServiceTests: XCTestCase {
             signatures.insert(hash)
         }
         XCTAssertGreaterThan(signatures.count, 1, "所有动画轨道完全相同,SEQ→STC 绑定失效")
+    }
+}
+
+/// 显示异常全量巡检(仅当 /tmp/survey_enabled 存在时跑,不进常规套件):
+/// 对两个存储的全部 .m3 走真实加载管线,但贴图读取短路为 nil(跳过解码,
+/// 全量 ~1.7 万模型才可能跑得完);贴图存在性改用在内存路径集合里核对。
+///
+/// 标记含义:
+///   白膜疑似 — 可见网格的材质没取到贴图路径,但模型里确有贴图引用(选材质逻辑漏了)
+///   贴图缺失 — 材质有贴图路径但本地存储没有该文件(未下载,非 bug)
+///   无网格   — 加载成功但没有网格(多为特效/灯光定义文件)
+///   NaN/索引越界 — 几何数据异常
+final class WhiteClaySurveyTests: XCTestCase {
+
+    /// 贴图读取短路:模型字节真实读,贴图扩展名直接返回 nil(省掉解码)。
+    private final class NoDecodeProvider: ModelLoaderService.FileProvider, @unchecked Sendable {
+        let base: CascModelFileProvider
+        init(base: CascModelFileProvider) { self.base = base }
+        static let texExts: Set<String> = [".dds", ".blp", ".tga", ".png", ".jpg", ".jpeg", ".bmp"]
+        func readFile(path: String) -> Data? {
+            let lower = path.lowercased()
+            if let dot = lower.lastIndex(of: "."),
+               Self.texExts.contains(String(lower[dot...])) { return nil }
+            return base.readFile(path: path)
+        }
+        func readFileByDataId(_ id: UInt32) -> Data? { base.readFileByDataId(id) }
+        func resolveAssetsPath(_ ref: String) -> String? { base.resolveAssetsPath(ref) }
+    }
+
+    func testWhiteClaySurvey() async throws {
+        guard FileManager.default.fileExists(atPath: "/tmp/survey_enabled") else {
+            throw XCTSkip("巡检模式未开启(touch /tmp/survey_enabled)")
+        }
+        let storages: [(String, String)] = [
+            ("SC2", TestStoragePaths.path(for: "sc2") ?? ""),
+            ("HotS", TestStoragePaths.path(for: "hots") ?? ""),
+        ]
+        var suspicious: [String] = []
+        for (tag, storagePath) in storages {
+            guard FileManager.default.fileExists(atPath: storagePath + "/.build.info") else { continue }
+            var handle = CascBridge.CascStorageHandle.createLocal()
+            handle.setCdnDownloadEnabled(false)  // 离线:缺失文件直接标记,不走 CDN
+            guard handle.open(std.string(storagePath)) == .None else { continue }
+            var listError = CascBridge.CascError.None
+            let rawEntries = handle.listDirectory(std.string(""), &listError)
+            var paths: [String] = []
+            paths.reserveCapacity(rawEntries.size())
+            for i in 0..<rawEntries.size() {
+                let entry = rawEntries[i]
+                let fp: String = String(entry.fullPath)
+                paths.append(fp.replacingOccurrences(of: "\\", with: "/"))
+            }
+            let pathSet = Set(paths.map { $0.lowercased() })
+            let assetsIndex = CascModelFileProvider.buildAssetsIndex(fromPaths: paths)
+            let provider = NoDecodeProvider(base: CascModelFileProvider(handle: handle, assetsIndex: assetsIndex))
+            let service = ModelLoaderService(provider: provider)
+
+            func textureExists(_ ref: String, modelPath: String) -> Bool {
+                for c in ModelLoaderService.textureCandidates(modelPath: modelPath, texturePath: ref)
+                where pathSet.contains(c.lowercased()) { return true }
+                return assetsIndex[ref.replacingOccurrences(of: "\\", with: "/").lowercased()] != nil
+            }
+
+            var counts: [String: Int] = [:]
+            var whiteClayPaths: [String] = []
+            let modelPaths = paths.filter { $0.lowercased().hasSuffix(".m3") }.sorted()
+            print("SURVEY-W \(tag): 共 \(modelPaths.count) 个 .m3")
+            for modelPath in modelPaths {
+                guard let scene = try? await service.load(path: modelPath, format: .m3) else {
+                    counts["加载失败", default: 0] += 1
+                    suspicious.append("[\(tag)] \(modelPath) 加载失败")
+                    continue
+                }
+                var flags: [String] = []
+                if scene.meshes.isEmpty { flags.append("无网格") }
+                let modelHasTexRef = scene.materials.contains { !$0.texturePath.isEmpty }
+                // 真白膜:可见网格 + 材质无贴图 + opaque 混合(占位灰会直接显示出来)。
+                // additive/blend/modulate 无贴图时占位色按混合模式不可见(特效网格),不算白膜。
+                var whiteClay = false, texMissing = false, fxNoTex = false
+                for mesh in scene.meshes where !M3MaterialKind.defaultHidden.contains(mesh.materialType) {
+                    guard mesh.materialIndex >= 0, mesh.materialIndex < scene.materials.count else { continue }
+                    let mat = scene.materials[mesh.materialIndex]
+                    if mat.texturePath.isEmpty {
+                        if mat.blendMode == .opaque {
+                            if modelHasTexRef { whiteClay = true }
+                        } else { fxNoTex = true }
+                    } else if !textureExists(mat.texturePath, modelPath: modelPath) {
+                        texMissing = true
+                    }
+                }
+                if whiteClay { flags.append("白膜") }
+                if fxNoTex { flags.append("特效无贴图(隐形)") }
+                if texMissing { flags.append("贴图缺失") }
+                for mesh in scene.meshes {
+                    if mesh.positions.contains(where: { $0.x.isNaN || $0.y.isNaN || $0.z.isNaN }) {
+                        flags.append("NaN"); break
+                    }
+                }
+                for mesh in scene.meshes
+                where mesh.indices.contains(where: { Int($0) >= mesh.positions.count }) {
+                    flags.append("索引越界"); break
+                }
+                for flag in flags {
+                    counts[flag, default: 0] += 1
+                    if flag != "无网格" && flag != "贴图缺失" && flag != "特效无贴图(隐形)" {
+                        suspicious.append("[\(tag)] \(modelPath) \(flag)")
+                    }
+                }
+                if whiteClay { whiteClayPaths.append(modelPath) }
+            }
+            print("SURVEY-W \(tag) 汇总: \(counts.sorted { $0.key < $1.key })")
+
+            // 第二遍:真白膜模型用真实 provider(带贴图解码)离屏渲染存档,供人工核对
+            try? FileManager.default.createDirectory(atPath: "/tmp/survey-w", withIntermediateDirectories: true)
+            let realService = ModelLoaderService(
+                provider: CascModelFileProvider(handle: handle, assetsIndex: assetsIndex))
+            for modelPath in whiteClayPaths.prefix(60) {
+                guard let scene = try? await realService.load(path: modelPath, format: .m3) else { continue }
+                let built = ModelSceneBuilder.build(scene, hiddenMaterialTypes: M3MaterialKind.defaultHidden)
+                let zs = SCNScene()
+                zs.rootNode.addChildNode(built.rootNode)
+                zs.background.contents = NSColor(white: 0.1, alpha: 1)
+                let zcam = SCNNode()
+                zcam.camera = SCNCamera()
+                let (fc, fr) = ModelSceneBuilder.framingBounds(
+                    of: scene, hiddenMaterialTypes: M3MaterialKind.defaultHidden)
+                zcam.position = SCNVector3(fc.x, fc.y + fr * 0.2, fc.z + fr * 2.2)
+                zcam.look(at: SCNVector3(fc.x, fc.y, fc.z))
+                zs.rootNode.addChildNode(zcam)
+                let zr = SCNRenderer(device: nil, options: nil)
+                zr.scene = zs
+                zr.pointOfView = zcam
+                let img = zr.snapshot(atTime: 0, with: CGSize(width: 400, height: 400),
+                                      antialiasingMode: .none)
+                if let tif = img.tiffRepresentation,
+                   let rep = NSBitmapImageRep(data: tif),
+                   let png = rep.representation(using: .png, properties: [:]) {
+                    let name = (modelPath as NSString).lastPathComponent
+                    try? png.write(to: URL(fileURLWithPath: "/tmp/survey-w/\(tag)_\(name).png"))
+                }
+            }
+            handle.close()
+        }
+        let report = "白膜/异常清单(\(suspicious.count) 条):\n" + suspicious.joined(separator: "\n") + "\n"
+        try? report.write(toFile: "/tmp/whiteclay-report.txt", atomically: true, encoding: .utf8)
+        print("SURVEY-W 异常清单(\(suspicious.count) 条):")
+        for line in suspicious { print("SURVEY-W  " + line) }
     }
 }

@@ -102,11 +102,24 @@ bool isDecodableImagePath(const std::string& p) {
     return false;
 }
 
+// 材质的有效显示层:diffuse 优先;diffuse 无贴图时回退 emissive 层。
+// SC2/HotS 大量特效材质(电弧/护盾/全息屏)贴图只挂在 emissive 上,
+// 不取会渲染成占位色。路径均先 sanitized(LAYR 可能只含结尾 NUL)。
+const m3::TextureLayer* effectiveLayer(const m3::StandardMaterial& sm) {
+    if (sm.diffuseLayer && !sanitized(sm.diffuseLayer->texturePath).empty())
+        return &*sm.diffuseLayer;
+    if (sm.emissiveLayer1 && !sanitized(sm.emissiveLayer1->texturePath).empty())
+        return &*sm.emissiveLayer1;
+    if (sm.emissiveLayer2 && !sanitized(sm.emissiveLayer2->texturePath).empty())
+        return &*sm.emissiveLayer2;
+    return nullptr;
+}
+
 // 把 StandardMaterial 的显示属性填进 WOMaterial(贴图/wrap/混合模式/双面/unlit)
 void applyStandardMaterial(WOMaterial& wm, const m3::StandardMaterial& sm) {
-    if (sm.diffuseLayer) {
-        wm.texturePath = sanitized(sm.diffuseLayer->texturePath);
-        const u32 lf = static_cast<u32>(sm.diffuseLayer->flags);
+    if (const m3::TextureLayer* layer = effectiveLayer(sm)) {
+        wm.texturePath = sanitized(layer->texturePath);
+        const u32 lf = static_cast<u32>(layer->flags);
         wm.wrapU = (lf & 0x4) != 0;  // TextureLayerFlag::UVWrapX
         wm.wrapV = (lf & 0x8) != 0;  // TextureLayerFlag::UVWrapY
     }
@@ -202,28 +215,37 @@ WOModel WOModelLoader::parseM3(const uint8_t* data, size_t length, WOError& erro
             mm.materialIndex < model.standardMaterials.size()) {
             applyStandardMaterial(wm, model.standardMaterials[mm.materialIndex]);
         }
-        // Composite:从带贴图的 Standard 子材质中优先取可解码位图(跳过 .ogv 视频等),
-        // 并继承其混合模式(贴图不可解码时占位色按混合模式不可见)。
+        // Composite:从带贴图的 Standard 子材质中选显示贴图,优先级:
+        //   可解码 diffuse > 可解码 emissive(全息屏/电弧等) > 不可解码 diffuse(如 .ogv)。
         // 以 orphea_deathragdoll 验证:Mat_Dissipate 的 MATM[2]=Mat_Dissolve 携带贴图
         if (mm.materialType == m3::MaterialType::Composite &&
             mm.materialIndex < model.compositeMaterials.size()) {
-            const m3::StandardMaterial* fallback = nullptr;
-            const m3::StandardMaterial* pick = nullptr;
+            const m3::StandardMaterial* fallback = nullptr;    // 第一个有 diffuse 路径的
+            const m3::StandardMaterial* pick = nullptr;        // 第一个可解码 diffuse 的
+            const m3::StandardMaterial* emissivePick = nullptr; // 第一个可解码非 diffuse 层的
             for (const auto& sec : model.compositeMaterials[mm.materialIndex].sections) {
                 if (sec.materialIndex >= model.materialMaps.size()) continue;
                 const auto& smm = model.materialMaps[sec.materialIndex];
                 if (smm.materialType != m3::MaterialType::Standard ||
                     smm.materialIndex >= model.standardMaterials.size()) continue;
                 const auto& sm = model.standardMaterials[smm.materialIndex];
-                if (!sm.diffuseLayer) continue;
-                // LAYR 路径可能只含结尾 NUL(先 sanitized 再判空/判扩展名,
-                // 否则 "无贴图" 材质会占住 fallback、真贴图被判不可解码)
-                const std::string path = sanitized(sm.diffuseLayer->texturePath);
-                if (path.empty()) continue;
-                if (!fallback) fallback = &sm;
-                if (isDecodableImagePath(path)) { pick = &sm; break; }
+                if (sm.diffuseLayer) {
+                    // LAYR 路径可能只含结尾 NUL(先 sanitized 再判空/判扩展名,
+                    // 否则 "无贴图" 材质会占住 fallback、真贴图被判不可解码)
+                    const std::string path = sanitized(sm.diffuseLayer->texturePath);
+                    if (!path.empty()) {
+                        if (!fallback) fallback = &sm;
+                        if (isDecodableImagePath(path)) { pick = &sm; break; }
+                    }
+                }
+                if (!emissivePick) {
+                    if (const m3::TextureLayer* layer = effectiveLayer(sm)) {
+                        if (isDecodableImagePath(sanitized(layer->texturePath)))
+                            emissivePick = &sm;
+                    }
+                }
             }
-            if (const m3::StandardMaterial* sm = pick ? pick : fallback)
+            if (const m3::StandardMaterial* sm = pick ? pick : (emissivePick ? emissivePick : fallback))
                 applyStandardMaterial(wm, *sm);
         }
         // Terrain:单一地形贴图层(terrain object 的主材质,如 jungle doodad)
