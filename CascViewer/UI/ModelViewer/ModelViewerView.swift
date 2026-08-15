@@ -1,6 +1,20 @@
 import SwiftUI
 import SceneKit
 
+/// 自定义滚轮缩放:默认要按住 Option 才能缩放,反直觉。
+/// 鼠标滚轮(非精密滚动)= 直接缩放,按住 Command 加速;
+/// 触控板双指滚动(精密滚动)维持默认手势不变。
+final class ModelSceneView: SCNView {
+    override func scrollWheel(with event: NSEvent) {
+        guard !event.hasPreciseScrollingDeltas else {
+            super.scrollWheel(with: event)
+            return
+        }
+        let speed: Float = event.modifierFlags.contains(.command) ? 6 : 2
+        defaultCameraController.dolly(toTarget: Float(event.scrollingDeltaY) * speed)
+    }
+}
+
 /// SCNView 的 SwiftUI 包装;场景由 viewModel 构建好后整体替换。
 struct ModelViewerView: NSViewRepresentable {
     let scene: SCNScene
@@ -10,7 +24,7 @@ struct ModelViewerView: NSViewRepresentable {
     let cameraTarget: SCNVector3
 
     func makeNSView(context: Context) -> SCNView {
-        let view = SCNView()
+        let view = ModelSceneView()
         view.scene = scene
         view.pointOfView = pointOfView
         // macOS 对应 API 是 allowsCameraControl(非 iOS 的 allowsCameraInteraction),
