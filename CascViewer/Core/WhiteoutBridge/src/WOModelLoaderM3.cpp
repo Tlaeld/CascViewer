@@ -215,9 +215,13 @@ WOModel WOModelLoader::parseM3(const uint8_t* data, size_t length, WOError& erro
                 if (smm.materialType != m3::MaterialType::Standard ||
                     smm.materialIndex >= model.standardMaterials.size()) continue;
                 const auto& sm = model.standardMaterials[smm.materialIndex];
-                if (!sm.diffuseLayer || sm.diffuseLayer->texturePath.empty()) continue;
+                if (!sm.diffuseLayer) continue;
+                // LAYR 路径可能只含结尾 NUL(先 sanitized 再判空/判扩展名,
+                // 否则 "无贴图" 材质会占住 fallback、真贴图被判不可解码)
+                const std::string path = sanitized(sm.diffuseLayer->texturePath);
+                if (path.empty()) continue;
                 if (!fallback) fallback = &sm;
-                if (isDecodableImagePath(sm.diffuseLayer->texturePath)) { pick = &sm; break; }
+                if (isDecodableImagePath(path)) { pick = &sm; break; }
             }
             if (const m3::StandardMaterial* sm = pick ? pick : fallback)
                 applyStandardMaterial(wm, *sm);
