@@ -10,7 +10,7 @@ final class ImageDecodeResultBox: NSObject {
 }
 
 actor BLPDecoderCoordinator {
-    private var decoder = CascBridge.ImageDecoderBridge()
+    private var decoder = WhiteoutBridge.WOTextureDecoder()
     private static let cache = NSCache<NSData, ImageDecodeResultBox>()
 
     func decode(data: Data) async throws -> ImageDecodeResult {
@@ -22,8 +22,8 @@ actor BLPDecoderCoordinator {
         }
 
         // Try native C++ decoder first (BLP, DDS)
-        var error = CascBridge.CascError.None
-        let cppResult: CascBridge.ImageDecodeResult? = data.withUnsafeBytes { rawBuffer -> CascBridge.ImageDecodeResult? in
+        var error = WhiteoutBridge.WOError.None
+        let cppResult: WhiteoutBridge.WOImageDecodeResult? = data.withUnsafeBytes { rawBuffer -> WhiteoutBridge.WOImageDecodeResult? in
             guard let ptr = rawBuffer.bindMemory(to: UInt8.self).baseAddress else {
                 return nil
             }
@@ -131,9 +131,30 @@ struct ImageDecodeResult: Sendable {
                 intent: .defaultIntent
             )
         }
+
+        /// 忽略 alpha 通道的变体(SC2 等游戏纹理的 alpha 是遮罩而非透明度,
+        /// 供不透明/additive/modulate 材质使用,避免被 SceneKit 当透明度处理)。
+        var cgImageOpaque: CGImage? {
+            let bytesPerPixel = 4
+            let bytesPerRow = Int(width) * bytesPerPixel
+            guard let provider = CGDataProvider(data: imageData as CFData) else { return nil }
+            return CGImage(
+                width: Int(width),
+                height: Int(height),
+                bitsPerComponent: 8,
+                bitsPerPixel: 32,
+                bytesPerRow: bytesPerRow,
+                space: ImageFrame.sharedColorSpace,
+                bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.noneSkipLast.rawValue),
+                provider: provider,
+                decode: nil,
+                shouldInterpolate: false,
+                intent: .defaultIntent
+            )
+        }
     }
 
-    init(cppResult: CascBridge.ImageDecodeResult) {
+    init(cppResult: WhiteoutBridge.WOImageDecodeResult) {
         switch cppResult.format {
         case .BLP2: format = .blp2
         case .DDS: format = .dds

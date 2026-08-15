@@ -154,6 +154,21 @@ final class CASCStorageService: ObservableObject {
     internal var childrenByPath: [String: [DirectoryNode]] = [:]
     internal var entriesByPath: [String: CASCFileEntry] = [:]
 
+    /// assets 索引懒建任务(后台线程构建一次,跨模型打开共享;
+    /// 大存储如 HotS 有 1.6M 路径,构建 ~16s,每次打开模型重建不可接受)。
+    private var assetsIndexTask: Task<[String: String], Never>?
+
+    /// 共享 assets 索引:首次调用后台构建,之后即时返回;并发调用共享同一构建任务。
+    func sharedAssetsIndex() async -> [String: String] {
+        if let task = assetsIndexTask { return await task.value }
+        let paths = Array(entriesByPath.keys)
+        let task = Task.detached(priority: .userInitiated) {
+            CascModelFileProvider.buildAssetsIndex(fromPaths: paths)
+        }
+        assetsIndexTask = task
+        return await task.value
+    }
+
     private var progressContext: UnsafeMutableRawPointer? = nil
     var allEntriesCount: Int { allEntries.count }
     var tags: [CascTag] = []
@@ -966,6 +981,7 @@ final class CASCStorageService: ObservableObject {
         currentPath = ""
         storageInfo = nil
         entriesByPath = [:]
+        assetsIndexTask = nil
 
         childrenByPath = [:]
         tags = []

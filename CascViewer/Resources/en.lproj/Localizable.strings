@@ -227,3 +227,27 @@
 "listfile_prompt_message" = "This storage lacks human-readable filenames. Load a listfile to display proper names?";
 "listfile_prompt_ok" = "Load";
 "listfile_prompt_cancel" = "Not Now";
+
+/* Model Viewer */
+"open_model_viewer" = "Open in Model Viewer";
+"animation_label" = "Animation";
+"no_animations" = "No animations";
+"model_load_failed" = "Failed to load model: %@";
+"use_builtin_model_viewer" = "Use built-in model viewer";
+
+"render_settings" = "Render Settings";
+"m3mat_desc_1" = "Standard material (solid surface)";
+"m3mat_desc_2" = "Ground-flattening mesh, usually not displayed";
+"m3mat_desc_3" = "Composite multi-layer material (rendered as placeholder)";
+"m3mat_desc_4" = "Terrain material";
+"m3mat_desc_5" = "Volume effect mesh (smoke, clouds)";
+"m3mat_desc_6" = "Volume noise effect";
+"m3mat_desc_7" = "Creep projection";
+"m3mat_desc_8" = "Hair (defunct)";
+"m3mat_desc_9" = "Splat terrain bake";
+"m3mat_desc_10" = "Reflection material";
+"m3mat_desc_11" = "Lens flare";
+"m3mat_desc_12" = "Additional data buffer";
+"model_no_mesh" = "This file contains no meshes (animation library)";
+"model_all_hidden" = "All meshes are hidden by render settings — use the gear button to re-enable";
+"render_settings_reset" = "Reset to Default";

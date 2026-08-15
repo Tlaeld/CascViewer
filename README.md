@@ -83,7 +83,13 @@ git clone --recursive https://github.com/yourusername/CascViewer.git
 cd CascViewer
 ```
 
-> **Note:** The `--recursive` flag is required to fetch the [CascLib](https://github.com/ladislav-zezula/CascLib) submodule.
+> **Note:** The `--recursive` flag is required to fetch the [CascLib](https://github.com/ladislav-zezula/CascLib) and [WhiteoutLib](https://github.com/FernandoS27/WhiteoutLib) submodules.
+
+> **Note:** Before the first build, fetch the submodules and build the WhiteoutLib static library:
+>
+> ```bash
+> git submodule update --init --recursive && tools/build_whiteout.sh
+> ```
 
 ### Build with Xcode
 
@@ -159,35 +165,25 @@ After running the command, you can launch the app normally.
 ## 🏗 Architecture
 
 ```
-┌─────────────────────────────────────────────┐
-│           SwiftUI Frontend Layer            │
-│  (FileBrowser, Search, BLPViewer, Settings) │
-└────────────────────┬────────────────────────┘
-                     │
-┌────────────────────▼────────────────────────┐
-│           Swift Service Layer               │
-│  CASCStorageService   CASCSearchService     │
-│  CASCExtractService   BLPDecoderCoordinator │
-│  CDNProductService                        │
-└────────────────────┬────────────────────────┘
-                     │
-┌────────────────────▼────────────────────────┐
-│           C++ Bridge Layer                  │
-│  ICascStorage (Local / Online)              │
-│  BLPDecoderBridge                           │
-└────────────────────┬────────────────────────┘
-                     │
-┌────────────────────▼────────────────────────┐
-│           Third-Party Libraries             │
-│  CascLib (MIT)     CDN Cache Manager        │
-└─────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────┐
+│                  SwiftUI Views                  │
+├─────────────────────────────────────────────────┤
+│  Swift Services (Storage, Search, Extract,      │
+│  ModelLoader, ModelSceneBuilder, AnimationPlayer)│
+├──────────────────────┬──────────────────────────┤
+│  C++ Bridge (CascLib)│  WhiteoutBridge          │
+├──────────────────────┼──────────────────────────┤
+│  CascLib + CDN Cache │  WhiteoutLib (textures + │
+│                      │  models, static lib)     │
+└──────────────────────┴──────────────────────────┘
 ```
 
 ### Key Components
 
-- **C++ Bridge Layer** — Wraps [CascLib](https://github.com/ladislav-zezula/CascLib) with a unified `ICascStorage` interface supporting both local and online storage
-- **Swift Service Layer** — Business logic for storage, search, extraction, and image decoding
-- **SwiftUI Frontend** — Native macOS UI with three-pane layout, supporting both SwiftUI and AppKit interop for advanced table views
+- **C++ Bridge Layer (CascLib)** — Wraps [CascLib](https://github.com/ladislav-zezula/CascLib) with a unified `ICascStorage` interface supporting both local and online storage; CASC storage access remains powered by CascLib
+- **WhiteoutBridge** — C++ bridge to [WhiteoutLib](https://github.com/FernandoS27/WhiteoutLib) (git submodule, built with CMake via `tools/build_whiteout.sh` as a static library), providing BLP/DDS texture decoding and MDX/M3/M2 model parsing
+- **Swift Service Layer** — Business logic for storage, search, extraction, image decoding, and model loading (`ModelLoaderService`, `ModelSceneBuilder`, `ModelAnimationPlayer`)
+- **SwiftUI Frontend** — Native macOS UI with three-pane layout, supporting both SwiftUI and AppKit interop for advanced table views, plus a 3D model viewer with skeletal animation playback (SceneKit + SCNSkinner)
 
 ## 🤝 Contributing
 

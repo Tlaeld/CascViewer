@@ -77,6 +77,28 @@ struct FilePreviewPanel: View {
                         .padding(.top, 4)
                         .disabled(isOpeningImage)
                     }
+
+                    if isModelFile(entry.name) {
+                        Button(action: {
+                            isOpeningImage = true
+                            openFileTask = Task {
+                                await openModelFile(entry: entry)
+                                isOpeningImage = false
+                            }
+                        }) {
+                            if isOpeningImage {
+                                ProgressView()
+                                    .scaleEffect(0.6)
+                                    .frame(width: 14, height: 14)
+                            } else {
+                                Text(L("open_model_viewer"))
+                            }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                        .padding(.top, 4)
+                        .disabled(isOpeningImage)
+                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(12)
@@ -118,11 +140,46 @@ struct FilePreviewPanel: View {
         return imageExts.contains { ext.hasSuffix($0) }
     }
 
+    private func isModelFile(_ name: String) -> Bool {
+        let ext = name.lowercased()
+        let modelExts = [".mdx", ".m3", ".m3a", ".m2"]
+        return modelExts.contains { ext.hasSuffix($0) }
+    }
+
     @MainActor
-    private func openImageFile(entry: CASCFileEntry) async {
+    private func openModelFile(entry: CASCFileEntry) async {
         guard let storageService = appState.currentStorage else { return }
 
-        if AppSettings.shared.useBuiltInImageViewer,
+        if AppSettings.shared.useBuiltInModelViewer {
+            let ext = (entry.name as NSString).pathExtension.lowercased()
+            let format: ModelScene.Format = (ext == "m2") ? .m2 : (ext == "mdx" ? .mdx : .m3)
+            // assets 索引由存储层共享构建(后台线程,只建一次),不再每次打开重建
+            let assetsIndex = await storageService.sharedAssetsIndex()
+            let provider = CascModelFileProvider(handle: storageService.handle,
+                                                 assetsIndex: assetsIndex)
+            let service = ModelLoaderService(provider: provider)
+            do {
+                let scene = try await service.load(path: entry.normalizedPath, format: format)
+                // 材质类型过滤仅适用于 M3;MDX/M2 网格恒为 Standard,套用 M3 设置会被全部隐藏
+                let hidden = (format == .m3) ? AppSettings.shared.hiddenM3MaterialTypes : []
+                let built = ModelSceneBuilder.build(scene, hiddenMaterialTypes: hidden)
+                openModelViewerWindow(fileName: entry.name, modelScene: scene, built: built)
+            } catch {
+                appState.errorMessage = L("model_load_failed", error.localizedDescription)
+            }
+            return
+        }
+
+        // 设置关闭时回退到系统打开(复用 openImageFile 的提取路径,跳过内置图像查看器)
+        await openImageFile(entry: entry, skipBuiltInViewer: true)
+    }
+
+    @MainActor
+    private func openImageFile(entry: CASCFileEntry, skipBuiltInViewer: Bool = false) async {
+        guard let storageService = appState.currentStorage else { return }
+
+        if !skipBuiltInViewer,
+           AppSettings.shared.useBuiltInImageViewer,
            let data = await storageService.readFileData(forPath: entry.normalizedPath) {
             openImageViewerWindow(fileName: entry.name, imageData: data)
             return

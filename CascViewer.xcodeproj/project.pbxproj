@@ -11,6 +11,11 @@
 		02FF2989C83AE287D1D90A5D /* CascViewerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDC871518AA0909451F89C72 /* CascViewerApp.swift */; };
 		037A470504DB30EFFCACF80F45F52C0B /* ToolbarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E998AAA1637F02BDB222B4F26B286AF /* ToolbarView.swift */; };
 		06A83327074E651AD8980A84 /* BLPDecoderCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0080CDFEC7BC5E29ED5C8AD0 /* BLPDecoderCoordinator.swift */; };
+		A60000000000000000000002 /* ModelScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = A60000000000000000000001 /* ModelScene.swift */; };
+		A60000000000000000000004 /* ModelLoaderService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A60000000000000000000003 /* ModelLoaderService.swift */; };
+		A6000000000000000000000C /* ModelSceneBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6000000000000000000000B /* ModelSceneBuilder.swift */; };
+		A6000000000000000000000E /* ModelAnimationPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6000000000000000000000D /* ModelAnimationPlayer.swift */; };
+		A60000000000000000000006 /* ModelSceneConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A60000000000000000000005 /* ModelSceneConverter.swift */; };
 		0BADAAEC3C84D033D5264282 /* CDNProduct.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5028BB24E307C519C0130E0E /* CDNProduct.swift */; };
 		172E6E146C2A14931A56F7FF /* MainWindowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B6BCE37A9280E35F34F1154 /* MainWindowView.swift */; };
 		197B1B4D2CA41F96379ABBC4 /* CascRootFile_WoW.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 573143E92267442F4D7B6A98 /* CascRootFile_WoW.cpp */; };
@@ -19,6 +24,14 @@
 		2D93B78694FC7A98E3F63545 /* InstallManifestWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 203BA01A02EBC8DEC2462D73 /* InstallManifestWindowController.swift */; };
 		2EC0D95E05EE9CCA0BE47901 /* libcurl.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 1AA2D4B030A2E2A07F7D82C4 /* libcurl.tbd */; };
 		308B59ECC23544008EF5FA04 /* BridgeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 30CF441EFCAA4921BCA96139 /* BridgeTests.swift */; };
+		69356A720A824C1192A8C6D0 /* WhiteoutBridgeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33F77860FD0E4C6EA5319A5E /* WhiteoutBridgeTests.swift */; };
+		A40000000000000000000008 /* WhiteoutBridgeModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A40000000000000000000007 /* WhiteoutBridgeModelTests.swift */; };
+		A60000000000000000000008 /* ModelLoaderServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A60000000000000000000007 /* ModelLoaderServiceTests.swift */; };
+		A6000000000000000000000A /* ModelSceneBuilderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A60000000000000000000009 /* ModelSceneBuilderTests.swift */; };
+		A60000000000000000000010 /* ModelAnimationPlayerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6000000000000000000000F /* ModelAnimationPlayerTests.swift */; };
+		A40000000000000000000006 /* WOModelLoaderMDX.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A40000000000000000000004 /* WOModelLoaderMDX.cpp */; };
+		A4000000000000000000000A /* WOModelLoaderM3.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A40000000000000000000009 /* WOModelLoaderM3.cpp */; };
+		A4000000000000000000000C /* WOModelLoaderM2.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A4000000000000000000000B /* WOModelLoaderM2.cpp */; };
 		DF2F6796CDC1369C47E57CC0 /* CascStorageProtocols.swift in Sources */ = {isa = PBXBuildFile; fileRef = F22FE567D9102B367A941D5E /* CascStorageProtocols.swift */; };
 		35FD3BB8F88FC22459CA8A23 /* CascBridge+Sendable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2458F6C63AF9557BC2D751E0 /* CascBridge+Sendable.swift */; };
 		39D9B3484F0602C4D0C0AD0B /* BLPImageInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECAC951BA9367B1B54A50B52 /* BLPImageInfo.swift */; };
@@ -32,7 +45,7 @@
 		4D51AB860D38CFB17FD78A82 /* SearchPreviewTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C53A74B49F92CA270158001F /* SearchPreviewTests.swift */; };
 		51FF2C4CA3B4BD63979EFAEE /* libz.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = DE915E0C8899B4E0AC257F43 /* libz.tbd */; };
 		529BF5E678F2BD950A440D88 /* CascRootFile_Diablo3.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 821951C36FC08A869EADC182 /* CascRootFile_Diablo3.cpp */; };
-		53402D15180DB908F43C3BE9 /* BLPDecoderBridge.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 34B2877B55EEFB6DD1DF5284 /* BLPDecoderBridge.cpp */; };
+		77900556769F4E1FBE231538 /* WOTextureDecoder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 4CFDFC95C1FF405F82C123B2 /* WOTextureDecoder.cpp */; };
 		53B3774597432B71EAF87108 /* RootHandler.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 3C5DC5E6A96CAE5935AABAF4 /* RootHandler.cpp */; };
 		55A1A7B2DFFE07299CACDE22 /* CASCStorageService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EAF6700599D831770C9F3C8 /* CASCStorageService.swift */; };
 		5797E3E1AB3A7D429B5C04CF /* OnlineStorageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BE656CB5D129E14AC64E4BE /* OnlineStorageView.swift */; };
@@ -93,6 +106,8 @@
 		F5F10E6FDD4971F4513ECB3D /* Mime.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 23607A5F1D7C0F155E14B24B /* Mime.cpp */; };
 		F6767672290F47B5453CD517 /* CascOpenStorage.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 67562BD9B2A0706D6DF74178 /* CascOpenStorage.cpp */; };
 		F6789012345678ABCDEF0123456789AB /* BLPViewerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F6789012345678ABCDEF0123 /* BLPViewerView.swift */; };
+		A9D100000000000000000002 /* ModelViewerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9D100000000000000000001 /* ModelViewerView.swift */; };
+		A9D100000000000000000004 /* ModelViewerWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9D100000000000000000003 /* ModelViewerWindow.swift */; };
 		F82B9B63F9F175BB716E67A1 /* aes.cpp in Sources */ = {isa = PBXBuildFile; fileRef = DA4F4F44C601D45F8DCDC6DC /* aes.cpp */; };
 		bded554361194cb1820bb7a599abbaaf /* SearchResultTableView.swift in Sources */ = {isa = PBXBuildFile; fileRef = c84b018fbc4d43d8b692b2903f929b2d /* SearchResultTableView.swift */; };
 		8C0F067674A44B27AE82D394 /* CDNProducts.json in Resources */ = {isa = PBXBuildFile; fileRef = EB00671784D24D96A1994474 /* CDNProducts.json */; };
@@ -112,6 +127,11 @@
 /* Begin PBXFileReference section */
 		001E70D407C4FABF23E7468A /* Localizable.strings */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.strings; name = Localizable.strings; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		0080CDFEC7BC5E29ED5C8AD0 /* BLPDecoderCoordinator.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BLPDecoderCoordinator.swift; sourceTree = "<group>"; };
+		A60000000000000000000001 /* ModelScene.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ModelScene.swift; sourceTree = "<group>"; };
+		A60000000000000000000003 /* ModelLoaderService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ModelLoaderService.swift; sourceTree = "<group>"; };
+		A6000000000000000000000B /* ModelSceneBuilder.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ModelSceneBuilder.swift; sourceTree = "<group>"; };
+		A6000000000000000000000D /* ModelAnimationPlayer.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ModelAnimationPlayer.swift; sourceTree = "<group>"; };
+		A60000000000000000000005 /* ModelSceneConverter.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ModelSceneConverter.swift; sourceTree = "<group>"; };
 		05E59819253EFC49AE0D6ECD /* SearchParserTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SearchParserTests.swift; sourceTree = "<group>"; };
 		09735D48B9B53C7CD4B0B5A385536583 /* FileTreeView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FileTreeView.swift; sourceTree = "<group>"; };
 		0B0D2D299F11CC119072C346 /* CASCStorageInfo.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CASCStorageInfo.swift; sourceTree = "<group>"; };
@@ -143,8 +163,20 @@
 		278A09974B745D208E54D7D8 /* Common.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = Common.h; path = CascLib/src/common/Common.h; sourceTree = "<group>"; };
 		2B321136423FAF8FC571698A /* lookup3.c */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.c; name = lookup3.c; path = CascLib/src/jenkins/lookup3.c; sourceTree = "<group>"; };
 		30CF441EFCAA4921BCA96139 /* BridgeTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BridgeTests.swift; sourceTree = "<group>"; };
+		33F77860FD0E4C6EA5319A5E /* WhiteoutBridgeTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WhiteoutBridgeTests.swift; sourceTree = "<group>"; };
+		A40000000000000000000007 /* WhiteoutBridgeModelTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WhiteoutBridgeModelTests.swift; sourceTree = "<group>"; };
+		A60000000000000000000007 /* ModelLoaderServiceTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ModelLoaderServiceTests.swift; sourceTree = "<group>"; };
+		A60000000000000000000009 /* ModelSceneBuilderTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ModelSceneBuilderTests.swift; sourceTree = "<group>"; };
+		A6000000000000000000000F /* ModelAnimationPlayerTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ModelAnimationPlayerTests.swift; sourceTree = "<group>"; };
+		A40000000000000000000001 /* WOModel.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = WOModel.h; sourceTree = "<group>"; };
+		A40000000000000000000002 /* WOModelLoader.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = WOModelLoader.h; sourceTree = "<group>"; };
+		A40000000000000000000004 /* WOModelLoaderMDX.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; path = WOModelLoaderMDX.cpp; sourceTree = "<group>"; };
+		A40000000000000000000009 /* WOModelLoaderM3.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; path = WOModelLoaderM3.cpp; sourceTree = "<group>"; };
+		A4000000000000000000000B /* WOModelLoaderM2.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; path = WOModelLoaderM2.cpp; sourceTree = "<group>"; };
 		343D3D1253E74997181CF840 /* CascReadFile.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = CascReadFile.cpp; path = CascLib/src/CascReadFile.cpp; sourceTree = "<group>"; };
-		34B2877B55EEFB6DD1DF5284 /* BLPDecoderBridge.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; path = BLPDecoderBridge.cpp; sourceTree = "<group>"; };
+		4CFDFC95C1FF405F82C123B2 /* WOTextureDecoder.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; path = WOTextureDecoder.cpp; sourceTree = "<group>"; };
+		26C74EA4AE3243AFAEC354AB /* WOTypes.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = WOTypes.h; sourceTree = "<group>"; };
+		45787BC813A04A4C893DDF5C /* WOTextureDecoder.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = WOTextureDecoder.h; sourceTree = "<group>"; };
 		3C5DC5E6A96CAE5935AABAF4 /* RootHandler.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = RootHandler.cpp; path = CascLib/src/common/RootHandler.cpp; sourceTree = "<group>"; };
 		3F0CE6201AD76D5461554E67 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		43DC46B47C216703772EFD6C /* Sockets.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = Sockets.h; path = CascLib/src/common/Sockets.h; sourceTree = "<group>"; };
@@ -197,6 +229,8 @@
 		A8FEB22D1DEEB4FF00E64B06 /* lookup.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = lookup.h; path = CascLib/src/jenkins/lookup.h; sourceTree = "<group>"; };
 		B1DB78AD7C1635C26329BCA1 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		B2C3D4E5F6789012345678ABCDEF0123 /* BLPViewerView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BLPViewerView.swift; sourceTree = "<group>"; };
+		A9D100000000000000000001 /* ModelViewerView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ModelViewerView.swift; sourceTree = "<group>"; };
+		A9D100000000000000000003 /* ModelViewerWindow.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ModelViewerWindow.swift; sourceTree = "<group>"; };
 		B7EB086980673D41B0CBF8AB /* Sockets.cpp */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.cpp.cpp; name = Sockets.cpp; path = CascLib/src/common/Sockets.cpp; sourceTree = "<group>"; };
 		B8DA7A45CD285A674BDEFCCF /* CDNProductService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CDNProductService.swift; sourceTree = "<group>"; };
 		B9578B46AAD3571DDD3649BD /* Localizable.strings */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.strings; name = Localizable.strings; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
@@ -266,7 +300,6 @@
 				4E39B4D1CD21D0464CAA3CE0 /* CDNConfig.cpp */,
 				0F540B1A5FC8CBA58ED0AC72 /* CDNCacheManager.cpp */,
 				7E6F0F92DB2DF0F0B8A3032F /* CascStorageHandle.cpp */,
-				34B2877B55EEFB6DD1DF5284 /* BLPDecoderBridge.cpp */,
 			);
 			name = src;
 			path = src;
@@ -280,6 +313,7 @@
 				44051960FF9179CDDB79AA39 /* CASCError.swift */,
 				ECAC951BA9367B1B54A50B52 /* BLPImageInfo.swift */,
 				5028BB24E307C519C0130E0E /* CDNProduct.swift */,
+				A60000000000000000000001 /* ModelScene.swift */,
 			);
 			name = Models;
 			path = Models;
@@ -297,6 +331,10 @@
 				F22FE567D9102B367A941D5E /* CascStorageProtocols.swift */,
 				2458F6C63AF9557BC2D751E0 /* CascBridge+Sendable.swift */,
 				B8DA7A45CD285A674BDEFCCF /* CDNProductService.swift */,
+				A60000000000000000000003 /* ModelLoaderService.swift */,
+				A60000000000000000000005 /* ModelSceneConverter.swift */,
+				A6000000000000000000000B /* ModelSceneBuilder.swift */,
+				A6000000000000000000000D /* ModelAnimationPlayer.swift */,
 			);
 			name = Services;
 			path = Services;
@@ -351,6 +389,16 @@
 			path = BLPViewer;
 			sourceTree = "<group>";
 		};
+		A9D100000000000000000005 /* ModelViewer */ = {
+			isa = PBXGroup;
+			children = (
+				A9D100000000000000000001 /* ModelViewerView.swift */,
+				A9D100000000000000000003 /* ModelViewerWindow.swift */,
+			);
+			name = ModelViewer;
+			path = ModelViewer;
+			sourceTree = "<group>";
+		};
 		4EEA17C9D9AE01DE53EEA192 /* CascViewer */ = {
 			isa = PBXGroup;
 			children = (
@@ -378,6 +426,7 @@
 			isa = PBXGroup;
 			children = (
 				81EC0ECE6621CE70FBAA2E98 /* CASCBridge */,
+				69BEA62B0841487A80B61917 /* WhiteoutBridge */,
 				1ACDB31B1FB8AE2968F3C393 /* Services */,
 				0B9CF068F2FCB597BC499CC6 /* Models */,
 			);
@@ -407,6 +456,11 @@
 			isa = PBXGroup;
 			children = (
 				30CF441EFCAA4921BCA96139 /* BridgeTests.swift */,
+				33F77860FD0E4C6EA5319A5E /* WhiteoutBridgeTests.swift */,
+				A40000000000000000000007 /* WhiteoutBridgeModelTests.swift */,
+				A60000000000000000000007 /* ModelLoaderServiceTests.swift */,
+				A60000000000000000000009 /* ModelSceneBuilderTests.swift */,
+				A6000000000000000000000F /* ModelAnimationPlayerTests.swift */,
 				A7ACAD71F179479399D317B5 /* ServiceTests.swift */,
 				7B49513BF7A5406AAAD097452DF39E98 /* IntegrationTests.swift */,
 				3F0CE6201AD76D5461554E67 /* Info.plist */,
@@ -427,6 +481,40 @@
 			);
 			name = CASCBridge;
 			path = CASCBridge;
+			sourceTree = "<group>";
+		};
+		69BEA62B0841487A80B61917 /* WhiteoutBridge */ = {
+			isa = PBXGroup;
+			children = (
+				A512992D0A5E4F89A62C8BB6 /* include */,
+				7D07C5113B644A2A9178375F /* src */,
+			);
+			name = WhiteoutBridge;
+			path = WhiteoutBridge;
+			sourceTree = "<group>";
+		};
+		A512992D0A5E4F89A62C8BB6 /* include */ = {
+			isa = PBXGroup;
+			children = (
+				26C74EA4AE3243AFAEC354AB /* WOTypes.h */,
+				45787BC813A04A4C893DDF5C /* WOTextureDecoder.h */,
+				A40000000000000000000001 /* WOModel.h */,
+				A40000000000000000000002 /* WOModelLoader.h */,
+			);
+			name = include;
+			path = include;
+			sourceTree = "<group>";
+		};
+		7D07C5113B644A2A9178375F /* src */ = {
+			isa = PBXGroup;
+			children = (
+				4CFDFC95C1FF405F82C123B2 /* WOTextureDecoder.cpp */,
+				A40000000000000000000004 /* WOModelLoaderMDX.cpp */,
+				A40000000000000000000009 /* WOModelLoaderM3.cpp */,
+				A4000000000000000000000B /* WOModelLoaderM2.cpp */,
+			);
+			name = src;
+			path = src;
 			sourceTree = "<group>";
 		};
 		900AED00E1A39E66BC68C16B /* OS X */ = {
@@ -521,6 +609,7 @@
 				CF2002F63384C458183DDD5D /* FileBrowser */,
 				52876911EFB6B64D630AE9C3 /* Search */,
 				4EC8D351CC474622DDF2A948 /* BLPViewer */,
+				A9D100000000000000000005 /* ModelViewer */,
 				952931FFD7A7D0C9C3E055E5 /* Common */,
 				310AC8A08F6C5A302BE829E7 /* InstallManifest */,
 			);
@@ -729,12 +818,20 @@
 				5CD38ABCA564158A22A877BA /* LocalizationManager.swift in Sources */ ,
 				D505C329C595D3C0907A8388 /* CASCExtractService.swift in Sources */,
 				06A83327074E651AD8980A84 /* BLPDecoderCoordinator.swift in Sources */,
+				A60000000000000000000002 /* ModelScene.swift in Sources */,
+				A60000000000000000000004 /* ModelLoaderService.swift in Sources */,
+				A60000000000000000000006 /* ModelSceneConverter.swift in Sources */,
+				A6000000000000000000000C /* ModelSceneBuilder.swift in Sources */,
+				A6000000000000000000000E /* ModelAnimationPlayer.swift in Sources */,
 				E382BD244FF12FB87B867307 /* CDNConfigService.swift in Sources */,
 				5EC3A512D07F6354CF6B6F69 /* CASCFileEntry.swift in Sources */,
 				4D15C10CC39F79093455C089 /* CASCStorageInfo.swift in Sources */,
 				AFFE10EAE618391FADB5F697 /* CASCError.swift in Sources */,
 				39D9B3484F0602C4D0C0AD0B /* BLPImageInfo.swift in Sources */,
-				53402D15180DB908F43C3BE9 /* BLPDecoderBridge.cpp in Sources */,
+				77900556769F4E1FBE231538 /* WOTextureDecoder.cpp in Sources */,
+				A40000000000000000000006 /* WOModelLoaderMDX.cpp in Sources */,
+				A4000000000000000000000A /* WOModelLoaderM3.cpp in Sources */,
+				A4000000000000000000000C /* WOModelLoaderM2.cpp in Sources */,
 				DF2F6796CDC1369C47E57CC0 /* CascStorageProtocols.swift in Sources */,
 				35FD3BB8F88FC22459CA8A23 /* CascBridge+Sendable.swift in Sources */,
 				037A470504DB30EFFCACF80F45F52C0B /* ToolbarView.swift in Sources */,
@@ -750,6 +847,8 @@
 				F6789012345678ABCDEF0123456789AB /* BLPViewerView.swift in Sources */,
 				6789012345678ABCDEF0123456789ABC /* BLPAnimationControls.swift in Sources */,
 				789012345678ABCDEF0123456789ABCD /* BLPMipMapSelector.swift in Sources */,
+				A9D100000000000000000002 /* ModelViewerView.swift in Sources */,
+				A9D100000000000000000004 /* ModelViewerWindow.swift in Sources */,
 				5797E3E1AB3A7D429B5C04CF /* OnlineStorageView.swift in Sources */,
 				0BADAAEC3C84D033D5264282 /* CDNProduct.swift in Sources */,
 				F30AA302032A81ABA1CA7ED2 /* CDNProductService.swift in Sources */,
@@ -768,6 +867,11 @@
 			buildActionMask = 2147483647;
 			files = (
 				308B59ECC23544008EF5FA04 /* BridgeTests.swift in Sources */,
+				69356A720A824C1192A8C6D0 /* WhiteoutBridgeTests.swift in Sources */,
+				A40000000000000000000008 /* WhiteoutBridgeModelTests.swift in Sources */,
+				A60000000000000000000008 /* ModelLoaderServiceTests.swift in Sources */,
+				A6000000000000000000000A /* ModelSceneBuilderTests.swift in Sources */,
+				A60000000000000000000010 /* ModelAnimationPlayerTests.swift in Sources */,
 				3FC64AAADCAC494DBC9CD0BB /* ServiceTests.swift in Sources */,
 				A4362CE38EE34B8B9FDACA56261F029F /* IntegrationTests.swift in Sources */,
 				3B9267AB2BDDE21301D7B864 /* ChildrenMapTests.swift in Sources */,
@@ -807,13 +911,23 @@
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(SRCROOT)/CascViewer/Core/CASCBridge/include",
+					"$(SRCROOT)/CascViewer/Core/WhiteoutBridge/include",
+					"$(SRCROOT)/WhiteoutLib/include",
 					"$(SRCROOT)/CascLib/src",
 				);
 				INFOPLIST_FILE = CascViewer/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/WhiteoutLib/build-universal",
+				);
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				OTHER_CPLUSPLUSFLAGS = "$(inherited)";
-				OTHER_SWIFT_FLAGS = "$(inherited) -I$(SRCROOT)/CascViewer/Core/CASCBridge/include";
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-lwhiteout_lib",
+				);
+				OTHER_SWIFT_FLAGS = "$(inherited) -I$(SRCROOT)/CascViewer/Core/CASCBridge/include -I$(SRCROOT)/CascViewer/Core/WhiteoutBridge/include";
 				PRODUCT_BUNDLE_IDENTIFIER = com.cascviewer.CascViewer;
 				SDKROOT = macosx;
 				SWIFT_BRIDGING_HEADER = "CascViewer/CascViewer-Bridging-Header.h";
@@ -948,6 +1062,7 @@
 				INFOPLIST_FILE = CascViewerTests/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				OTHER_SWIFT_FLAGS = "$(inherited) -I$(SRCROOT)/CascViewer/Core/CASCBridge/include -I$(SRCROOT)/CascViewer/Core/WhiteoutBridge/include";
 				PRODUCT_BUNDLE_IDENTIFIER = com.cascviewer.CascViewerTests;
 				SDKROOT = macosx;
 				SWIFT_OBJC_INTEROP_MODE = objcxx;
@@ -964,6 +1079,7 @@
 				INFOPLIST_FILE = CascViewerTests/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
+				OTHER_SWIFT_FLAGS = "$(inherited) -I$(SRCROOT)/CascViewer/Core/CASCBridge/include -I$(SRCROOT)/CascViewer/Core/WhiteoutBridge/include";
 				PRODUCT_BUNDLE_IDENTIFIER = com.cascviewer.CascViewerTests;
 				SDKROOT = macosx;
 				SWIFT_OBJC_INTEROP_MODE = objcxx;
@@ -989,13 +1105,23 @@
 				GENERATE_INFOPLIST_FILE = NO;
 				HEADER_SEARCH_PATHS = (
 					"$(SRCROOT)/CascViewer/Core/CASCBridge/include",
+					"$(SRCROOT)/CascViewer/Core/WhiteoutBridge/include",
+					"$(SRCROOT)/WhiteoutLib/include",
 					"$(SRCROOT)/CascLib/src",
 				);
 				INFOPLIST_FILE = CascViewer/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SRCROOT)/WhiteoutLib/build-universal",
+				);
 				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				OTHER_CPLUSPLUSFLAGS = "$(inherited)";
-				OTHER_SWIFT_FLAGS = "$(inherited) -I$(SRCROOT)/CascViewer/Core/CASCBridge/include";
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					"-lwhiteout_lib",
+				);
+				OTHER_SWIFT_FLAGS = "$(inherited) -I$(SRCROOT)/CascViewer/Core/CASCBridge/include -I$(SRCROOT)/CascViewer/Core/WhiteoutBridge/include";
 				PRODUCT_BUNDLE_IDENTIFIER = com.cascviewer.CascViewer;
 				SDKROOT = macosx;
 				SWIFT_BRIDGING_HEADER = "CascViewer/CascViewer-Bridging-Header.h";
