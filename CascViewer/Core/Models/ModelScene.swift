@@ -97,10 +97,12 @@ enum M3MaterialKind: Int, CaseIterable, Identifiable {
 
     var id: Int { rawValue }
 
-    /// 默认隐藏的类型:非实体表面(地面压平/体积特效/数据缓冲等)。
+    /// 默认隐藏的类型:非实体表面(地面压平/体积特效等)。
     /// Standard(1)/Composite(3)/Terrain(4)默认可见——Terrain 是 terrain object
     /// 的主材质(如 jungle doodad),藏掉会让整个模型消失。
-    static let defaultHidden: Set<Int> = [2, 5, 6, 7, 8, 9, 10, 11, 12]
+    /// BufferMaterial(12,MADD)是 MODL v30+ 模型的主材质载体(如 pajamathur 皮肤),
+    /// 同样默认可见。
+    static let defaultHidden: Set<Int> = [2, 5, 6, 7, 8, 9, 10, 11]
 
     var displayName: String {
         switch self {

@@ -233,6 +233,37 @@ WOModel WOModelLoader::parseM3(const uint8_t* data, size_t length, WOError& erro
                 wm.wrapV = (lf & 0x8) != 0;
             }
         }
+        // BufferMaterial(MADD,MODL v30+):材质以键值扩展存储,纹理路径在 valueData
+        // (SCHR 字符串数组,如 pajamathur 的 Emis/Norm/Spec/Diff/Dec 一组)。
+        // 取 _Diff 作 diffuse;没有则取第一个非 Norm/Spec/Emis 的颜色贴图。
+        // SCHR 字符串带结尾 NUL,必须先 sanitized 再做后缀判断,否则判扩展名恒失败。
+        // MADD 无 LAYR 环绕标志,HotS 采样默认 wrap,否则 UV 平铺时 clamp 会拖边。
+        if (mm.materialType == m3::MaterialType::BufferMaterial &&
+            mm.materialIndex < model.materialAddData.size()) {
+            std::string color, any;
+            for (const auto& raw : model.materialAddData[mm.materialIndex].valueData) {
+                const std::string s = sanitized(raw);
+                if (!isDecodableImagePath(s)) continue;
+                std::string lower = s;
+                for (auto& c : lower) c = (char)tolower((unsigned char)c);
+                if (lower.find("_diff.") != std::string::npos ||
+                    lower.find("_diffuse.") != std::string::npos) {
+                    color = s;
+                    break;
+                }
+                const bool nonColor = lower.find("_norm.") != std::string::npos ||
+                                      lower.find("_spec.") != std::string::npos ||
+                                      lower.find("_emis.") != std::string::npos;
+                if (!nonColor && color.empty()) color = s;
+                if (any.empty()) any = s;
+            }
+            const std::string& pick = !color.empty() ? color : any;
+            if (!pick.empty()) {
+                wm.texturePath = pick;
+                wm.wrapU = true;
+                wm.wrapV = true;
+            }
+        }
         out.materials.push_back(std::move(wm));
     }
 
