@@ -1,6 +1,5 @@
 import SwiftUI
 import SceneKit
-import CoreVideo
 
 struct ModelViewerWindow: View {
     let fileName: String
@@ -90,23 +89,6 @@ struct ModelViewerWindow: View {
     }
 }
 
-/// tick 合并派发的门闩(见 ModelViewerViewModel.tickGate)
-private final class TickGate: @unchecked Sendable {
-    var pending = false
-}
-
-private let modelDisplayLinkCallback: CVDisplayLinkOutputCallback = { _, _, _, _, _, context -> CVReturn in
-    guard let context = context else { return kCVReturnError }
-    let viewModel = Unmanaged<ModelViewerViewModel>.fromOpaque(context).takeUnretainedValue()
-    // 合并派发:主队列中最多压一个 tick。菜单跟踪期间主队列任务仍会被执行,
-    // 若按显示刷新率无上限积压,菜单模态循环会持续伺候这些任务而饿死自己的
-    // 事件源——表现为菜单卡成半透明、其他控件点不动,而动画照常播放。
-    if viewModel.tryEnqueueTick() {
-        Task { @MainActor in viewModel.tick() }
-    }
-    return kCVReturnSuccess
-}
-
 @MainActor
 final class ModelViewerViewModel: ObservableObject {
     @Published var scnScene = SCNScene()
@@ -129,35 +111,12 @@ final class ModelViewerViewModel: ObservableObject {
         built: BuiltModelScene(rootNode: SCNNode(), boneNodes: []))
 
     private var modelScene: ModelScene?
-    private var displayLink: CVDisplayLink?
-    private var displayLinkContext: UnsafeMutableRawPointer?
+    private var displayTimer: Timer?
     private var startTime: CFTimeInterval = 0
     private var currentTimeMs: Float = 0
-    /// 菜单跟踪期间暂停逐帧驱动的标记(跟踪结束后按原进度续播)
-    private var resumeAfterMenuTracking = false
-    private var menuObservers: [NSObjectProtocol] = []
-    /// 合并派发门闩:引用类型以便跨 actor 共享;CVDisplayLink 回调线程串行写,
-    /// 主线程在 tick() 里复位。至多积压一个 tick,菜单事件不会被饿死。
-    nonisolated private let tickGate = TickGate()
-
-    /// 仅由 CVDisplayLink 回调(串行线程)调用;主队列已有待执行 tick 时返回 false
-    nonisolated func tryEnqueueTick() -> Bool {
-        if tickGate.pending { return false }
-        tickGate.pending = true
-        return true
-    }
 
     deinit {
-        if let displayLink = displayLink {
-            CVDisplayLinkStop(displayLink)
-            CVDisplayLinkSetOutputCallback(displayLink, nil, nil)
-        }
-        if let context = displayLinkContext {
-            Unmanaged<ModelViewerViewModel>.fromOpaque(context).release()
-        }
-        for observer in menuObservers {
-            NotificationCenter.default.removeObserver(observer)
-        }
+        displayTimer?.invalidate()
     }
 
     func setup(scene: ModelScene, built: BuiltModelScene) {
@@ -165,40 +124,10 @@ final class ModelViewerViewModel: ObservableObject {
         player = ModelAnimationPlayer(scene: scene, built: built)
         scnScene.rootNode.addChildNode(built.rootNode)
         frameCamera(to: scene)
-        installMenuTrackingObservers()
         if !scene.animations.isEmpty {
             player.selectAnimation(index: 0)
             togglePlayback()
         }
-    }
-
-    /// 菜单跟踪期间停掉逐帧驱动:CVDisplayLink 的主 actor tick 在菜单模态循环里
-    /// 仍会被执行,而菜单自身的事件源被晾在一边(实测:菜单卡半透明 1-2 秒、
-    /// 其他控件点不动,动画却照常)。停 link 后骨骼不再更新,SceneKit 也不再
-    /// 重绘,菜单期间主线程完全安静;跟踪结束按原进度续播。
-    private func installMenuTrackingObservers() {
-        guard menuObservers.isEmpty else { return }
-        let nc = NotificationCenter.default
-        menuObservers.append(nc.addObserver(
-            forName: NSMenu.didBeginTrackingNotification, object: nil, queue: .main) { [weak self] _ in
-            Task { @MainActor in self?.pauseForMenuTracking() }
-        })
-        menuObservers.append(nc.addObserver(
-            forName: NSMenu.didEndTrackingNotification, object: nil, queue: .main) { [weak self] _ in
-            Task { @MainActor in self?.resumeAfterMenuTrackingIfNeeded() }
-        })
-    }
-
-    private func pauseForMenuTracking() {
-        guard isPlaying else { return }
-        resumeAfterMenuTracking = true
-        stopAnimation()  // 只停 link;isPlaying 保持 true(UI 仍显示播放中)
-    }
-
-    private func resumeAfterMenuTrackingIfNeeded() {
-        guard resumeAfterMenuTracking else { return }
-        resumeAfterMenuTracking = false
-        startAnimation()
     }
 
     /// 相机取景:按可见网格范围把默认相机拉远(网格范围比 M3 头部包围盒贴合,
@@ -244,37 +173,29 @@ final class ModelViewerViewModel: ObservableObject {
     }
 
     func tick() {
-        tickGate.pending = false  // 复位门闩,允许下一个 tick 入队
         let now = CACurrentMediaTime()
         if startTime == 0 { startTime = now }
         currentTimeMs = Float((now - startTime) * 1000)
         player.update(timeMs: currentTimeMs)
     }
 
+    /// 用 commonModes 定时器驱动逐帧更新:定时器在主 runloop 上触发,与菜单
+    /// 跟踪的事件循环公平轮转——菜单打开期间动画照播、菜单也不卡(原先的
+    /// CVDisplayLink 在独立线程按刷新率往主队列灌 Task,菜单跟踪时会积压)。
     private func startAnimation() {
         stopAnimation()
         // 续播锚定:从 currentTimeMs 继续(切换动画时已清零,等价于从头开始)
         startTime = CACurrentMediaTime() - Double(currentTimeMs) / 1000
-        var link: CVDisplayLink?
-        guard CVDisplayLinkCreateWithActiveCGDisplays(&link) == kCVReturnSuccess,
-              let displayLink = link else { return }
-        let context = Unmanaged.passRetained(self).toOpaque()
-        displayLinkContext = context
-        CVDisplayLinkSetOutputCallback(displayLink, modelDisplayLinkCallback, context)
-        CVDisplayLinkStart(displayLink)
-        self.displayLink = displayLink
+        let timer = Timer(timeInterval: 1.0 / 60.0, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.tick() }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        displayTimer = timer
     }
 
     func stopAnimation() {
-        if let displayLink = displayLink {
-            CVDisplayLinkStop(displayLink)
-            CVDisplayLinkSetOutputCallback(displayLink, nil, nil)
-        }
-        if let context = displayLinkContext {
-            Unmanaged<ModelViewerViewModel>.fromOpaque(context).release()
-            displayLinkContext = nil
-        }
-        displayLink = nil
+        displayTimer?.invalidate()
+        displayTimer = nil
     }
 }
 
