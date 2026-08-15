@@ -4,6 +4,26 @@ import SceneKit
 import AppKit
 @testable import CascViewer
 
+/// 本机真实存储路径,从 ~/.cascviewer-test-storages 读取(每行 key=value)。
+/// 该文件不进仓库;CI/他机上文件缺失时相关测试按 skip 处理,
+/// 避免把本机绝对路径硬编码进仓库造成信息泄漏。
+enum TestStoragePaths {
+    static func path(for key: String) -> String? {
+        guard let content = try? String(
+            contentsOfFile: NSHomeDirectory() + "/.cascviewer-test-storages",
+            encoding: .utf8
+        ) else { return nil }
+        for line in content.split(separator: "\n") {
+            let parts = line.split(separator: "=", maxSplits: 1)
+            guard parts.count == 2 else { continue }
+            if parts[0].trimmingCharacters(in: .whitespaces) == key {
+                return parts[1].trimmingCharacters(in: .whitespaces)
+            }
+        }
+        return nil
+    }
+}
+
 final class ModelLoaderServiceTests: XCTestCase {
 
     /// 内存文件提供者:MDX 模型 + 一张 BLP 纹理
@@ -104,7 +124,7 @@ final class ModelLoaderServiceTests: XCTestCase {
     /// 真实存储端到端验证(SC2 在本机存在才运行,否则跳过)。
     /// 覆盖:真实 CascLib 打开 + 全量枚举 + 跨 mod 索引 + 真实 DDS 解码。
     func testRealSC2StorageCrossModTexture() async throws {
-        let storagePath = "/Users/dev/Desktop/StarCraft II"
+        let storagePath = TestStoragePaths.path(for: "sc2") ?? ""
         guard FileManager.default.fileExists(atPath: storagePath + "/.build.info") else {
             throw XCTSkip("真实 SC2 存储不存在,跳过")
         }
@@ -141,7 +161,7 @@ final class ModelLoaderServiceTests: XCTestCase {
     /// (SC2 纹理 alpha 是遮罩非透明度,若被当透明度处理会渲染成近黑色)。
     /// 渲染 PNG 同时写到 /tmp/artifact_render.png 供人工查看。
     func testOffscreenRenderArtifact() async throws {
-        let storagePath = "/Users/dev/Desktop/StarCraft II"
+        let storagePath = TestStoragePaths.path(for: "sc2") ?? ""
         guard FileManager.default.fileExists(atPath: storagePath + "/.build.info") else {
             throw XCTSkip("真实 SC2 存储不存在,跳过")
         }
@@ -219,7 +239,7 @@ final class ModelLoaderServiceTests: XCTestCase {
     /// rest 姿态的蒙皮渲染必须与无蒙皮(绑定空间)渲染几乎一致——
     /// 因为 boneWorld(rest) * inverseBind 应等于单位阵。同时导出 Stand 动画中段渲染。
     func testZealotSkinnedRestMatchesUnskinned() async throws {
-        let storagePath = "/Users/dev/Desktop/StarCraft II"
+        let storagePath = TestStoragePaths.path(for: "sc2") ?? ""
         guard FileManager.default.fileExists(atPath: storagePath + "/.build.info") else {
             throw XCTSkip("真实 SC2 存储不存在,跳过")
         }
@@ -341,7 +361,7 @@ final class ModelLoaderServiceTests: XCTestCase {
     /// 多 region 模型的网格完整性验证(zealot_golden_death 有 8 个 region,
     /// M3 面下标是 region 局部索引,修复前 region≥1 的网格全是乱三角形)。
     func testGoldenDeathRender() async throws {
-        let storagePath = "/Users/dev/Desktop/StarCraft II"
+        let storagePath = TestStoragePaths.path(for: "sc2") ?? ""
         guard FileManager.default.fileExists(atPath: storagePath + "/.build.info") else {
             throw XCTSkip("真实 SC2 存储不存在,跳过")
         }
@@ -450,7 +470,7 @@ final class ModelLoaderServiceTests: XCTestCase {
 
     /// m3a 增强:自动加载同命名基础模型网格,动画按骨骼名映射(orphea 表情库)
     func testOrpheaFacialAnimsMerge() async throws {
-        let storagePath = "<hots-storage>"
+        let storagePath = TestStoragePaths.path(for: "hots") ?? ""
         guard FileManager.default.fileExists(atPath: storagePath + "/.build.info") else {
             throw XCTSkip("HotS 存储不存在,跳过")
         }
@@ -533,7 +553,7 @@ final class ModelLoaderServiceTests: XCTestCase {
     /// assets 索引每次打开重建 16s、纹理串行解码 9.4s;
     /// 修复后首次加载 ~3.7s、共享索引后二次加载 ~0.5s。取宽松上界防回归。
     func testHotSModelLoadPerformance() async throws {
-        let storagePath = "<hots-storage>"
+        let storagePath = TestStoragePaths.path(for: "hots") ?? ""
         guard FileManager.default.fileExists(atPath: storagePath + "/.build.info") else {
             throw XCTSkip("HotS 存储不存在,跳过")
         }
@@ -576,7 +596,7 @@ final class ModelLoaderServiceTests: XCTestCase {
     /// HotS nova_widow 渲染回归:REGN v5 每 region UV 缩放/偏移 + LAYR wrap 标志。
     /// 修复前 UV 越界(绝对值 ~15),clamp 采样边缘像素,整模型涂成暗色带。
     func testNovaWidowRender() async throws {
-        let storagePath = "<hots-storage>"
+        let storagePath = TestStoragePaths.path(for: "hots") ?? ""
         guard FileManager.default.fileExists(atPath: storagePath + "/.build.info") else {
             throw XCTSkip("HotS 存储不存在,跳过")
         }
@@ -653,7 +673,7 @@ final class ModelLoaderServiceTests: XCTestCase {
     /// orphea 死亡布娃娃回归:Composite 材质取子材质贴图 + 全 Composite 模型可渲染。
     /// 修复前 Composite 无贴图(占位灰);且用户侧若隐藏 Composite 会整个模型消失。
     func testOrpheaRagdollRender() async throws {
-        let storagePath = "<hots-storage>"
+        let storagePath = TestStoragePaths.path(for: "hots") ?? ""
         guard FileManager.default.fileExists(atPath: storagePath + "/.build.info") else {
             throw XCTSkip("HotS 存储不存在,跳过")
         }
@@ -710,7 +730,7 @@ final class ModelLoaderServiceTests: XCTestCase {
     /// 7596/36 = 211 恰等于 region 顶点数;修复前近半顶点 NaN、几何错乱。
     /// Terrain 材质本身不含贴图路径(地形贴图由地图贴图集运行时指定)。
     func testJungleDoodadVertexRepair() async throws {
-        let storagePath = "<hots-storage>"
+        let storagePath = TestStoragePaths.path(for: "hots") ?? ""
         guard FileManager.default.fileExists(atPath: storagePath + "/.build.info") else {
             throw XCTSkip("HotS 存储不存在,跳过")
         }
@@ -767,7 +787,7 @@ final class ModelLoaderServiceTests: XCTestCase {
     /// war3 shrine 回归:Composite 材质的子材质是 .ogv 视频(不可解码),
     /// 修复前继承默认 opaque → 大灰板;现在继承子材质的 blend 模式,占位透明
     func testWar3ShrineCompositeBlend() async throws {
-        let storagePath = "/Users/dev/Desktop/StarCraft II"
+        let storagePath = TestStoragePaths.path(for: "sc2") ?? ""
         guard FileManager.default.fileExists(atPath: storagePath + "/.build.info") else {
             throw XCTSkip("真实 SC2 存储不存在,跳过")
         }
@@ -808,13 +828,14 @@ final class ModelLoaderServiceTests: XCTestCase {
         try FileManager.default.createDirectory(atPath: "/tmp/survey", withIntermediateDirectories: true)
 
         let storages: [(String, String)] = [
-            ("SC2", "/Users/dev/Desktop/StarCraft II"),
-            ("HotS", "<hots-storage>"),
+            ("SC2", TestStoragePaths.path(for: "sc2") ?? ""),
+            ("HotS", TestStoragePaths.path(for: "hots") ?? ""),
         ]
         var seq = 0
         for (tag, storagePath) in storages {
             guard FileManager.default.fileExists(atPath: storagePath + "/.build.info") else { continue }
             var handle = CascBridge.CascStorageHandle.createLocal()
+            handle.setCdnDownloadEnabled(false)  // 离线巡检:缺失文件直接标记,不走 CDN(会卡死)
             guard handle.open(std.string(storagePath)) == .None else { continue }
             var listError = CascBridge.CascError.None
             let rawEntries = handle.listDirectory(std.string(""), &listError)
@@ -825,7 +846,7 @@ final class ModelLoaderServiceTests: XCTestCase {
             }
             let assetsIndex = CascModelFileProvider.buildAssetsIndex(fromPaths: paths)
 
-            // 按 assets/ 下前两级目录分组,每组均匀抽至多 4 个
+            // 按 assets/ 下前两级目录分组,每组均匀抽至多 2 个
             func groupKey(_ p: String) -> String {
                 guard let r = p.range(of: "/assets/", options: .caseInsensitive) else { return "" }
                 let comps = p[r.upperBound...].split(separator: "/")

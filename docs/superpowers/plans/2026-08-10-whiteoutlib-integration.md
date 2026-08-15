@@ -51,7 +51,7 @@
 - [ ] **Step 1: 添加子模块并 pin commit**
 
 ```bash
-cd /Users/dev/Documents/Casc_viewer
+cd /path/to/Casc_viewer
 git submodule add https://github.com/FernandoS27/WhiteoutLib WhiteoutLib
 git -C WhiteoutLib checkout da67a852966268eb59502649ce1296f7b9268d94
 ```

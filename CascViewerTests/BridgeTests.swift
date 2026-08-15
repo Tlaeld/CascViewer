@@ -57,7 +57,7 @@ final class BridgeTests: XCTestCase {
     }
 
     func testDDSUncompressedBGRADecodeRealFile() throws {
-        let path = "/Users/dev/Desktop/mods/heroes.stormmod/eses.stormassets/assets/textures/storm_ui_hud_volskaya_overtime_text.dds"
+        let path = TestStoragePaths.path(for: "test_dds") ?? ""
         guard FileManager.default.fileExists(atPath: path) else {
             throw XCTSkip("Real DDS file not found at \(path)")
         }

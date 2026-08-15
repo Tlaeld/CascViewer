@@ -15,7 +15,7 @@
 - **禁止新建 .swift/.cpp 文件**:`CascViewer.xcodeproj/project.pbxproj` 是手工维护的显式文件列表(无 PBXFileSystemSynchronizedRootGroup),新文件需要手工加工程条目。新代码全部并入本计划指定的现有文件。
 - 提交信息用英文,`feat:`/`fix:` 前缀风格。
 - 本地化键必须同时加入 `CascViewer/Resources/en.lproj/Localizable.strings` 和 `CascViewer/Resources/zh-Hans.lproj/Localizable.strings`。
-- 真实存储测试以 `FileManager.fileExists(atPath: "/Users/dev/Desktop/StarCraft II/.build.info")` 门控,无存储时 XCTSkip,不算失败。
+- 真实存储测试从 `~/.cascviewer-test-storages` 读取本机存储路径并以 `FileManager.fileExists(atPath:)` 门控,无存储时 XCTSkip,不算失败。
 - 测试命令(定向):
   `xcodebuild -project CascViewer.xcodeproj -scheme CascViewer -configuration Debug test -only-testing:CascViewerTests/<Class>/<test> 2>&1 | grep -E "Test Case.*(passed|failed)|error:" | tail -5`
 - 测试命令(全量):
