@@ -671,7 +671,7 @@ struct FileTreeContent: View {
     private func performExtraction(to destination: URL, preserveStructure: Bool, overwriteExisting: Bool, openAfterExtract: Bool) async {
         let extractService = CASCExtractService(storage: storage.handle)
         activeExtractService = extractService
-        let result = await extractService.extract(entries: extractEntries, to: destination, preserveStructure: preserveStructure, overwriteExisting: overwriteExisting, openAfterExtract: openAfterExtract)
+        let result = await extractService.extract(entries: extractEntries, to: destination, preserveStructure: preserveStructure, overwriteExisting: overwriteExisting)
         activeExtractService = nil
         if result.wasCancelled {
             // Silently ignore cancelled extractions
