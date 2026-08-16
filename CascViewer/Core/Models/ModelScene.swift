@@ -36,7 +36,14 @@ struct ModelScene: Sendable {
         /// UV 环绕(M3 LAYR.UVWrapX/Y);false = clamp。默认 false 保持既有构造点不变。
         var wrapU: Bool = false
         var wrapV: Bool = false
+        /// M3 细节层路径(法线/高光/自发光);空 = 无。默认空保持既有构造点不变。
+        var normalPath: String = ""
+        var specularPath: String = ""
+        var emissivePath: String = ""
         var diffuseTexture: ImageDecodeResult.ImageFrame?  // 加载阶段填充,nil = 缺失
+        var normalTexture: ImageDecodeResult.ImageFrame? = nil    // 已按 DXT5nm 还原成标准 RGB 法线
+        var specularTexture: ImageDecodeResult.ImageFrame? = nil
+        var emissiveTexture: ImageDecodeResult.ImageFrame? = nil
     }
 
     enum BlendMode: Sendable { case opaque, alphaTest, blend, additive, modulate }

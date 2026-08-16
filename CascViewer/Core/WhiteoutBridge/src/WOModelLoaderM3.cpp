@@ -123,6 +123,20 @@ void applyStandardMaterial(WOMaterial& wm, const m3::StandardMaterial& sm) {
         wm.wrapU = (lf & 0x4) != 0;  // TextureLayerFlag::UVWrapX
         wm.wrapV = (lf & 0x8) != 0;  // TextureLayerFlag::UVWrapY
     }
+    // 细节层:法线/高光/自发光。路径先 sanitized(LAYR 可能只含结尾 NUL);
+    // 只收可解码图片路径,避免把 .ogv 之类的引用带到 Swift 侧白读一次。
+    if (sm.normalLayer) {
+        const std::string p = sanitized(sm.normalLayer->texturePath);
+        if (!p.empty() && isDecodableImagePath(p)) wm.normalPath = p;
+    }
+    if (sm.specularLayer) {
+        const std::string p = sanitized(sm.specularLayer->texturePath);
+        if (!p.empty() && isDecodableImagePath(p)) wm.specularPath = p;
+    }
+    if (sm.emissiveLayer1) {
+        const std::string p = sanitized(sm.emissiveLayer1->texturePath);
+        if (!p.empty() && isDecodableImagePath(p)) wm.emissivePath = p;
+    }
     switch (sm.blendMode) {
         case m3::BlendMode::Opaque:     wm.blendMode = WOBlendMode::Opaque; break;
         case m3::BlendMode::AlphaBlend: wm.blendMode = WOBlendMode::Blend; break;
@@ -266,21 +280,21 @@ WOModel WOModelLoader::parseM3(const uint8_t* data, size_t length, WOError& erro
         // MADD 无 LAYR 环绕标志,HotS 采样默认 wrap,否则 UV 平铺时 clamp 会拖边。
         if (mm.materialType == m3::MaterialType::BufferMaterial &&
             mm.materialIndex < model.materialAddData.size()) {
-            std::string color, any;
+            std::string color, any, norm, spec, emis;
             for (const auto& raw : model.materialAddData[mm.materialIndex].valueData) {
                 const std::string s = sanitized(raw);
                 if (!isDecodableImagePath(s)) continue;
                 std::string lower = s;
                 for (auto& c : lower) c = (char)tolower((unsigned char)c);
+                if (lower.find("_norm.") != std::string::npos) { if (norm.empty()) norm = s; continue; }
+                if (lower.find("_spec.") != std::string::npos) { if (spec.empty()) spec = s; continue; }
+                if (lower.find("_emis.") != std::string::npos) { if (emis.empty()) emis = s; continue; }
                 if (lower.find("_diff.") != std::string::npos ||
                     lower.find("_diffuse.") != std::string::npos) {
                     color = s;
-                    break;
+                    continue;
                 }
-                const bool nonColor = lower.find("_norm.") != std::string::npos ||
-                                      lower.find("_spec.") != std::string::npos ||
-                                      lower.find("_emis.") != std::string::npos;
-                if (!nonColor && color.empty()) color = s;
+                if (color.empty()) color = s;
                 if (any.empty()) any = s;
             }
             const std::string& pick = !color.empty() ? color : any;
@@ -289,6 +303,9 @@ WOModel WOModelLoader::parseM3(const uint8_t* data, size_t length, WOError& erro
                 wm.wrapU = true;
                 wm.wrapV = true;
             }
+            wm.normalPath = norm;
+            wm.specularPath = spec;
+            wm.emissivePath = emis;
         }
         out.materials.push_back(std::move(wm));
     }

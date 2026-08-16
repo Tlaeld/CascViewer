@@ -756,6 +756,88 @@ final class ModelLoaderServiceTests: XCTestCase {
         XCTAssertNotNil(mat.diffuseTexture, "emissive 贴图应成功解码")
     }
 
+    /// DXT5nm 还原:Blizzard 法线贴图 X 存 alpha、Y 存 green,
+    /// swizzle 后应得标准 RGB 法线(Z 重建),alpha 恒 255。
+    func testDXT5nmNormalSwizzle() {
+        // 平法线(X=0,Y=0 → Z=1)+ 一个极限 X=1 像素
+        let px: [UInt8] = [255, 128, 0, 128,   0, 128, 0, 255]
+        let frame = ImageDecodeResult.ImageFrame(width: 2, height: 1,
+                                                 imageData: Data(px))
+        let out = ModelLoaderService.swizzleDXT5nmNormal(frame)
+        let b = [UInt8](out.imageData)
+        // 平法线:R/G 回写 128,Z≈255,A=255
+        XCTAssertEqual(b[0], 128); XCTAssertEqual(b[1], 128)
+        XCTAssertGreaterThanOrEqual(b[2], 254); XCTAssertEqual(b[3], 255)
+        // X=1(来自 alpha=255):Z=sqrt(1-1)=0 → B≈128
+        XCTAssertEqual(b[4], 255); XCTAssertEqual(b[5], 128)
+        XCTAssertTrue((126...129).contains(b[6]), "Z=0 时 B 应≈128,实际 \(b[6])")
+        XCTAssertEqual(b[7], 255)
+    }
+
+    /// HotS orphea_school18 细节层:Standard 材质应带出 _Norm/_Spec/_Emis 路径,
+    /// 法线经 DXT5nm 还原后 alpha 恒 255;三层贴图均真实解码(非占位)。
+    func testOrpheaSchool18DetailLayers() async throws {
+        let storagePath = TestStoragePaths.path(for: "hots") ?? ""
+        guard FileManager.default.fileExists(atPath: storagePath + "/.build.info") else {
+            throw XCTSkip("HotS 存储不存在,跳过")
+        }
+        var handle = CascBridge.CascStorageHandle.createLocal()
+        guard handle.open(std.string(storagePath)) == .None else { throw XCTSkip("存储打开失败") }
+        defer { handle.close() }
+        var listError = CascBridge.CascError.None
+        let rawEntries = handle.listDirectory(std.string(""), &listError)
+        var paths: [String] = []
+        paths.reserveCapacity(rawEntries.size())
+        for i in 0..<rawEntries.size() {
+            paths.append(String(rawEntries[i].fullPath).replacingOccurrences(of: "\\", with: "/"))
+        }
+        let assetsIndex = CascModelFileProvider.buildAssetsIndex(fromPaths: paths)
+        let service = ModelLoaderService(
+            provider: CascModelFileProvider(handle: handle, assetsIndex: assetsIndex))
+        let scene = try await service.load(
+            path: "mods/heroes.stormmod/base.stormassets/assets/units/heroes/storm_hero_orphea_school18/storm_hero_orphea_school18.m3",
+            format: .m3)
+        XCTAssertFalse(scene.meshes.isEmpty)
+        let mat = scene.materials[scene.meshes[0].materialIndex]
+        XCTAssertTrue(mat.texturePath.hasSuffix("Storm_Hero_Orphea_School18_Diff.dds"),
+                      "diffuse 路径不对: \(mat.texturePath)")
+        XCTAssertTrue(mat.normalPath.lowercased().hasSuffix("_norm.dds"),
+                      "应带法线层,实际: \(mat.normalPath)")
+        XCTAssertTrue(mat.specularPath.lowercased().hasSuffix("_spec.dds"),
+                      "应带高光层,实际: \(mat.specularPath)")
+        XCTAssertTrue(mat.emissivePath.lowercased().hasSuffix("_emis.dds"),
+                      "应带自发光层,实际: \(mat.emissivePath)")
+        XCTAssertNotNil(mat.diffuseTexture)
+        let norm = try XCTUnwrap(mat.normalTexture, "法线应成功解码")
+        XCTAssertEqual(norm.width, 1024)
+        XCTAssertEqual([UInt8](norm.imageData)[3], 255, "DXT5nm 还原后 alpha 应恒 255")
+        XCTAssertNotNil(mat.specularTexture, "高光应成功解码")
+        XCTAssertNotNil(mat.emissiveTexture, "自发光应成功解码")
+        // 离屏渲染存档(人工查看:法线/高光应让皮肤有立体感)
+        let built = ModelSceneBuilder.build(scene, hiddenMaterialTypes: M3MaterialKind.defaultHidden)
+        let zs = SCNScene()
+        zs.rootNode.addChildNode(built.rootNode)
+        zs.background.contents = NSColor(white: 0.1, alpha: 1)
+        let zcam = SCNNode()
+        zcam.camera = SCNCamera()
+        let (zcenter, zradius) = ModelSceneBuilder.framingBounds(
+            of: scene, hiddenMaterialTypes: M3MaterialKind.defaultHidden)
+        zcam.position = SCNVector3(zcenter.x, zcenter.y + zradius * 0.2,
+                                   zcenter.z + zradius * 2.2)
+        zcam.look(at: SCNVector3(zcenter.x, zcenter.y, zcenter.z))
+        zs.rootNode.addChildNode(zcam)
+        let zr = SCNRenderer(device: nil, options: nil)
+        zr.scene = zs
+        zr.pointOfView = zcam
+        let img = zr.snapshot(atTime: 0, with: CGSize(width: 640, height: 640),
+                              antialiasingMode: .none)
+        if let tif = img.tiffRepresentation,
+           let rep = NSBitmapImageRep(data: tif),
+           let png = rep.representation(using: .png, properties: [:]) {
+            try png.write(to: URL(fileURLWithPath: "/tmp/orphea_school18_layers.png"))
+        }
+    }
+
     /// HotS pajamathur 回归:MODL v30 模型的材质全是 MADD(BufferMaterial,无 MAT_/CMP_),
     /// 纹理路径在 MADD.valueData(SCHR 字符串数组)里,取 _Diff 作 diffuse。
     /// 修复前材质无贴图路径 → 整模型白膜;且 defaultHidden 含 12 → 默认直接不渲染。

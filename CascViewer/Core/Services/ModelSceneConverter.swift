@@ -27,6 +27,9 @@ enum ModelSceneConverter {
                 unlit: m.unlit,
                 wrapU: m.wrapU,
                 wrapV: m.wrapV,
+                normalPath: String(m.normalPath),
+                specularPath: String(m.specularPath),
+                emissivePath: String(m.emissivePath),
                 diffuseTexture: nil
             )
         }

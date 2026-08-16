@@ -172,53 +172,111 @@ actor ModelLoaderService {
         return candidates
     }
 
+    /// 单材质的纹理解析结果(diffuse + M3 细节层)。
+    private struct MaterialTextures: Sendable {
+        var diffuse: ImageDecodeResult.ImageFrame?
+        var normal: ImageDecodeResult.ImageFrame?
+        var specular: ImageDecodeResult.ImageFrame?
+        var emissive: ImageDecodeResult.ImageFrame?
+    }
+
+    /// 按路径读纹理:先候选路径,再跨 mod 兜底(引用只存在于其他 mod,
+    /// 如战役模型引用基础 mod 共享纹理)。
+    private static func readTextureByPath(_ texturePath: String, modelPath: String,
+                                          provider: any FileProvider) -> Data? {
+        for candidate in textureCandidates(modelPath: modelPath, texturePath: texturePath) {
+            if let d = provider.readFile(path: candidate) { return d }
+        }
+        let ref = texturePath.replacingOccurrences(of: "\\", with: "/")
+        if let resolved = provider.resolveAssetsPath(ref) {
+            return provider.readFile(path: resolved)
+        }
+        return nil
+    }
+
+    /// Blizzard 法线贴图是 DXT5nm 布局:X 存 alpha、Y 存 green,B 通道闲置。
+    /// 还原成标准切线空间 RGB 法线(Z 由 X/Y 重建),alpha 置 255,
+    /// 供 SceneKit material.normal 使用。
+    static func swizzleDXT5nmNormal(_ frame: ImageDecodeResult.ImageFrame) -> ImageDecodeResult.ImageFrame {
+        var data = frame.imageData
+        data.withUnsafeMutableBytes { buf in
+            guard let p = buf.baseAddress?.assumingMemoryBound(to: UInt8.self) else { return }
+            let pixelCount = buf.count / 4
+            for i in 0..<pixelCount {
+                let o = i * 4
+                let a = p[o + 3]   // X
+                let g = p[o + 1]   // Y
+                let x = Float(a) / 127.5 - 1
+                let y = Float(g) / 127.5 - 1
+                let z = sqrtf(max(0, 1 - x * x - y * y))
+                p[o] = a
+                p[o + 2] = UInt8((z * 0.5 + 0.5) * 255)
+                p[o + 3] = 255
+            }
+        }
+        return ImageDecodeResult.ImageFrame(width: frame.width, height: frame.height, imageData: data)
+    }
+
     /// 逐材质解析纹理引用并从存储读取解码;失败保留 nil(占位材质)。
     /// 各材质并行(读 + 解码),每任务独立解码器(静态纹理缓存共享,
     /// NSCache 线程安全;存储句柄内部有锁)。实测串行 18 张纹理 ~9.4s。
+    /// M3 材质除 diffuse 外还解析法线/高光/自发光细节层(有才读)。
     private func resolveTextures(_ scene: inout ModelScene, modelPath: String) async {
         let materials = scene.materials
         let provider = self.provider
-        let frames = await withTaskGroup(of: (Int, ImageDecodeResult.ImageFrame?).self) { group in
+        let frames = await withTaskGroup(of: (Int, MaterialTextures).self) { group in
             for i in materials.indices {
                 group.addTask {
                     let mat = materials[i]
+                    var tex = MaterialTextures()
+                    let coordinator = BLPDecoderCoordinator()
+                    // diffuse:路径读取失败(M2 常空路径)时回退 FileDataId
                     var data: Data? = nil
                     if !mat.texturePath.isEmpty {
-                        for candidate in Self.textureCandidates(modelPath: modelPath,
-                                                                texturePath: mat.texturePath) {
-                            if let d = provider.readFile(path: candidate) {
-                                data = d
-                                break
-                            }
-                        }
-                        // 跨 mod 兜底:引用只存在于其他 mod(如战役模型引用基础 mod 共享纹理)
-                        if data == nil {
-                            let ref = mat.texturePath.replacingOccurrences(of: "\\", with: "/")
-                            if let resolved = provider.resolveAssetsPath(ref) {
-                                data = provider.readFile(path: resolved)
-                            }
-                        }
+                        data = Self.readTextureByPath(mat.texturePath, modelPath: modelPath,
+                                                      provider: provider)
                     }
-                    // 路径读取失败(M2 常空路径)时回退 FileDataId
                     if data == nil, mat.textureFileDataId != 0 {
                         data = provider.readFileByDataId(mat.textureFileDataId)
                     }
-                    guard let textureData = data else { return (i, nil) }
-                    let coordinator = BLPDecoderCoordinator()
-                    guard let decoded = try? await coordinator.decode(data: textureData) else {
-                        return (i, nil)
+                    if let d = data, let decoded = try? await coordinator.decode(data: d) {
+                        tex.diffuse = decoded.frames.first
                     }
-                    return (i, decoded.frames.first)
+                    // 细节层:仅按路径读。emissive 与 diffuse 同路径时(兜底占用)
+                    // 跳过一次重复读取/解码,也避免 emission 叠加相同贴图加倍亮度。
+                    if !mat.normalPath.isEmpty,
+                       let d = Self.readTextureByPath(mat.normalPath, modelPath: modelPath,
+                                                      provider: provider),
+                       let decoded = try? await coordinator.decode(data: d),
+                       let frame = decoded.frames.first {
+                        tex.normal = Self.swizzleDXT5nmNormal(frame)
+                    }
+                    if !mat.specularPath.isEmpty,
+                       let d = Self.readTextureByPath(mat.specularPath, modelPath: modelPath,
+                                                      provider: provider),
+                       let decoded = try? await coordinator.decode(data: d) {
+                        tex.specular = decoded.frames.first
+                    }
+                    if !mat.emissivePath.isEmpty, mat.emissivePath != mat.texturePath,
+                       let d = Self.readTextureByPath(mat.emissivePath, modelPath: modelPath,
+                                                      provider: provider),
+                       let decoded = try? await coordinator.decode(data: d) {
+                        tex.emissive = decoded.frames.first
+                    }
+                    return (i, tex)
                 }
             }
-            var result: [Int: ImageDecodeResult.ImageFrame] = [:]
-            for await (i, frame) in group {
-                if let frame { result[i] = frame }
+            var result: [Int: MaterialTextures] = [:]
+            for await (i, tex) in group {
+                result[i] = tex
             }
             return result
         }
-        for (i, frame) in frames {
-            scene.materials[i].diffuseTexture = frame
+        for (i, tex) in frames {
+            scene.materials[i].diffuseTexture = tex.diffuse
+            scene.materials[i].normalTexture = tex.normal
+            scene.materials[i].specularTexture = tex.specular
+            scene.materials[i].emissiveTexture = tex.emissive
         }
     }
 }
