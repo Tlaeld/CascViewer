@@ -34,7 +34,6 @@ struct FileTreeView: View {
                 Spacer()
             }
             .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
-            .background(Color(NSColor.controlBackgroundColor))
         }
     }
 }
@@ -98,7 +97,6 @@ struct FileTreeContent: View {
             Spacer()
         }
         .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
-        .background(Color(NSColor.controlBackgroundColor))
         .sheet(isPresented: $showingExtractSheet) {
             ExtractDialogView(entries: extractEntries) { destination, preserveStructure, overwriteExisting, openAfterExtract in
                 Task {

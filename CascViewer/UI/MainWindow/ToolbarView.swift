@@ -6,7 +6,7 @@ struct ToolbarView: View {
     @State private var showingOpenPanel = false
     @State private var showingSettings = false
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: DS.Spacing.lg) {
             Menu {
                 Button(L("open_local_storage")) {
                     showingOpenPanel = true
@@ -42,21 +42,23 @@ struct ToolbarView: View {
                         .buttonStyle(.plain)
                     }
                 }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 3)
+                .padding(.horizontal, DS.Spacing.md)
+                .padding(.vertical, DS.Spacing.xs)
                 .background(Color(NSColor.controlBackgroundColor))
-                .cornerRadius(6)
+                .cornerRadius(DS.Corner.md)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 6)
+                    RoundedRectangle(cornerRadius: DS.Corner.md)
                         .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
                 )
 
-                Button(L("refresh")) {
+                Button {
                     guard let storage = appState.currentStorage else { return }
                     Task {
                         // Rebuild the children map to pick up any external changes
                         await storage.refreshCurrentStorage()
                     }
+                } label: {
+                    Label(L("refresh"), systemImage: "arrow.clockwise")
                 }
 
                 Button(L("advanced_search")) {
@@ -81,11 +83,12 @@ struct ToolbarView: View {
             Button(action: {
                 showingSettings = true
             }) {
-                Image(systemName: "gear")
+                Image(systemName: "gearshape")
             }
         }
-        .padding(.horizontal)
-        .padding(.vertical, 8)
+        .controlSize(.small)
+        .padding(.horizontal, DS.Spacing.lg)
+        .padding(.vertical, DS.Spacing.md)
         .sheet(isPresented: $showingSettings) {
             SettingsView()
                 .frame(minWidth: 640, minHeight: 800)

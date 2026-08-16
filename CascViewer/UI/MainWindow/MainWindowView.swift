@@ -62,111 +62,22 @@ struct MainWindowView: View {
     @StateObject private var appState = AppState()
     @ObservedObject private var settings = AppSettings.shared
 
-    // Horizontal split (left sidebar vs right content)
-    @AppStorage("mainWindow.leftWidth") private var leftWidth: Double = 220
-    @State private var hDragStartWidth: Double = 220
-    @State private var leftWidthDuringDrag: Double = 220
-
-    // Vertical split (file list vs preview panel)
-    @AppStorage("mainWindow.topRatio") private var topRatio: Double = 0.5
-    @State private var vDragStartRatio: Double = 0.5
-    @State private var topRatioDuringDrag: Double = 0.5
-
     var body: some View {
         ZStack {
             VStack(spacing: 0) {
                 ToolbarView()
                 Divider()
 
-                GeometryReader { geo in
-                    let totalWidth = geo.size.width
-                    let totalHeight = geo.size.height
-                    // Guard against zero-size layout passes
-                    let safeHeight = max(totalHeight, 1)
-                    let minLeftW: CGFloat = 180
-                    let maxLeftW: CGFloat = 400
-                    let leftW = CGFloat(min(max(leftWidthDuringDrag, minLeftW), maxLeftW))
-                    let rightW = totalWidth - leftW
-
-                    HStack(spacing: 0) {
-                        FileTreeView()
-                            .frame(width: leftW)
-
-                        // Vertical drag handle
-                        ZStack {
-                            Rectangle()
-                                .fill(Color.primary.opacity(0.2))
-                                .frame(width: 1)
-                            Rectangle()
-                                .fill(Color.clear)
-                                .frame(width: 16)
-                                .contentShape(Rectangle())
-                        }
-                        .gesture(
-                            DragGesture(minimumDistance: 1, coordinateSpace: .global)
-                                .onChanged { value in
-                                    let newWidth = hDragStartWidth + Double(value.translation.width)
-                                    leftWidthDuringDrag = min(max(newWidth, minLeftW), maxLeftW)
-                                }
-                                .onEnded { _ in
-                                    leftWidth = leftWidthDuringDrag
-                                    hDragStartWidth = leftWidthDuringDrag
-                                }
-                        )
-                        .onHover { isHovering in
-                            if isHovering {
-                                NSCursor.resizeLeftRight.set()
-                            } else {
-                                NSCursor.arrow.set()
-                            }
-                        }
-
-                        // Right area
-                        let minH: CGFloat = 200
-                        let minBottomH: CGFloat = 160
-                        let minRatio = Double(minH / safeHeight)
-                        let maxRatio = Double(max(safeHeight - minBottomH, minH) / safeHeight)
-                        let listHeight = safeHeight * CGFloat(min(max(topRatioDuringDrag, minRatio), maxRatio))
-
-                        VStack(spacing: 0) {
-                            FileListView()
-                                .frame(height: listHeight)
-
-                            // Horizontal drag handle
-                            ZStack {
-                                Rectangle()
-                                    .fill(Color.primary.opacity(0.25))
-                                    .frame(height: 1)
-                                Rectangle()
-                                    .fill(Color.clear)
-                                    .frame(height: 8)
-                                    .contentShape(Rectangle())
-                            }
-                            .gesture(
-                                DragGesture(minimumDistance: 1, coordinateSpace: .global)
-                                    .onChanged { value in
-                                        let pixelDelta = Double(value.translation.height)
-                                        let ratioDelta = pixelDelta / Double(totalHeight)
-                                        let newRatio = vDragStartRatio + ratioDelta
-                                        topRatioDuringDrag = min(max(newRatio, minRatio), maxRatio)
-                                    }
-                                    .onEnded { _ in
-                                        topRatio = topRatioDuringDrag
-                                        vDragStartRatio = topRatioDuringDrag
-                                    }
-                            )
-                            .onHover { isHovering in
-                                if isHovering {
-                                    NSCursor.resizeUpDown.set()
-                                } else {
-                                    NSCursor.arrow.set()
-                                }
-                            }
-
-                            FilePreviewPanel()
-                                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        }
-                        .frame(width: rightW)
+                NavigationSplitView {
+                    FileTreeView()
+                        .navigationSplitViewColumnWidth(min: 180, ideal: 240, max: 400)
+                } detail: {
+                    VSplitView {
+                        FileListView()
+                            .frame(minHeight: 240)
+                            .layoutPriority(1)
+                        FilePreviewPanel()
+                            .frame(minHeight: 140, idealHeight: 200)
                     }
                 }
 
