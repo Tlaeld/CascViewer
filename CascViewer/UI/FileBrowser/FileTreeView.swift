@@ -1,13 +1,6 @@
 import SwiftUI
 import AppKit
 
-struct TreeRow: Equatable {
-    let node: DirectoryNode
-    let depth: Int
-    let isExpanded: Bool
-    let hasChildren: Bool
-}
-
 struct FileTreeView: View {
     @EnvironmentObject var appState: AppState
 
@@ -19,17 +12,17 @@ struct FileTreeView: View {
         } else {
             VStack(spacing: 0) {
                 Text(L("directories"))
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(DS.Fonts.sectionHeader)
                     .foregroundColor(.secondary)
                     .lineLimit(1)
                     .truncationMode(.tail)
                     .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
+                    .padding(.horizontal, DS.Spacing.lg)
+                    .padding(.vertical, DS.Spacing.sm)
                 Divider()
                 Text(L("open_storage_to_browse"))
                     .foregroundColor(.secondary)
-                    .font(.callout)
+                    .font(DS.Fonts.body)
                     .padding(.top, 20)
                 Spacer()
             }
@@ -43,50 +36,29 @@ struct FileTreeContent: View {
     @StateObject private var expansion = TreeExpansionStore()
     @State private var extractEntries: [CASCFileEntry] = []
     @State private var showingExtractSheet = false
-    @State private var displayRows: [TreeRow] = []
     @State private var activeExtractService: CASCExtractService? = nil
     var onError: (String) -> Void
-
-    private func rebuildDisplayRows() {
-        func build(path: String, depth: Int) -> [TreeRow] {
-            let children = storage.childrenByPath[path, default: []]
-            // childrenByPath is already sorted in buildChildrenMap; no need to re-sort.
-            let dirs = children.filter { $0.children != nil }
-            var rows: [TreeRow] = []
-            for dir in dirs {
-                let isExpanded = expansion.isExpanded(dir.path)
-                // Pre-computed hasChildDirectories avoids O(k) scan per directory.
-                rows.append(TreeRow(node: dir, depth: depth, isExpanded: isExpanded, hasChildren: dir.hasChildDirectories))
-                if isExpanded {
-                    rows += build(path: dir.path, depth: depth + 1)
-                }
-            }
-            return rows
-        }
-        displayRows = build(path: "", depth: 0)
-    }
 
     var body: some View {
         VStack(spacing: 0) {
             Text(L("directories"))
-                .font(.system(size: 11, weight: .semibold))
+                .font(DS.Fonts.sectionHeader)
                 .foregroundColor(.secondary)
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
+                .padding(.horizontal, DS.Spacing.lg)
+                .padding(.vertical, DS.Spacing.sm)
 
             Divider()
 
-            TreeTableView(
-                items: displayRows,
+            TreeOutlineView(
+                generation: storage.entriesGeneration,
+                childrenByPath: storage.childrenByPath,
                 currentPath: storage.currentPath,
+                expansion: expansion,
                 onSelect: { path in
                     storage.navigate(to: path)
-                },
-                onToggleExpand: { path in
-                    expansion.toggle(path)
                 },
                 onExtract: { path in
                     extractEntries = storage.entriesUnder(path: path)
@@ -112,21 +84,13 @@ struct FileTreeContent: View {
                 showPercentage: false
             )
         }
-        .onAppear {
-            rebuildDisplayRows()
-        }
-        .onChange(of: expansion.expandedPaths) { _ in
-            rebuildDisplayRows()
-        }
         .onChange(of: storage.entriesGeneration) { _ in
             // 条目真正重载(open/refresh)才重置展开状态;内存导航不会走到这里。
             expansion.reset()
-            rebuildDisplayRows()
         }
         .onChange(of: storage.currentPath) { newPath in
             // 自动展开当前路径的祖先链,不清空别处已展开的分支。
             expansion.expandAncestors(of: newPath)
-            rebuildDisplayRows()
         }
         .onDisappear {
             activeExtractService?.cancel()
@@ -157,19 +121,27 @@ struct FileTreeContent: View {
     }
 }
 
-// MARK: - NSTableView Bridge
+// MARK: - NSOutlineView Bridge
 
-final class TreeTableViewController: NSViewController {
-    private var tableView: NSTableView?
+@MainActor
+final class TreeOutlineViewController: NSViewController {
+    private var outlineView: NSOutlineView?
     private var scrollView: NSScrollView?
 
-    var items: [TreeRow] = []
-    var currentPath: String = ""
+    /// 数据快照:仅含目录(children != nil),按父路径分组。
+    private var dirCache: [String: [DirectoryNode]] = [:]
+    private var nodeByPath: [String: DirectoryNode] = [:]
+    private(set) var generation: Int = -1
+    private var currentPath: String = ""
+    /// 已同步到 outlineView 的展开集合,用于差量展开/收起。
+    private var appliedExpansion: Set<String> = []
+
+    var expansion: TreeExpansionStore?
     var onSelect: ((String) -> Void)?
-    var onToggleExpand: ((String) -> Void)?
     var onExtract: ((String) -> Void)?
+
     private var isProgrammaticSelection = false
-    private var suppressSelection = false
+    private var isSyncingExpansion = false
 
     override func loadView() {
         view = NSView()
@@ -184,21 +156,20 @@ final class TreeTableViewController: NSViewController {
         scrollView.autohidesScrollers = true
         scrollView.translatesAutoresizingMaskIntoConstraints = false
 
-        let tableView = NSTableView()
-        tableView.headerView = nil
-        tableView.allowsMultipleSelection = false
-        tableView.allowsEmptySelection = true
-        tableView.rowSizeStyle = .small
-        tableView.intercellSpacing = NSSize(width: 0, height: 1)
-        tableView.backgroundColor = .clear
+        let outlineView = NSOutlineView()
+        outlineView.headerView = nil
+        outlineView.allowsMultipleSelection = false
+        outlineView.allowsEmptySelection = true
+        outlineView.indentationPerLevel = 16
+        outlineView.rowSizeStyle = .small
+        outlineView.backgroundColor = .clear
 
         let col = NSTableColumn(identifier: .init("name"))
         col.title = L("name_column")
-        col.width = 180
-        col.minWidth = 100
-        tableView.addTableColumn(col)
+        outlineView.addTableColumn(col)
+        outlineView.outlineTableColumn = col
 
-        scrollView.documentView = tableView
+        scrollView.documentView = outlineView
         view.addSubview(scrollView)
 
         NSLayoutConstraint.activate([
@@ -208,165 +179,181 @@ final class TreeTableViewController: NSViewController {
             scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
 
-        tableView.dataSource = self
-        tableView.delegate = self
+        outlineView.dataSource = self
+        outlineView.delegate = self
 
         let menu = NSMenu()
         menu.delegate = self
-        tableView.menu = menu
+        outlineView.menu = menu
 
         self.scrollView = scrollView
-        self.tableView = tableView
+        self.outlineView = outlineView
     }
 
-    func reload(items: [TreeRow], currentPath: String) {
-        self.items = items
+    /// 条目重载(generation 变化)时调用:重建缓存、全量刷新、重新同步展开与选中。
+    func reload(generation: Int, childrenByPath: [String: [DirectoryNode]], currentPath: String) {
+        var cache: [String: [DirectoryNode]] = [:]
+        var byPath: [String: DirectoryNode] = [:]
+        for (path, children) in childrenByPath {
+            let dirs = children.filter { $0.children != nil }
+            cache[path] = dirs
+            for dir in dirs {
+                byPath[dir.path] = dir
+            }
+        }
+        self.dirCache = cache
+        self.nodeByPath = byPath
+        self.generation = generation
         self.currentPath = currentPath
-        guard let tableView = tableView else { return }
-        tableView.reloadData()
-        selectCurrentPath()
+        self.appliedExpansion = []
+        outlineView?.reloadData()
+        applyExpansion()
+        selectPath(currentPath)
     }
 
-    private func selectCurrentPath() {
-        guard let tableView = tableView else { return }
-        guard let index = items.firstIndex(where: {
-            currentPath == $0.node.path
-        }) else {
-            tableView.deselectAll(nil)
+    /// 把 store 的展开状态差量同步到 outlineView(不触发通知回环)。
+    func applyExpansion() {
+        guard let outlineView = outlineView, let expansion = expansion else { return }
+        let target = expansion.expandedPaths
+        let old = appliedExpansion
+        guard target != old else { return }
+        isSyncingExpansion = true
+        for path in old.subtracting(target) {
+            if let node = nodeByPath[path] {
+                outlineView.collapseItem(node)
+            }
+        }
+        for path in target.subtracting(old) {
+            if let node = nodeByPath[path] {
+                outlineView.expandItem(node)
+            }
+        }
+        appliedExpansion = target
+        isSyncingExpansion = false
+    }
+
+    /// 按路径恢复选中(无该路径时清空选中)。
+    func selectPath(_ path: String) {
+        guard let outlineView = outlineView else { return }
+        currentPath = path
+        guard let node = nodeByPath[path] else {
+            if outlineView.selectedRow >= 0 {
+                isProgrammaticSelection = true
+                outlineView.deselectAll(nil)
+                isProgrammaticSelection = false
+            }
             return
         }
+        let row = outlineView.row(forItem: node)
+        guard row >= 0 else { return }
         isProgrammaticSelection = true
-        let indexSet = IndexSet(integer: index)
-        tableView.selectRowIndexes(indexSet, byExtendingSelection: false)
-        tableView.scrollRowToVisible(index)
+        outlineView.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
+        outlineView.scrollRowToVisible(row)
         isProgrammaticSelection = false
     }
+}
 
-    @objc private func toggleExpand(_ sender: NSButton) {
-        suppressSelection = true
-        let row = sender.tag
-        guard row >= 0, row < items.count else {
-            suppressSelection = false
-            return
+extension TreeOutlineViewController: NSOutlineViewDataSource {
+    func outlineView(_ outlineView: NSOutlineView, numberOfChildrenOfItem item: Any?) -> Int {
+        guard let node = item as? DirectoryNode else {
+            return dirCache[""]?.count ?? 0
         }
-        let path = items[row].node.path
-        onToggleExpand?(path)
-        // Defer clearing until the next event cycle, after SwiftUI has reloaded the tree
-        Task { @MainActor [weak self] in
-            self?.suppressSelection = false
+        return dirCache[node.path]?.count ?? 0
+    }
+
+    func outlineView(_ outlineView: NSOutlineView, child index: Int, ofItem item: Any?) -> Any {
+        guard let node = item as? DirectoryNode else {
+            return dirCache[""]![index]
         }
+        return dirCache[node.path]![index]
+    }
+
+    func outlineView(_ outlineView: NSOutlineView, isItemExpandable item: Any) -> Bool {
+        guard let node = item as? DirectoryNode else { return false }
+        return node.hasChildDirectories
     }
 }
 
-extension TreeTableViewController: NSTableViewDataSource {
-    func numberOfRows(in tableView: NSTableView) -> Int {
-        return items.count
-    }
-}
-
-extension TreeTableViewController: NSTableViewDelegate {
-    func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
+extension TreeOutlineViewController: NSOutlineViewDelegate {
+    func outlineView(_ outlineView: NSOutlineView, viewFor tableColumn: NSTableColumn?, item: Any) -> NSView? {
+        guard let node = item as? DirectoryNode else { return nil }
         let identifier = NSUserInterfaceItemIdentifier("treeCell")
-        var cell = tableView.makeView(withIdentifier: identifier, owner: self) as? NSTableCellView
-
-        let rowItem = items[row]
-        let baseX = CGFloat(8 + rowItem.depth * 16)
-        let _: CGFloat = 24
-
-        if cell == nil {
-            cell = NSTableCellView()
-            cell?.identifier = identifier
-
-            let expandButton = NSButton()
-            expandButton.bezelStyle = .recessed
-            expandButton.setButtonType(.momentaryLight)
-            expandButton.isBordered = false
-            expandButton.target = self
-            expandButton.action = #selector(toggleExpand(_:))
-            expandButton.font = NSFont.systemFont(ofSize: 10)
-            expandButton.tag = row
-            expandButton.translatesAutoresizingMaskIntoConstraints = false
-            expandButton.identifier = NSUserInterfaceItemIdentifier("expandButton")
-            cell?.addSubview(expandButton)
+        let cell: NSTableCellView
+        if let reused = outlineView.makeView(withIdentifier: identifier, owner: self) as? NSTableCellView {
+            cell = reused
+        } else {
+            let newCell = NSTableCellView()
+            newCell.identifier = identifier
 
             let icon = NSImageView()
             icon.translatesAutoresizingMaskIntoConstraints = false
-            icon.identifier = NSUserInterfaceItemIdentifier("icon")
-            cell?.imageView = icon
-            cell?.addSubview(icon)
+            newCell.imageView = icon
+            newCell.addSubview(icon)
 
             let text = NSTextField(labelWithString: "")
             text.translatesAutoresizingMaskIntoConstraints = false
             text.lineBreakMode = .byTruncatingTail
-            text.identifier = NSUserInterfaceItemIdentifier("text")
-            cell?.textField = text
-            cell?.addSubview(text)
+            text.font = NSFont.systemFont(ofSize: DS.rowFontSize)
+            newCell.textField = text
+            newCell.addSubview(text)
 
-            let expandLeading = expandButton.leadingAnchor.constraint(equalTo: cell!.leadingAnchor, constant: baseX)
-            expandLeading.identifier = "expandLeading"
             NSLayoutConstraint.activate([
-                expandLeading,
-                expandButton.centerYAnchor.constraint(equalTo: cell!.centerYAnchor),
-                expandButton.widthAnchor.constraint(equalToConstant: 16),
-                expandButton.heightAnchor.constraint(equalToConstant: 16),
-
-                icon.leadingAnchor.constraint(equalTo: expandButton.trailingAnchor, constant: 2),
-                icon.centerYAnchor.constraint(equalTo: cell!.centerYAnchor),
+                icon.leadingAnchor.constraint(equalTo: newCell.leadingAnchor, constant: 2),
+                icon.centerYAnchor.constraint(equalTo: newCell.centerYAnchor),
                 icon.widthAnchor.constraint(equalToConstant: 16),
                 icon.heightAnchor.constraint(equalToConstant: 16),
-
-                text.leadingAnchor.constraint(equalTo: icon.trailingAnchor, constant: 6),
-                text.centerYAnchor.constraint(equalTo: cell!.centerYAnchor),
-                text.trailingAnchor.constraint(equalTo: cell!.trailingAnchor, constant: -8)
+                text.leadingAnchor.constraint(equalTo: icon.trailingAnchor, constant: DS.Spacing.xs),
+                text.centerYAnchor.constraint(equalTo: newCell.centerYAnchor),
+                text.trailingAnchor.constraint(equalTo: newCell.trailingAnchor, constant: -DS.Spacing.xs)
             ])
+            cell = newCell
         }
 
-        // Update expand button position and state
-        if let expandButton = cell?.subviews.first(where: { $0.identifier?.rawValue == "expandButton" }) as? NSButton {
-            expandButton.tag = row
-            expandButton.isHidden = !rowItem.hasChildren
-            expandButton.title = rowItem.isExpanded ? "▼" : "▶"
-            if let constraint = cell?.constraints.first(where: { $0.identifier == "expandLeading" }) {
-                constraint.constant = baseX
-            }
-        }
-
-        // Update icon
-        let icon = cell?.imageView
-        icon?.image = NSImage(systemSymbolName: "folder.fill", accessibilityDescription: nil)
-        icon?.contentTintColor = .controlAccentColor
-
-        // Update text
-        cell?.textField?.stringValue = rowItem.node.name
-        cell?.textField?.textColor = .labelColor
-        if AppSettings.shared.showRemoteMarkers && !rowItem.node.isLocal {
-            cell?.textField?.textColor = .systemRed
-        }
-
+        cell.imageView?.image = NSImage(systemSymbolName: "folder.fill", accessibilityDescription: nil)
+        cell.imageView?.contentTintColor = DS.NSColors.folderIcon
+        cell.textField?.stringValue = node.name
+        let remote = AppSettings.shared.showRemoteMarkers && !node.isLocal
+        cell.textField?.textColor = remote ? DS.NSColors.remoteFile : DS.NSColors.rowText
         return cell
     }
 
-    func tableView(_ tableView: NSTableView, heightOfRow row: Int) -> CGFloat {
+    func outlineView(_ outlineView: NSOutlineView, heightOfRowByItem item: Any) -> CGFloat {
         return 24
     }
 
-    func tableViewSelectionDidChange(_ notification: Notification) {
-        guard !isProgrammaticSelection, !suppressSelection else { return }
-        guard let tv = notification.object as? NSTableView else { return }
-        let row = tv.selectedRow
-        guard row >= 0, row < items.count else { return }
-        onSelect?(items[row].node.path)
+    func outlineViewSelectionDidChange(_ notification: Notification) {
+        guard !isProgrammaticSelection, !isSyncingExpansion else { return }
+        guard let outlineView = outlineView else { return }
+        let row = outlineView.selectedRow
+        guard row >= 0, let node = outlineView.item(atRow: row) as? DirectoryNode else { return }
+        onSelect?(node.path)
+    }
+
+    func outlineViewItemDidExpand(_ notification: Notification) {
+        guard let node = notification.userInfo?["NSObject"] as? DirectoryNode else { return }
+        appliedExpansion.insert(node.path)
+        if !isSyncingExpansion {
+            expansion?.expand(node.path)
+        }
+    }
+
+    func outlineViewItemDidCollapse(_ notification: Notification) {
+        guard let node = notification.userInfo?["NSObject"] as? DirectoryNode else { return }
+        appliedExpansion.remove(node.path)
+        if !isSyncingExpansion {
+            expansion?.collapse(node.path)
+        }
     }
 }
 
-extension TreeTableViewController: NSMenuDelegate {
+extension TreeOutlineViewController: NSMenuDelegate {
     func menuNeedsUpdate(_ menu: NSMenu) {
         menu.removeAllItems()
-        guard let tableView = tableView else { return }
-        let row = tableView.clickedRow
-        guard row >= 0, row < items.count else { return }
+        guard let outlineView = outlineView else { return }
+        let row = outlineView.clickedRow
+        guard row >= 0, let node = outlineView.item(atRow: row) as? DirectoryNode else { return }
 
-        let path = items[row].node.path
+        let path = node.path
         let openItem = NSMenuItem(title: L("open"), action: #selector(handleMenuOpen(_:)), keyEquivalent: "")
         openItem.target = self
         openItem.representedObject = path
@@ -374,8 +361,7 @@ extension TreeTableViewController: NSMenuDelegate {
 
         menu.addItem(NSMenuItem.separator())
 
-        let extractTitle = items[row].node.children != nil ? L("extract_all") : L("extract")
-        let extractItem = NSMenuItem(title: extractTitle, action: #selector(handleMenuExtract(_:)), keyEquivalent: "")
+        let extractItem = NSMenuItem(title: L("extract_all"), action: #selector(handleMenuExtract(_:)), keyEquivalent: "")
         extractItem.target = self
         extractItem.representedObject = path
         menu.addItem(extractItem)
@@ -405,32 +391,34 @@ extension TreeTableViewController: NSMenuDelegate {
     }
 }
 
-struct TreeTableView: NSViewControllerRepresentable {
-    var items: [TreeRow]
-    var currentPath: String
+struct TreeOutlineView: NSViewControllerRepresentable {
+    let generation: Int
+    let childrenByPath: [String: [DirectoryNode]]
+    let currentPath: String
+    let expansion: TreeExpansionStore
     var onSelect: ((String) -> Void)?
-    var onToggleExpand: ((String) -> Void)?
     var onExtract: ((String) -> Void)?
 
-    func makeNSViewController(context: Context) -> TreeTableViewController {
-        let vc = TreeTableViewController()
+    func makeNSViewController(context: Context) -> TreeOutlineViewController {
+        let vc = TreeOutlineViewController()
         _ = vc.view
-        vc.reload(items: items, currentPath: currentPath)
+        vc.expansion = expansion
         vc.onSelect = onSelect
-        vc.onToggleExpand = onToggleExpand
         vc.onExtract = onExtract
+        vc.reload(generation: generation, childrenByPath: childrenByPath, currentPath: currentPath)
         return vc
     }
 
-    func updateNSViewController(_ vc: TreeTableViewController, context: Context) {
+    func updateNSViewController(_ vc: TreeOutlineViewController, context: Context) {
         guard vc.isViewLoaded else { return }
-        let itemsChanged = vc.items.count != items.count || zip(vc.items, items).contains(where: { $0 != $1 })
-        let pathChanged = vc.currentPath != currentPath
-        if itemsChanged || pathChanged {
-            vc.reload(items: items, currentPath: currentPath)
-        }
+        vc.expansion = expansion
         vc.onSelect = onSelect
-        vc.onToggleExpand = onToggleExpand
         vc.onExtract = onExtract
+        if vc.generation != generation {
+            vc.reload(generation: generation, childrenByPath: childrenByPath, currentPath: currentPath)
+        } else {
+            vc.applyExpansion()
+            vc.selectPath(currentPath)
+        }
     }
 }
