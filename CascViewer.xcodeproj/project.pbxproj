@@ -59,6 +59,8 @@
 		745F71D8BA82A40EBC6D2B0C /* CASCSearchService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2761450A441A10DA77FEBF86 /* CASCSearchService.swift */; };
 	5CD38ABCA564158A22A877BA /* LocalizationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCFBFBFAED73D4521A472ACE /* LocalizationManager.swift */; };
 		74EE42895653FED52D9F0337C6DAADEE /* FileTreeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09735D48B9B53C7CD4B0B5A385536583 /* FileTreeView.swift */; };
+		D567153B6BC2F5DADD5C35A5 /* TreeExpansionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 669CD97037B597F792D4E98F /* TreeExpansionStore.swift */; };
+		093FFA6D6C34F48A06058F53 /* TreeExpansionStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB57A1337454C53F9F9CC63E /* TreeExpansionStoreTests.swift */; };
 		789012345678ABCDEF0123456789ABCD /* BLPMipMapSelector.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4E5F6789012345678ABCDEF01234567 /* BLPMipMapSelector.swift */; };
 		7DF6A5C45692C2B8C08D2969 /* ListFile.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A71329496ECA91E09CBC2223 /* ListFile.cpp */; };
 		83D4FDD835ED3EC9ABFC68A6 /* CascIndexFiles.cpp in Sources */ = {isa = PBXBuildFile; fileRef = C76566A5C1EFA2D1F14473CD /* CascIndexFiles.cpp */; };
@@ -134,6 +136,8 @@
 		A60000000000000000000005 /* ModelSceneConverter.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ModelSceneConverter.swift; sourceTree = "<group>"; };
 		05E59819253EFC49AE0D6ECD /* SearchParserTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SearchParserTests.swift; sourceTree = "<group>"; };
 		09735D48B9B53C7CD4B0B5A385536583 /* FileTreeView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FileTreeView.swift; sourceTree = "<group>"; };
+		669CD97037B597F792D4E98F /* TreeExpansionStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TreeExpansionStore.swift; sourceTree = "<group>"; };
+		CB57A1337454C53F9F9CC63E /* TreeExpansionStoreTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TreeExpansionStoreTests.swift; sourceTree = "<group>"; };
 		0B0D2D299F11CC119072C346 /* CASCStorageInfo.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CASCStorageInfo.swift; sourceTree = "<group>"; };
 		0CC9B29BD5D0439390006776 /* ArraySparse.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = ArraySparse.h; path = CascLib/src/common/ArraySparse.h; sourceTree = "<group>"; };
 		0D92554856EB259EF384EE77 /* md5.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = md5.h; path = CascLib/src/hashes/md5.h; sourceTree = "<group>"; };
@@ -468,6 +472,7 @@
 				05E59819253EFC49AE0D6ECD /* SearchParserTests.swift */,
 				C53A74B49F92CA270158001F /* SearchPreviewTests.swift */,
 				6B3884ED075B3207805D9031 /* AppSettingsTests.swift */,
+				CB57A1337454C53F9F9CC63E /* TreeExpansionStoreTests.swift */,
 			);
 			name = CascViewerTests;
 			path = CascViewerTests;
@@ -551,6 +556,7 @@
 			isa = PBXGroup;
 			children = (
 				09735D48B9B53C7CD4B0B5A385536583 /* FileTreeView.swift */,
+				669CD97037B597F792D4E98F /* TreeExpansionStore.swift */,
 				9DE766F954D9B014A10A4A372929444F /* FileListView.swift */,
 				1CE0B9866ABEC28A52AD9DA460D84BA2 /* FilePreviewPanel.swift */,
 				1A8215F4B2E848028DCC8338D668EE63 /* ExtractDialogView.swift */,
@@ -837,6 +843,7 @@
 				037A470504DB30EFFCACF80F45F52C0B /* ToolbarView.swift in Sources */,
 				BC667D0E6B33C558ABE3ECBEA2E0C8C5 /* StatusBarView.swift in Sources */,
 				74EE42895653FED52D9F0337C6DAADEE /* FileTreeView.swift in Sources */,
+				D567153B6BC2F5DADD5C35A5 /* TreeExpansionStore.swift in Sources */,
 				9353117A4C9C9675F7827DEA28AA0032 /* FileListView.swift in Sources */,
 				462578381ED52C1C7CF09D6739A38542 /* FilePreviewPanel.swift in Sources */,
 				90A4C1DB5D644463A144BB3C132F7863 /* ExtractDialogView.swift in Sources */,
@@ -878,6 +885,7 @@
 				4831170CF5118AC5F7332C7D /* SearchParserTests.swift in Sources */,
 				4D51AB860D38CFB17FD78A82 /* SearchPreviewTests.swift in Sources */,
 				2A3A8BBC5F5C013D873E2828 /* AppSettingsTests.swift in Sources */,
+				093FFA6D6C34F48A06058F53 /* TreeExpansionStoreTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
