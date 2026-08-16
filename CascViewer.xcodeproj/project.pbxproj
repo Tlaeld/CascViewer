@@ -61,6 +61,7 @@
 		74EE42895653FED52D9F0337C6DAADEE /* FileTreeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09735D48B9B53C7CD4B0B5A385536583 /* FileTreeView.swift */; };
 		D567153B6BC2F5DADD5C35A5 /* TreeExpansionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 669CD97037B597F792D4E98F /* TreeExpansionStore.swift */; };
 		093FFA6D6C34F48A06058F53 /* TreeExpansionStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB57A1337454C53F9F9CC63E /* TreeExpansionStoreTests.swift */; };
+		439CFE9F2CF68620642483CC /* DesignSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = E43A36534C9DF6B53F9C5892 /* DesignSystem.swift */; };
 		789012345678ABCDEF0123456789ABCD /* BLPMipMapSelector.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4E5F6789012345678ABCDEF01234567 /* BLPMipMapSelector.swift */; };
 		7DF6A5C45692C2B8C08D2969 /* ListFile.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A71329496ECA91E09CBC2223 /* ListFile.cpp */; };
 		83D4FDD835ED3EC9ABFC68A6 /* CascIndexFiles.cpp in Sources */ = {isa = PBXBuildFile; fileRef = C76566A5C1EFA2D1F14473CD /* CascIndexFiles.cpp */; };
@@ -137,6 +138,7 @@
 		05E59819253EFC49AE0D6ECD /* SearchParserTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SearchParserTests.swift; sourceTree = "<group>"; };
 		09735D48B9B53C7CD4B0B5A385536583 /* FileTreeView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FileTreeView.swift; sourceTree = "<group>"; };
 		669CD97037B597F792D4E98F /* TreeExpansionStore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TreeExpansionStore.swift; sourceTree = "<group>"; };
+		E43A36534C9DF6B53F9C5892 /* DesignSystem.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DesignSystem.swift; sourceTree = "<group>"; };
 		CB57A1337454C53F9F9CC63E /* TreeExpansionStoreTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TreeExpansionStoreTests.swift; sourceTree = "<group>"; };
 		0B0D2D299F11CC119072C346 /* CASCStorageInfo.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CASCStorageInfo.swift; sourceTree = "<group>"; };
 		0CC9B29BD5D0439390006776 /* ArraySparse.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; name = ArraySparse.h; path = CascLib/src/common/ArraySparse.h; sourceTree = "<group>"; };
@@ -611,6 +613,7 @@
 		E4DD781E5701B94DE5A1B3A5 /* UI */ = {
 			isa = PBXGroup;
 			children = (
+				E43A36534C9DF6B53F9C5892 /* DesignSystem.swift */,
 				28AFBA00D9B9E8A46552E5CE /* MainWindow */,
 				CF2002F63384C458183DDD5D /* FileBrowser */,
 				52876911EFB6B64D630AE9C3 /* Search */,
@@ -844,6 +847,7 @@
 				BC667D0E6B33C558ABE3ECBEA2E0C8C5 /* StatusBarView.swift in Sources */,
 				74EE42895653FED52D9F0337C6DAADEE /* FileTreeView.swift in Sources */,
 				D567153B6BC2F5DADD5C35A5 /* TreeExpansionStore.swift in Sources */,
+				439CFE9F2CF68620642483CC /* DesignSystem.swift in Sources */,
 				9353117A4C9C9675F7827DEA28AA0032 /* FileListView.swift in Sources */,
 				462578381ED52C1C7CF09D6739A38542 /* FilePreviewPanel.swift in Sources */,
 				90A4C1DB5D644463A144BB3C132F7863 /* ExtractDialogView.swift in Sources */,
