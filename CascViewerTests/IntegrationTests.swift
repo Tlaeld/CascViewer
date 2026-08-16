@@ -65,4 +65,17 @@ final class IntegrationTests: XCTestCase {
         XCTAssertTrue(service.tags.isEmpty)
         XCTAssertNil(service.error)
     }
+
+    @MainActor
+    func testEntriesGenerationIncrementsOnlyOnReload() {
+        let storage = CascBridge.CascStorageHandle.createLocal()
+        let service = CASCStorageService(storage: storage)
+        XCTAssertEqual(service.entriesGeneration, 0)
+        service.noteEntriesReloaded()
+        XCTAssertEqual(service.entriesGeneration, 1)
+
+        // 内存导航不得递增 generation。
+        service.navigate(to: "some/path")
+        XCTAssertEqual(service.entriesGeneration, 1)
+    }
 }

@@ -41,7 +41,7 @@ struct FileTreeView: View {
 
 struct FileTreeContent: View {
     @ObservedObject var storage: CASCStorageService
-    @State private var expandedPaths: Set<String> = []
+    @StateObject private var expansion = TreeExpansionStore()
     @State private var extractEntries: [CASCFileEntry] = []
     @State private var showingExtractSheet = false
     @State private var displayRows: [TreeRow] = []
@@ -55,7 +55,7 @@ struct FileTreeContent: View {
             let dirs = children.filter { $0.children != nil }
             var rows: [TreeRow] = []
             for dir in dirs {
-                let isExpanded = expandedPaths.contains(dir.path)
+                let isExpanded = expansion.isExpanded(dir.path)
                 // Pre-computed hasChildDirectories avoids O(k) scan per directory.
                 rows.append(TreeRow(node: dir, depth: depth, isExpanded: isExpanded, hasChildren: dir.hasChildDirectories))
                 if isExpanded {
@@ -87,12 +87,7 @@ struct FileTreeContent: View {
                     storage.navigate(to: path)
                 },
                 onToggleExpand: { path in
-                    if expandedPaths.contains(path) {
-                        expandedPaths.remove(path)
-                    } else {
-                        expandedPaths.insert(path)
-                    }
-                    // rebuildDisplayRows() is triggered by .onChange(of: expandedPaths)
+                    expansion.toggle(path)
                 },
                 onExtract: { path in
                     extractEntries = storage.entriesUnder(path: path)
@@ -122,31 +117,18 @@ struct FileTreeContent: View {
         .onAppear {
             rebuildDisplayRows()
         }
-        .onChange(of: expandedPaths) { _ in
+        .onChange(of: expansion.expandedPaths) { _ in
             rebuildDisplayRows()
         }
-        .onChange(of: storage.currentChildren) { _ in
-            // childrenByPath changes always accompany currentChildren changes;
-            // using currentChildren avoids O(totalEntries) dictionary equality comparison.
-            expandedPaths.removeAll()
+        .onChange(of: storage.entriesGeneration) { _ in
+            // 条目真正重载(open/refresh)才重置展开状态;内存导航不会走到这里。
+            expansion.reset()
             rebuildDisplayRows()
         }
         .onChange(of: storage.currentPath) { newPath in
-            // Auto-expand ancestor directories to reveal the current path
-            var path = newPath
-            var didExpand = false
-            while !path.isEmpty {
-                if !expandedPaths.contains(path) {
-                    expandedPaths.insert(path)
-                    didExpand = true
-                }
-                path = (path as NSString).deletingLastPathComponent
-            }
-            // Only rebuild explicitly if expandedPaths didn't change;
-            // otherwise onChange(of: expandedPaths) will handle it.
-            if !didExpand {
-                rebuildDisplayRows()
-            }
+            // 自动展开当前路径的祖先链,不清空别处已展开的分支。
+            expansion.expandAncestors(of: newPath)
+            rebuildDisplayRows()
         }
         .onDisappear {
             activeExtractService?.cancel()

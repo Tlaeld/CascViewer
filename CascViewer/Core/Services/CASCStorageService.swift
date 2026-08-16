@@ -137,6 +137,10 @@ final class CASCStorageService: ObservableObject {
     @Published var currentPath: String = ""
     @Published var entries: [CASCFileEntry] = []
     @Published var currentChildren: [DirectoryNode] = []
+    /// childrenByPath/entriesByPath 每次从原始条目重建(open/refresh)时递增。
+    /// 内存导航(navigate)不会递增 —— 观察者用它区分"条目重载"(重置视图暂态)
+    /// 与"导航"(保留目录树展开状态)。
+    @Published private(set) var entriesGeneration: Int = 0
     @Published var storageInfo: CASCStorageInfo?
     @Published var isLoading = false
     @Published var loadProgress: Double = 0
@@ -458,6 +462,7 @@ final class CASCStorageService: ObservableObject {
             self.currentPath = ""
             self.currentChildren = childrenMap[""] ?? []
             self.entries = []
+            noteEntriesReloaded()
             // Detect if entries lack human-readable names.
             // CascLib may report DataId/CKey placeholders as Full,
             // so we check filename patterns in addition to nameType.
@@ -874,6 +879,11 @@ final class CASCStorageService: ObservableObject {
         }
 
         return (map, entriesByPath)
+    }
+
+    /// 标记条目索引已重建。由 loadRootEntries 成功分支调用;internal 便于测试。
+    func noteEntriesReloaded() {
+        entriesGeneration &+= 1
     }
 
     /// Pure in-memory navigation — O(1) lookup via pre-computed map.
