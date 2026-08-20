@@ -10,12 +10,12 @@ struct StatusBarView: View {
         } else {
             HStack(spacing: 8) {
                 Text(L("status_ready"))
-                    .font(.caption)
+                    .font(DS.Fonts.caption)
                 Spacer()
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 4)
-            .background(Color(NSColor.controlBackgroundColor))
+            .padding(.horizontal, DS.Spacing.lg)
+            .padding(.vertical, DS.Spacing.xs)
+            .background(DS.Colors.panelBackground)
         }
     }
 }
@@ -29,33 +29,33 @@ private struct StatusBarContentView: View {
             let currentCount = storage.currentChildren.count
             let totalCount = storage.allEntriesCount
             Text(L("status_current_folder", currentCount))
-                .font(.caption)
+                .font(DS.Fonts.caption)
             Text("|")
-                .font(.caption)
+                .font(DS.Fonts.caption)
                 .foregroundColor(.secondary)
             Text(L("status_files", totalCount))
-                .font(.caption)
+                .font(DS.Fonts.caption)
             if !appState.selectedPath.isEmpty {
                 Text("|")
-                    .font(.caption)
+                    .font(DS.Fonts.caption)
                     .foregroundColor(.secondary)
                 Text(L("status_selected", appState.selectedPath))
-                    .font(.caption)
+                    .font(DS.Fonts.caption)
                     .lineLimit(1)
                     .truncationMode(.middle)
                     .frame(maxWidth: 300)
             }
             if let info = storage.storageInfo {
                 Text("|")
-                    .font(.caption)
+                    .font(DS.Fonts.caption)
                     .foregroundColor(.secondary)
                 Text(L("status_storage", info.productName, info.buildVersion))
-                    .font(.caption)
+                    .font(DS.Fonts.caption)
             }
             Spacer()
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 4)
-        .background(Color(NSColor.controlBackgroundColor))
+        .padding(.horizontal, DS.Spacing.lg)
+        .padding(.vertical, DS.Spacing.xs)
+        .background(DS.Colors.panelBackground)
     }
 }

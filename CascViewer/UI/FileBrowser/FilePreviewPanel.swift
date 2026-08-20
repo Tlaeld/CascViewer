@@ -21,13 +21,13 @@ struct FilePreviewPanel: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
                 Text(L("details_panel"))
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(DS.Fonts.sectionHeader)
                     .foregroundColor(.primary)
                 Spacer()
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
-            .background(Color(NSColor.controlBackgroundColor))
+            .background(DS.Colors.panelBackground)
 
             Divider()
 
@@ -40,10 +40,10 @@ struct FilePreviewPanel: View {
 
                         VStack(alignment: .leading, spacing: 2) {
                             Text(entry.name)
-                                .font(.system(size: 13, weight: .semibold))
+                                .font(DS.Fonts.title)
                                 .lineLimit(1)
                             Text(entry.isDirectory ? L("folder") : L("file"))
-                                .font(.system(size: 11))
+                                .font(DS.Fonts.caption)
                                 .foregroundColor(.secondary)
                         }
 
@@ -54,7 +54,7 @@ struct FilePreviewPanel: View {
 
                     InfoRow(label: L("path_label"), value: entry.normalizedPath)
                     InfoRow(label: L("size_label"), value: entry.formattedSize)
-                    InfoRow(label: L("encoding_key_label"), value: entry.encodingKey)
+                    InfoRow(label: L("encoding_key_label"), value: entry.encodingKey, monospaced: true)
 
                     if isImageFile(entry.name) {
                         Button(action: {
@@ -101,7 +101,7 @@ struct FilePreviewPanel: View {
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(12)
+                .padding(DS.Spacing.lg)
             } else {
                 VStack(spacing: 8) {
                     Spacer()
@@ -109,7 +109,7 @@ struct FilePreviewPanel: View {
                         .font(.system(size: 32))
                         .foregroundColor(.secondary.opacity(0.5))
                     Text(L("select_file_for_details"))
-                        .font(.system(size: 12))
+                        .font(DS.Fonts.body)
                         .foregroundColor(.secondary)
                     Spacer()
                 }
@@ -118,7 +118,7 @@ struct FilePreviewPanel: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(Color(NSColor.controlBackgroundColor))
+        .background(DS.Colors.panelBackground)
         .onAppear {
             refreshSelectedEntry()
         }
@@ -226,15 +226,16 @@ struct FilePreviewPanel: View {
 struct InfoRow: View {
     let label: String
     let value: String
+    var monospaced: Bool = false
 
     var body: some View {
-        HStack(alignment: .top, spacing: 8) {
+        HStack(alignment: .top, spacing: DS.Spacing.md) {
             Text(label + ":")
-                .font(.system(size: 11, weight: .medium))
+                .font(DS.Fonts.caption)
                 .foregroundColor(.secondary)
                 .frame(width: 80, alignment: .leading)
             Text(value)
-                .font(.system(size: 11))
+                .font(monospaced ? DS.Fonts.mono : DS.Fonts.caption)
                 .lineLimit(3)
                 .textSelection(.enabled)
             Spacer()
