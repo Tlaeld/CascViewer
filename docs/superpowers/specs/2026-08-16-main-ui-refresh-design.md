@@ -96,3 +96,19 @@ NSTableView 桥接的懒渲染,这是刻意为之,必须保留数据层性能。
   TreeExpansionStore 修复(收起 bug 修复与视觉翻新不依赖 NSOutlineView)。
 - 全部改动集中在 `CascViewer/UI/` + `CASCStorageService` 加一个 generation 属性,
   与 `fix/m3a-animation-switch`、`feat/m3-material-layers` 分支的文件不重叠,可并行。
+
+## 6. 实施偏差记录(终审留痕,2026-08-21)
+
+实现过程中对本文档的有意缩水/修正,均已评审确认,留作 follow-up 候选:
+
+- **3.1 节"工具栏并入系统 .toolbar"**:不可行 —— 主窗口是手工 NSWindow+NSHostingView,
+  `.toolbar` 不会生成 NSToolbar。实际保持视图内工具栏行,仅做视觉翻新。
+- **3.1 节"窗口标题显示当前存储名"**:未实现。窗口标题仍为静态 app 名
+  (`CascViewerApp.swift` 的 `L("app_name")`)。follow-up 候选。
+- **3.1 节分栏宽度持久化**:`@AppStorage("mainWindow.leftWidth"/"topRatio")` 随手写分栏移除,
+  NavigationSplitView/VSplitView 不跨启动保存列宽(实施时误认为系统会 autosave)。
+  用户可见的小回退,follow-up 决定是否恢复。
+- **3.3 节"列头与排序指示器现代化"**:未做,列头保持系统默认。
+- **3.4 节"详情面板卡片化"**:降级为 token 化(字体/间距/背景统一),未引入卡片视觉。
+- 已验证无需处理:NSTableView 默认 `.lastColumnOnlyAutoresizingStyle` 使侧栏单列自动拉满
+  (旧代码 180/100 宽度无需移植);TypeChip 垂直 padding 3→4pt;InfoRow label 失 medium 字重。
