@@ -228,11 +228,12 @@ struct FileListContent: View {
 
     @ViewBuilder
     private var pathBar: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: DS.Spacing.xs) {
             Button(action: { storage.navigate(to: "") }) {
-                Image(systemName: "house").font(.system(size: 11))
+                Image(systemName: "house")
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.borderless)
+            .controlSize(.small)
             .help(L("root"))
 
             if !storage.currentPath.isEmpty {
@@ -244,28 +245,32 @@ struct FileListContent: View {
                         storage.navigate(to: "")
                     }
                 }) {
-                    Image(systemName: "arrow.up").font(.system(size: 11))
+                    Image(systemName: "arrow.up")
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.borderless)
+                .controlSize(.small)
                 .help(L("parent_directory"))
 
                 let components = storage.currentPath.split(separator: "/", omittingEmptySubsequences: true)
                 ForEach(Array(components.enumerated()), id: \.offset) { index, component in
-                    Text("›").font(.system(size: 10)).foregroundColor(.secondary)
+                    Image(systemName: "chevron.right")
+                        .font(DS.Fonts.caption)
+                        .foregroundColor(.secondary)
                     Button(action: {
                         storage.navigate(to: components[0...index].joined(separator: "/"))
                     }) {
-                        Text(String(component)).font(.system(size: 11, weight: .medium))
+                        Text(String(component))
+                            .font(DS.Fonts.bodyMedium)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.borderless)
+                    .controlSize(.small)
                 }
             }
 
             Spacer()
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
-        .background(Color(NSColor.controlBackgroundColor))
+        .padding(.horizontal, DS.Spacing.lg)
+        .padding(.vertical, DS.Spacing.sm)
         .transaction { $0.animation = nil }
     }
 
@@ -620,6 +625,7 @@ extension FileTableViewController: NSTableViewDelegate {
             let text = NSTextField(labelWithString: "")
             text.translatesAutoresizingMaskIntoConstraints = false
             text.lineBreakMode = .byTruncatingTail
+            text.font = NSFont.systemFont(ofSize: DS.rowFontSize)
             cell?.textField = text
             cell?.addSubview(text)
 
@@ -643,26 +649,29 @@ extension FileTableViewController: NSTableViewDelegate {
         switch colID {
         case "name":
             cell?.textField?.stringValue = item.name
-            cell?.textField?.textColor = .labelColor
+            cell?.textField?.textColor = DS.NSColors.rowText
             cell?.imageView?.image = NSImage(systemSymbolName: item.iconName, accessibilityDescription: nil)
-            cell?.imageView?.contentTintColor = item.children != nil ? .controlAccentColor : .secondaryLabelColor
+            cell?.imageView?.contentTintColor = item.children != nil ? DS.NSColors.folderIcon : DS.NSColors.fileIcon
             cell?.imageView?.isHidden = false
-            // Remote indicator: subtle opacity instead of "* " prefix
+            // 远程文件红色标记(AppSettings.showRemoteMarkers)
             if AppSettings.shared.showRemoteMarkers && !item.isLocal {
-                cell?.textField?.textColor = .systemRed
+                cell?.textField?.textColor = DS.NSColors.remoteFile
             }
         case "path":
             cell?.textField?.stringValue = item.path
+            cell?.textField?.textColor = DS.NSColors.secondaryText
             cell?.imageView?.isHidden = true
         case "size":
             cell?.textField?.stringValue = item.formattedSize
+            cell?.textField?.textColor = DS.NSColors.secondaryText
             cell?.imageView?.isHidden = true
         case "type":
             cell?.textField?.stringValue = item.children != nil ? L("folder") : L("file")
+            cell?.textField?.textColor = DS.NSColors.secondaryText
             cell?.imageView?.isHidden = true
         case "local":
             cell?.textField?.stringValue = item.isLocal ? L("local_yes") : L("local_no")
-            cell?.textField?.textColor = item.isLocal ? .systemGreen : .systemOrange
+            cell?.textField?.textColor = item.isLocal ? DS.NSColors.localYes : DS.NSColors.localNo
             cell?.imageView?.isHidden = true
         default:
             break
