@@ -246,6 +246,7 @@ final class TreeOutlineViewController: NSViewController {
         }
         let row = outlineView.row(forItem: node)
         guard row >= 0 else { return }
+        guard outlineView.selectedRow != row else { return }
         isProgrammaticSelection = true
         outlineView.selectRowIndexes(IndexSet(integer: row), byExtendingSelection: false)
         outlineView.scrollRowToVisible(row)
