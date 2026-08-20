@@ -213,6 +213,7 @@ extension SearchResultTableViewController: NSTableViewDelegate {
             text.translatesAutoresizingMaskIntoConstraints = false
             text.lineBreakMode = .byTruncatingTail
             text.maximumNumberOfLines = 1
+            text.font = NSFont.systemFont(ofSize: DS.rowFontSize)
             cell?.textField = text
             cell?.addSubview(text)
 
@@ -235,21 +236,21 @@ extension SearchResultTableViewController: NSTableViewDelegate {
         switch colID {
         case "name":
             cell?.textField?.stringValue = match.entry.name
-            cell?.textField?.textColor = .labelColor
+            cell?.textField?.textColor = DS.NSColors.rowText
             let iconName = match.entry.isDirectory ? "folder" : "doc"
             cell?.imageView?.image = NSImage(systemSymbolName: iconName, accessibilityDescription: nil)
-            cell?.imageView?.contentTintColor = match.entry.isDirectory ? .controlAccentColor : .secondaryLabelColor
+            cell?.imageView?.contentTintColor = match.entry.isDirectory ? DS.NSColors.folderIcon : DS.NSColors.fileIcon
             cell?.imageView?.isHidden = false
             if AppSettings.shared.showRemoteMarkers && !match.entry.isLocal {
-                cell?.textField?.textColor = .systemRed
+                cell?.textField?.textColor = DS.NSColors.remoteFile
             }
         case "path":
             cell?.textField?.stringValue = match.entry.normalizedPath
-            cell?.textField?.textColor = .secondaryLabelColor
+            cell?.textField?.textColor = DS.NSColors.secondaryText
             cell?.imageView?.isHidden = true
         case "size":
             cell?.textField?.stringValue = match.entry.formattedSize
-            cell?.textField?.textColor = .secondaryLabelColor
+            cell?.textField?.textColor = DS.NSColors.secondaryText
             cell?.imageView?.isHidden = true
         default:
             break

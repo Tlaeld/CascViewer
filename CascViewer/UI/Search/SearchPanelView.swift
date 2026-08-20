@@ -58,12 +58,12 @@ struct SearchPanelView: View {
                         .buttonStyle(.plain)
                     }
                 }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
+                .padding(.horizontal, DS.Spacing.md)
+                .padding(.vertical, DS.Spacing.xs)
                 .background(Color(NSColor.controlBackgroundColor))
-                .cornerRadius(6)
+                .cornerRadius(DS.Corner.md)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 6)
+                    RoundedRectangle(cornerRadius: DS.Corner.md)
                         .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
                 )
 
@@ -130,7 +130,7 @@ struct SearchPanelView: View {
                                 .font(.caption)
                             TextField(L("search_custom_ext_placeholder"), text: $appState.searchCustomExtension)
                                 .textFieldStyle(.roundedBorder)
-                                .font(.system(size: 11))
+                                .font(DS.Fonts.caption)
                                 .onSubmit { performSearch() }
                         }
                     }
@@ -208,8 +208,8 @@ struct SearchPanelView: View {
                             .buttonStyle(.plain)
                         }
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
+                    .padding(.horizontal, DS.Spacing.lg)
+                    .padding(.vertical, DS.Spacing.sm)
                     .background(Color(NSColor.controlBackgroundColor))
 
                     Divider()
@@ -430,13 +430,13 @@ struct TypeChip: View {
     var body: some View {
         Button(action: action) {
             Text(type)
-                .font(.caption)
+                .font(DS.Fonts.caption)
                 .fontWeight(isSelected ? .semibold : .regular)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 3)
+                .padding(.horizontal, DS.Spacing.md)
+                .padding(.vertical, DS.Spacing.xs)
                 .background(isSelected ? Color.accentColor.opacity(0.15) : Color.secondary.opacity(0.08))
                 .foregroundColor(isSelected ? .accentColor : .secondary)
-                .cornerRadius(4)
+                .cornerRadius(DS.Corner.sm)
         }
         .buttonStyle(.plain)
     }
@@ -454,10 +454,10 @@ struct TagCheckbox: View {
             HStack(spacing: 4) {
                 Image(systemName: isSelected ? "checkmark.square.fill" : "square")
                     .foregroundColor(isSelected ? .accentColor : .secondary)
-                    .font(.system(size: 12))
+                    .font(DS.Fonts.body)
                     .frame(width: 16, alignment: .leading)
                 Text(label)
-                    .font(.caption)
+                    .font(DS.Fonts.caption)
                     .foregroundColor(isSelected ? .primary : .secondary)
                     .lineLimit(1)
                 Spacer()
