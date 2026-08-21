@@ -15,6 +15,8 @@ enum DS {
     enum Corner {
         static let sm: CGFloat = 4
         static let md: CGFloat = 6
+        /// 卡片(详情面板内容)
+        static let lg: CGFloat = 10
     }
 
     enum Fonts {

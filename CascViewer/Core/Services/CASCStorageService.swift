@@ -141,6 +141,8 @@ final class CASCStorageService: ObservableObject {
     /// 内存导航(navigate)不会递增 —— 观察者用它区分"条目重载"(重置视图暂态)
     /// 与"导航"(保留目录树展开状态)。
     @Published private(set) var entriesGeneration: Int = 0
+    /// UI(窗口标题等)用的存储显示名:本地存储为目录名,在线存储为产品代码;未打开时为 ""。
+    @Published private(set) var storageDisplayName: String = ""
     @Published var storageInfo: CASCStorageInfo?
     @Published var isLoading = false
     @Published var loadProgress: Double = 0
@@ -261,6 +263,7 @@ final class CASCStorageService: ObservableObject {
                 return
             }
             await loadTags()
+            storageDisplayName = (path as NSString).lastPathComponent
             isLoading = false
             loadProgressMessage = ""
         }
@@ -307,7 +310,7 @@ final class CASCStorageService: ObservableObject {
             try? fm.removeItem(atPath: versionsFile)
             try? fm.removeItem(atPath: cdnsFile)
             let retryResult = await openWithConfig(config: config)
-            await handleOpenResult(retryResult)
+            await handleOpenResult(retryResult, displayName: product)
             return
         }
 
@@ -318,14 +321,14 @@ final class CASCStorageService: ObservableObject {
             var retryResult = result
             for attempt in 1...3 {
                 if Task.isCancelled {
-                    await handleOpenResult(retryResult)
+                    await handleOpenResult(retryResult, displayName: product)
                     return
                 }
                 let waitSeconds = UInt64(3 * attempt)
                 do {
                     try await Task.sleep(nanoseconds: waitSeconds * 1_000_000_000)
                 } catch {
-                    await handleOpenResult(retryResult)
+                    await handleOpenResult(retryResult, displayName: product)
                     return
                 }
                 retryResult = await openWithConfig(config: config)
@@ -333,14 +336,14 @@ final class CASCStorageService: ObservableObject {
                     break
                 }
             }
-            await handleOpenResult(retryResult)
+            await handleOpenResult(retryResult, displayName: product)
             return
         }
 
-        await handleOpenResult(result)
+        await handleOpenResult(result, displayName: product)
     }
 
-    private func handleOpenResult(_ result: CascBridge.CascError) async {
+    private func handleOpenResult(_ result: CascBridge.CascError, displayName: String) async {
         guard !Task.isCancelled else {
             isLoading = false
             loadProgress = 0
@@ -356,6 +359,7 @@ final class CASCStorageService: ObservableObject {
             await refreshStorageInfo()
             await loadRootEntries()
             await loadTags()
+            storageDisplayName = displayName
             isLoading = false
             loadProgressMessage = ""
         }
@@ -990,6 +994,7 @@ final class CASCStorageService: ObservableObject {
         currentChildren = []
         currentPath = ""
         storageInfo = nil
+        storageDisplayName = ""
         entriesByPath = [:]
         assetsIndexTask = nil
 

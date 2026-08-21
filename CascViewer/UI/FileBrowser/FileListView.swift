@@ -361,6 +361,11 @@ final class FileTableViewController: NSViewController {
         localCol.sortDescriptorPrototype = NSSortDescriptor(key: "local", ascending: true, comparator: { _, _ in .orderedSame })
         tableView.addTableColumn(localCol)
 
+        // 列头统一小号半粗体;排序指示器沿用系统绘制。
+        for col in tableView.tableColumns {
+            col.headerCell.font = NSFont.systemFont(ofSize: 11, weight: .semibold)
+        }
+
         scrollView.documentView = tableView
         view.addSubview(scrollView)
 

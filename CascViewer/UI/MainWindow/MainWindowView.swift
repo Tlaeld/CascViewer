@@ -58,9 +58,43 @@ struct LoadingOverlay: View {
     }
 }
 
+/// 把 SwiftUI 计算出的标题同步到宿主的纯手工 NSWindow(多窗口各自独立)。
+private struct WindowTitleApplier: NSViewRepresentable {
+    let title: String
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        DispatchQueue.main.async { apply(to: view) }
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        DispatchQueue.main.async { apply(to: nsView) }
+    }
+
+    private func apply(to view: NSView) {
+        guard let window = view.window, window.title != title else { return }
+        window.title = title
+    }
+}
+
 struct MainWindowView: View {
     @StateObject private var appState = AppState()
     @ObservedObject private var settings = AppSettings.shared
+
+    // 分栏宽度/高度持久化(NavigationSplitView/VSplitView 自身不 autosave)
+    @AppStorage("mainWindow.sidebarWidth") private var sidebarWidth: Double = 240
+    @AppStorage("mainWindow.previewHeight") private var previewHeight: Double = 200
+    @State private var sidebarPersistTask: Task<Void, Never>?
+    @State private var previewPersistTask: Task<Void, Never>?
+
+    private var windowTitle: String {
+        let base = L("app_name")
+        guard let name = appState.currentStorage?.storageDisplayName, !name.isEmpty else {
+            return base
+        }
+        return "\(base) — \(name)"
+    }
 
     var body: some View {
         ZStack {
@@ -70,14 +104,30 @@ struct MainWindowView: View {
 
                 NavigationSplitView {
                     FileTreeView()
-                        .navigationSplitViewColumnWidth(min: 180, ideal: 240, max: 400)
+                        .navigationSplitViewColumnWidth(min: 180, ideal: CGFloat(sidebarWidth), max: 400)
+                        .background(
+                            GeometryReader { geo in
+                                Color.clear
+                                    .onChange(of: geo.size.width) { newWidth in
+                                        scheduleSidebarPersist(newWidth)
+                                    }
+                            }
+                        )
                 } detail: {
                     VSplitView {
                         FileListView()
                             .frame(minHeight: 240)
                             .layoutPriority(1)
                         FilePreviewPanel()
-                            .frame(minHeight: 140, idealHeight: 200)
+                            .frame(minHeight: 140, idealHeight: CGFloat(previewHeight))
+                            .background(
+                                GeometryReader { geo in
+                                    Color.clear
+                                        .onChange(of: geo.size.height) { newHeight in
+                                            schedulePreviewPersist(newHeight)
+                                        }
+                                }
+                            )
                     }
                 }
 
@@ -90,6 +140,7 @@ struct MainWindowView: View {
             }
         }
         .frame(minWidth: 900, minHeight: 600)
+        .background(WindowTitleApplier(title: windowTitle))
         .preferredColorScheme(settings.theme.colorScheme)
         .alert(L("error"), isPresented: .init(
             get: { appState.errorMessage != nil },
@@ -100,5 +151,28 @@ struct MainWindowView: View {
             Text(appState.errorMessage ?? "")
         }
         .environmentObject(appState)
+    }
+
+    /// 拖动停止 0.3s 后才落盘,避免拖动过程中逐帧写 UserDefaults。
+    private func scheduleSidebarPersist(_ width: CGFloat) {
+        let value = Double(width)
+        guard abs(value - sidebarWidth) > 0.5 else { return }
+        sidebarPersistTask?.cancel()
+        sidebarPersistTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 300_000_000)
+            guard !Task.isCancelled else { return }
+            sidebarWidth = value
+        }
+    }
+
+    private func schedulePreviewPersist(_ height: CGFloat) {
+        let value = Double(height)
+        guard abs(value - previewHeight) > 0.5 else { return }
+        previewPersistTask?.cancel()
+        previewPersistTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 300_000_000)
+            guard !Task.isCancelled else { return }
+            previewHeight = value
+        }
     }
 }

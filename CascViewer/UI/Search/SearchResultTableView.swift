@@ -62,6 +62,11 @@ final class SearchResultTableViewController: NSViewController {
         sizeCol.resizingMask = .userResizingMask
         tableView.addTableColumn(sizeCol)
 
+        // 列头统一小号半粗体。
+        for col in tableView.tableColumns {
+            col.headerCell.font = NSFont.systemFont(ofSize: 11, weight: .semibold)
+        }
+
         scrollView.documentView = tableView
         view.addSubview(scrollView)
 

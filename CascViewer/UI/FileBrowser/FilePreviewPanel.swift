@@ -102,6 +102,12 @@ struct FilePreviewPanel: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(DS.Spacing.lg)
+                .background(
+                    RoundedRectangle(cornerRadius: DS.Corner.lg)
+                        .fill(Color(NSColor.windowBackgroundColor))
+                )
+                .padding(.horizontal, DS.Spacing.lg)
+                .padding(.vertical, DS.Spacing.sm)
             } else {
                 VStack(spacing: 8) {
                     Spacer()
