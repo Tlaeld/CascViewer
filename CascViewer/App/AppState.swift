@@ -1,11 +1,20 @@
 import Foundation
 import SwiftUI
+import Combine
 
 import CascBridge
 
 @MainActor
 final class AppState: ObservableObject {
-    @Published var currentStorage: CASCStorageService?
+    /// 转发当前存储的 displayName 变化(打开完成后窗口标题等才能立即刷新;
+    /// 窄转发避免 loadProgress 等高频更新触发全局重渲染)。
+    @Published var currentStorage: CASCStorageService? {
+        didSet {
+            storageDisplayNameCancellable = currentStorage?.$storageDisplayName
+                .sink { [weak self] _ in self?.objectWillChange.send() }
+        }
+    }
+    private var storageDisplayNameCancellable: AnyCancellable?
     @Published var selectedPath: String = ""
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?

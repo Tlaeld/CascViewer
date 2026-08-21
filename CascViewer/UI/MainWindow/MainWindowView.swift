@@ -58,7 +58,7 @@ struct LoadingOverlay: View {
     }
 }
 
-/// 把 SwiftUI 计算出的标题同步到宿主的纯手工 NSWindow(多窗口各自独立)。
+/// 把 SwiftUI 计算出的标题同步到宿主 NSWindow(经 view.window 即时解析,归属正确窗口)。
 private struct WindowTitleApplier: NSViewRepresentable {
     let title: String
 
