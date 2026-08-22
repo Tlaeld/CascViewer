@@ -155,6 +155,8 @@ final class TreeOutlineViewController: NSViewController {
         scrollView.hasHorizontalScroller = true
         scrollView.autohidesScrollers = true
         scrollView.translatesAutoresizingMaskIntoConstraints = false
+        // 不刷实色背景,透出侧栏的 NSVisualEffectView 毛玻璃材质
+        scrollView.drawsBackground = false
 
         let outlineView = NSOutlineView()
         outlineView.headerView = nil

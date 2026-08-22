@@ -47,6 +47,7 @@ struct HorizontalSplitView<Side: View, Detail: View>: View {
                 side()
                     .frame(width: current)
                     .frame(maxHeight: .infinity)
+                    .background(SidebarVisualEffectBackground())
                     .clipped()
                 divider(current: current)
             }
@@ -79,5 +80,36 @@ struct HorizontalSplitView<Side: View, Detail: View>: View {
                         if inside { NSCursor.resizeLeftRight.set() } else { NSCursor.arrow.set() }
                     }
             )
+    }
+}
+
+/// 侧栏毛玻璃背景:复刻系统 NavigationSplitView sidebar 的 vibrancy 观感。
+/// 用 NSVisualEffectView 而不是回到系统组件——系统组件的折叠过渡在 macOS 27 上
+/// 会把 vibrant 文字渲染卡死在灰态(见上方注释),材质本身没有任何问题。
+/// 材质上再叠一层半透明窗口底色:纯 .sidebar 材质会把背后窗口的颜色透得很明显,
+/// 叠一层 dimming 后只保留轻微质感,文字可读性接近实色背景。
+private struct SidebarVisualEffectBackground: NSViewRepresentable {
+    /// 遮盖强度:0 = 纯毛玻璃(透出度最高),1 = 接近实色
+    var dimming: CGFloat = 0.55
+
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let view = NSVisualEffectView()
+        view.material = .sidebar
+        view.blendingMode = .behindWindow
+        view.state = .followsWindowActiveState
+
+        let veil = NSView()
+        veil.wantsLayer = true
+        veil.layer?.backgroundColor = NSColor.windowBackgroundColor.withAlphaComponent(dimming).cgColor
+        veil.autoresizingMask = [.width, .height]
+        veil.frame = view.bounds
+        view.addSubview(veil)
+        return view
+    }
+
+    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {
+        // 深/浅主题切换时刷新遮盖层颜色(cgColor 是快照,不会跟随动态色)
+        nsView.subviews.first?.layer?.backgroundColor =
+            NSColor.windowBackgroundColor.withAlphaComponent(dimming).cgColor
     }
 }
