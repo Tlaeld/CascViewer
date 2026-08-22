@@ -36,7 +36,14 @@ struct ModelScene: Sendable {
         /// UV 环绕(M3 LAYR.UVWrapX/Y);false = clamp。默认 false 保持既有构造点不变。
         var wrapU: Bool = false
         var wrapV: Bool = false
+        /// M3 细节层路径(法线/高光/自发光);空 = 无。默认空保持既有构造点不变。
+        var normalPath: String = ""
+        var specularPath: String = ""
+        var emissivePath: String = ""
         var diffuseTexture: ImageDecodeResult.ImageFrame?  // 加载阶段填充,nil = 缺失
+        var normalTexture: ImageDecodeResult.ImageFrame? = nil    // 已按 DXT5nm 还原成标准 RGB 法线
+        var specularTexture: ImageDecodeResult.ImageFrame? = nil
+        var emissiveTexture: ImageDecodeResult.ImageFrame? = nil
     }
 
     enum BlendMode: Sendable { case opaque, alphaTest, blend, additive, modulate }
@@ -97,10 +104,12 @@ enum M3MaterialKind: Int, CaseIterable, Identifiable {
 
     var id: Int { rawValue }
 
-    /// 默认隐藏的类型:非实体表面(地面压平/体积特效/数据缓冲等)。
+    /// 默认隐藏的类型:非实体表面(地面压平/体积特效等)。
     /// Standard(1)/Composite(3)/Terrain(4)默认可见——Terrain 是 terrain object
     /// 的主材质(如 jungle doodad),藏掉会让整个模型消失。
-    static let defaultHidden: Set<Int> = [2, 5, 6, 7, 8, 9, 10, 11, 12]
+    /// BufferMaterial(12,MADD)是 MODL v30+ 模型的主材质载体(如 pajamathur 皮肤),
+    /// 同样默认可见。
+    static let defaultHidden: Set<Int> = [2, 5, 6, 7, 8, 9, 10, 11]
 
     var displayName: String {
         switch self {

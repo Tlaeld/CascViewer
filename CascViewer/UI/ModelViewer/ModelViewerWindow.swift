@@ -1,6 +1,5 @@
 import SwiftUI
 import SceneKit
-import CoreVideo
 
 struct ModelViewerWindow: View {
     let fileName: String
@@ -55,7 +54,8 @@ struct ModelViewerWindow: View {
             Divider()
 
             ZStack {
-                ModelViewerView(scene: viewModel.scnScene, pointOfView: viewModel.cameraNode)
+                ModelViewerView(scene: viewModel.scnScene, pointOfView: viewModel.cameraNode,
+                                cameraTarget: viewModel.cameraTarget)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 if visibleMeshCount == 0 {
                     // 空态提示:区分"文件本身无网格"(m3a 动画库)与"全部被渲染设置隐藏"
@@ -89,20 +89,13 @@ struct ModelViewerWindow: View {
     }
 }
 
-private let modelDisplayLinkCallback: CVDisplayLinkOutputCallback = { _, _, _, _, _, context -> CVReturn in
-    guard let context = context else { return kCVReturnError }
-    let viewModel = Unmanaged<ModelViewerViewModel>.fromOpaque(context).takeUnretainedValue()
-    Task { @MainActor in
-        viewModel.tick()
-    }
-    return kCVReturnSuccess
-}
-
 @MainActor
 final class ModelViewerViewModel: ObservableObject {
     @Published var scnScene = SCNScene()
     /// 取景相机(须显式赋给 SCNView.pointOfView,否则 SCNView 用自带默认相机角度)
     @Published var cameraNode: SCNNode?
+    /// 轨道旋转中心(模型取景中心,世界坐标);不设则 SceneKit 默认绕世界原点旋转
+    @Published var cameraTarget = SCNVector3Zero
     @Published var isPlaying = false
     @Published var selectedAnimation = 0 {
         didSet {
@@ -118,19 +111,12 @@ final class ModelViewerViewModel: ObservableObject {
         built: BuiltModelScene(rootNode: SCNNode(), boneNodes: []))
 
     private var modelScene: ModelScene?
-    private var displayLink: CVDisplayLink?
-    private var displayLinkContext: UnsafeMutableRawPointer?
+    private var displayTimer: Timer?
     private var startTime: CFTimeInterval = 0
     private var currentTimeMs: Float = 0
 
     deinit {
-        if let displayLink = displayLink {
-            CVDisplayLinkStop(displayLink)
-            CVDisplayLinkSetOutputCallback(displayLink, nil, nil)
-        }
-        if let context = displayLinkContext {
-            Unmanaged<ModelViewerViewModel>.fromOpaque(context).release()
-        }
+        displayTimer?.invalidate()
     }
 
     func setup(scene: ModelScene, built: BuiltModelScene) {
@@ -158,6 +144,8 @@ final class ModelViewerViewModel: ObservableObject {
         cameraNode.camera?.automaticallyAdjustsZRange = true
         scnScene.rootNode.addChildNode(cameraNode)
         self.cameraNode = cameraNode
+        // 轨道旋转中心:不设则默认世界原点,模型偏离原点时旋转会甩视角
+        cameraTarget = SCNVector3(center.x, center.y, center.z)
     }
 
     func togglePlayback() {
@@ -191,29 +179,23 @@ final class ModelViewerViewModel: ObservableObject {
         player.update(timeMs: currentTimeMs)
     }
 
+    /// 用 commonModes 定时器驱动逐帧更新:定时器在主 runloop 上触发,与菜单
+    /// 跟踪的事件循环公平轮转——菜单打开期间动画照播、菜单也不卡(原先的
+    /// CVDisplayLink 在独立线程按刷新率往主队列灌 Task,菜单跟踪时会积压)。
     private func startAnimation() {
         stopAnimation()
-        startTime = 0
-        var link: CVDisplayLink?
-        guard CVDisplayLinkCreateWithActiveCGDisplays(&link) == kCVReturnSuccess,
-              let displayLink = link else { return }
-        let context = Unmanaged.passRetained(self).toOpaque()
-        displayLinkContext = context
-        CVDisplayLinkSetOutputCallback(displayLink, modelDisplayLinkCallback, context)
-        CVDisplayLinkStart(displayLink)
-        self.displayLink = displayLink
+        // 续播锚定:从 currentTimeMs 继续(切换动画时已清零,等价于从头开始)
+        startTime = CACurrentMediaTime() - Double(currentTimeMs) / 1000
+        let timer = Timer(timeInterval: 1.0 / 60.0, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.tick() }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        displayTimer = timer
     }
 
     func stopAnimation() {
-        if let displayLink = displayLink {
-            CVDisplayLinkStop(displayLink)
-            CVDisplayLinkSetOutputCallback(displayLink, nil, nil)
-        }
-        if let context = displayLinkContext {
-            Unmanaged<ModelViewerViewModel>.fromOpaque(context).release()
-            displayLinkContext = nil
-        }
-        displayLink = nil
+        displayTimer?.invalidate()
+        displayTimer = nil
     }
 }
 

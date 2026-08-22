@@ -188,6 +188,24 @@ enum ModelSceneBuilder {
         material.diffuse.wrapS = mat.wrapU ? .repeat : .clamp
         material.diffuse.wrapT = mat.wrapV ? .repeat : .clamp
         material.lightingModel = mat.unlit ? .constant : .blinn
+        // M3 细节层:法线(凹凸细节)+ 高光(光泽层次)+ 自发光(辉光)。
+        // 法线已在加载侧从 DXT5nm 还原成标准 RGB;高光贴图需给非零 shininess 才可见。
+        if let normal = mat.normalTexture {
+            material.normal.contents = normal.cgImage
+            material.normal.wrapS = mat.wrapU ? .repeat : .clamp
+            material.normal.wrapT = mat.wrapV ? .repeat : .clamp
+        }
+        if let specular = mat.specularTexture {
+            material.specular.contents = specular.cgImageOpaque
+            material.specular.wrapS = mat.wrapU ? .repeat : .clamp
+            material.specular.wrapT = mat.wrapV ? .repeat : .clamp
+            material.shininess = 0.5
+        }
+        if let emissive = mat.emissiveTexture {
+            material.emission.contents = emissive.cgImage
+            material.emission.wrapS = mat.wrapU ? .repeat : .clamp
+            material.emission.wrapT = mat.wrapV ? .repeat : .clamp
+        }
         switch mat.blendMode {
         case .opaque:
             material.blendMode = .replace

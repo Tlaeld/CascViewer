@@ -61,7 +61,7 @@ WOQuatTrack convertSD4Q(const m3::AnimBlock<Quaternion>& block, u16 interpType) 
     return out;
 }
 
-// 骨骼单个属性(位置/旋转/缩放)在 STC 中解析为轨道。
+// 骨骼单个属性(位置/旋转/缩放)在单个 STC 中解析为轨道。
 template <typename TrackT>
 TrackT resolveBoneTrack(const m3::SubTrackContainer* stc, u32 animId, u16 interpType,
                         u32 wantSlot) {
@@ -77,6 +77,18 @@ TrackT resolveBoneTrack(const m3::SubTrackContainer* stc, u32 animId, u16 interp
     return out;
 }
 
+// 骨骼单个属性(位置/旋转/缩放)的轨道解析:在多个候选 STC 中逐个尝试,
+// 第一个含此 animId 的 STC 胜出(一个动画的轨道可分散在多个 STC 中)。
+template <typename TrackT>
+TrackT resolveBoneTrack(const std::vector<const m3::SubTrackContainer*>& stcs,
+                        u32 animId, u16 interpType, u32 wantSlot) {
+    for (const m3::SubTrackContainer* stc : stcs) {
+        TrackT t = resolveBoneTrack<TrackT>(stc, animId, interpType, wantSlot);
+        if (!t.times.empty()) return t;
+    }
+    return TrackT{};
+}
+
 // 贴图路径是否为可解码位图(DDS/BLP/ImageIO 位图);.ogv 视频等不可解码
 bool isDecodableImagePath(const std::string& p) {
     std::string ext;
@@ -90,13 +102,40 @@ bool isDecodableImagePath(const std::string& p) {
     return false;
 }
 
+// 材质的有效显示层:diffuse 优先;diffuse 无贴图时回退 emissive 层。
+// SC2/HotS 大量特效材质(电弧/护盾/全息屏)贴图只挂在 emissive 上,
+// 不取会渲染成占位色。路径均先 sanitized(LAYR 可能只含结尾 NUL)。
+const m3::TextureLayer* effectiveLayer(const m3::StandardMaterial& sm) {
+    if (sm.diffuseLayer && !sanitized(sm.diffuseLayer->texturePath).empty())
+        return &*sm.diffuseLayer;
+    if (sm.emissiveLayer1 && !sanitized(sm.emissiveLayer1->texturePath).empty())
+        return &*sm.emissiveLayer1;
+    if (sm.emissiveLayer2 && !sanitized(sm.emissiveLayer2->texturePath).empty())
+        return &*sm.emissiveLayer2;
+    return nullptr;
+}
+
 // 把 StandardMaterial 的显示属性填进 WOMaterial(贴图/wrap/混合模式/双面/unlit)
 void applyStandardMaterial(WOMaterial& wm, const m3::StandardMaterial& sm) {
-    if (sm.diffuseLayer) {
-        wm.texturePath = sanitized(sm.diffuseLayer->texturePath);
-        const u32 lf = static_cast<u32>(sm.diffuseLayer->flags);
+    if (const m3::TextureLayer* layer = effectiveLayer(sm)) {
+        wm.texturePath = sanitized(layer->texturePath);
+        const u32 lf = static_cast<u32>(layer->flags);
         wm.wrapU = (lf & 0x4) != 0;  // TextureLayerFlag::UVWrapX
         wm.wrapV = (lf & 0x8) != 0;  // TextureLayerFlag::UVWrapY
+    }
+    // 细节层:法线/高光/自发光。路径先 sanitized(LAYR 可能只含结尾 NUL);
+    // 只收可解码图片路径,避免把 .ogv 之类的引用带到 Swift 侧白读一次。
+    if (sm.normalLayer) {
+        const std::string p = sanitized(sm.normalLayer->texturePath);
+        if (!p.empty() && isDecodableImagePath(p)) wm.normalPath = p;
+    }
+    if (sm.specularLayer) {
+        const std::string p = sanitized(sm.specularLayer->texturePath);
+        if (!p.empty() && isDecodableImagePath(p)) wm.specularPath = p;
+    }
+    if (sm.emissiveLayer1) {
+        const std::string p = sanitized(sm.emissiveLayer1->texturePath);
+        if (!p.empty() && isDecodableImagePath(p)) wm.emissivePath = p;
     }
     switch (sm.blendMode) {
         case m3::BlendMode::Opaque:     wm.blendMode = WOBlendMode::Opaque; break;
@@ -190,24 +229,37 @@ WOModel WOModelLoader::parseM3(const uint8_t* data, size_t length, WOError& erro
             mm.materialIndex < model.standardMaterials.size()) {
             applyStandardMaterial(wm, model.standardMaterials[mm.materialIndex]);
         }
-        // Composite:从带贴图的 Standard 子材质中优先取可解码位图(跳过 .ogv 视频等),
-        // 并继承其混合模式(贴图不可解码时占位色按混合模式不可见)。
+        // Composite:从带贴图的 Standard 子材质中选显示贴图,优先级:
+        //   可解码 diffuse > 可解码 emissive(全息屏/电弧等) > 不可解码 diffuse(如 .ogv)。
         // 以 orphea_deathragdoll 验证:Mat_Dissipate 的 MATM[2]=Mat_Dissolve 携带贴图
         if (mm.materialType == m3::MaterialType::Composite &&
             mm.materialIndex < model.compositeMaterials.size()) {
-            const m3::StandardMaterial* fallback = nullptr;
-            const m3::StandardMaterial* pick = nullptr;
+            const m3::StandardMaterial* fallback = nullptr;    // 第一个有 diffuse 路径的
+            const m3::StandardMaterial* pick = nullptr;        // 第一个可解码 diffuse 的
+            const m3::StandardMaterial* emissivePick = nullptr; // 第一个可解码非 diffuse 层的
             for (const auto& sec : model.compositeMaterials[mm.materialIndex].sections) {
                 if (sec.materialIndex >= model.materialMaps.size()) continue;
                 const auto& smm = model.materialMaps[sec.materialIndex];
                 if (smm.materialType != m3::MaterialType::Standard ||
                     smm.materialIndex >= model.standardMaterials.size()) continue;
                 const auto& sm = model.standardMaterials[smm.materialIndex];
-                if (!sm.diffuseLayer || sm.diffuseLayer->texturePath.empty()) continue;
-                if (!fallback) fallback = &sm;
-                if (isDecodableImagePath(sm.diffuseLayer->texturePath)) { pick = &sm; break; }
+                if (sm.diffuseLayer) {
+                    // LAYR 路径可能只含结尾 NUL(先 sanitized 再判空/判扩展名,
+                    // 否则 "无贴图" 材质会占住 fallback、真贴图被判不可解码)
+                    const std::string path = sanitized(sm.diffuseLayer->texturePath);
+                    if (!path.empty()) {
+                        if (!fallback) fallback = &sm;
+                        if (isDecodableImagePath(path)) { pick = &sm; break; }
+                    }
+                }
+                if (!emissivePick) {
+                    if (const m3::TextureLayer* layer = effectiveLayer(sm)) {
+                        if (isDecodableImagePath(sanitized(layer->texturePath)))
+                            emissivePick = &sm;
+                    }
+                }
             }
-            if (const m3::StandardMaterial* sm = pick ? pick : fallback)
+            if (const m3::StandardMaterial* sm = pick ? pick : (emissivePick ? emissivePick : fallback))
                 applyStandardMaterial(wm, *sm);
         }
         // Terrain:单一地形贴图层(terrain object 的主材质,如 jungle doodad)
@@ -220,6 +272,40 @@ WOModel WOModelLoader::parseM3(const uint8_t* data, size_t length, WOError& erro
                 wm.wrapU = (lf & 0x4) != 0;
                 wm.wrapV = (lf & 0x8) != 0;
             }
+        }
+        // BufferMaterial(MADD,MODL v30+):材质以键值扩展存储,纹理路径在 valueData
+        // (SCHR 字符串数组,如 pajamathur 的 Emis/Norm/Spec/Diff/Dec 一组)。
+        // 取 _Diff 作 diffuse;没有则取第一个非 Norm/Spec/Emis 的颜色贴图。
+        // SCHR 字符串带结尾 NUL,必须先 sanitized 再做后缀判断,否则判扩展名恒失败。
+        // MADD 无 LAYR 环绕标志,HotS 采样默认 wrap,否则 UV 平铺时 clamp 会拖边。
+        if (mm.materialType == m3::MaterialType::BufferMaterial &&
+            mm.materialIndex < model.materialAddData.size()) {
+            std::string color, any, norm, spec, emis;
+            for (const auto& raw : model.materialAddData[mm.materialIndex].valueData) {
+                const std::string s = sanitized(raw);
+                if (!isDecodableImagePath(s)) continue;
+                std::string lower = s;
+                for (auto& c : lower) c = (char)tolower((unsigned char)c);
+                if (lower.find("_norm.") != std::string::npos) { if (norm.empty()) norm = s; continue; }
+                if (lower.find("_spec.") != std::string::npos) { if (spec.empty()) spec = s; continue; }
+                if (lower.find("_emis.") != std::string::npos) { if (emis.empty()) emis = s; continue; }
+                if (lower.find("_diff.") != std::string::npos ||
+                    lower.find("_diffuse.") != std::string::npos) {
+                    color = s;
+                    continue;
+                }
+                if (color.empty()) color = s;
+                if (any.empty()) any = s;
+            }
+            const std::string& pick = !color.empty() ? color : any;
+            if (!pick.empty()) {
+                wm.texturePath = pick;
+                wm.wrapU = true;
+                wm.wrapV = true;
+            }
+            wm.normalPath = norm;
+            wm.specularPath = spec;
+            wm.emissivePath = emis;
         }
         out.materials.push_back(std::move(wm));
     }
@@ -315,13 +401,25 @@ WOModel WOModelLoader::parseM3(const uint8_t* data, size_t length, WOError& erro
         }
     }
 
-    // ── 动画:STC 与 sequence 配对(数量相等按下标,否则用 STC[0])──
+    // ── 动画:SEQ → STC 绑定。优先按 STG 组名匹配 SEQ 名,取组的 subtrackIndices
+    // (一个动画的轨道可分散在多个 STC:实测 orphea_facialanims.m3a 为 22 STC/11 SEQ,
+    // 每组含 "X_Eyes" 骨骼轨道 STC + "X_full" 空 STC;此时数量不等,若一律回退
+    // STC[0],所有动画会解析成完全相同的数据)。
+    // 数量相等时退化为按下标配对,再不行用 STC[0]。
     const bool pairByIndex = (model.subTrackCollections.size() == model.sequences.size());
     for (size_t si = 0; si < model.sequences.size(); ++si) {
         const auto& seq = model.sequences[si];
-        const m3::SubTrackContainer* stc = nullptr;
-        if (!model.subTrackCollections.empty())
-            stc = &model.subTrackCollections[pairByIndex ? si : 0];
+        std::vector<const m3::SubTrackContainer*> stcs;
+        for (const auto& g : model.animationGroups) {
+            if (g.name == seq.name) {
+                for (u32 idx : g.subtrackIndices)
+                    if (idx < model.subTrackCollections.size())
+                        stcs.push_back(&model.subTrackCollections[idx]);
+                break;
+            }
+        }
+        if (stcs.empty() && !model.subTrackCollections.empty())
+            stcs.push_back(&model.subTrackCollections[pairByIndex ? si : 0]);
 
         WOAnimation anim;
         anim.name = sanitized(seq.name);
@@ -330,11 +428,11 @@ WOModel WOModelLoader::parseM3(const uint8_t* data, size_t length, WOError& erro
         anim.loops = true;  // v1:M3 一律循环
         for (const auto& bone : model.bones) {
             anim.translations.push_back(resolveBoneTrack<WOVec3Track>(
-                stc, bone.position.animId, bone.position.interpType, 2 /* sd3v */));
+                stcs, bone.position.animId, bone.position.interpType, 2 /* sd3v */));
             anim.rotations.push_back(resolveBoneTrack<WOQuatTrack>(
-                stc, bone.rotation.animId, bone.rotation.interpType, 3 /* sd4q */));
+                stcs, bone.rotation.animId, bone.rotation.interpType, 3 /* sd4q */));
             anim.scales.push_back(resolveBoneTrack<WOVec3Track>(
-                stc, bone.scale.animId, bone.scale.interpType, 2 /* sd3v */));
+                stcs, bone.scale.animId, bone.scale.interpType, 2 /* sd3v */));
         }
         out.animations.push_back(std::move(anim));
     }

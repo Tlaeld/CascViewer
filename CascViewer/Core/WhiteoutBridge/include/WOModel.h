@@ -52,6 +52,9 @@ struct WOMesh {
 
 struct WOMaterial {
     std::string texturePath;            // MDX/M3;M2 常为 ""
+    std::string normalPath;             // M3 法线贴图(_norm,DXT5nm 布局);空 = 无
+    std::string specularPath;           // M3 高光贴图(_spec);空 = 无
+    std::string emissivePath;           // M3 自发光贴图(_emis 原始层,可能与 texturePath 兜底重复)
     uint32_t textureFileDataId = 0;     // M2 TXID;0 = 无
     WOBlendMode blendMode = WOBlendMode::Opaque;
     bool twoSided = false;

@@ -725,6 +725,236 @@ final class ModelLoaderServiceTests: XCTestCase {
         }
     }
 
+    /// SC2 剧情场景 emissive 回退回归:sm_charbriefing_02 的网格全是 Composite,
+    /// 子材质 diffuse 全空,贴图在 emissive 层(全息屏 UI)。修复前 Composite 无贴图
+    /// → 渲染全黑;修复后应回退取到子材质 emissive 贴图。
+    func testCharBriefingEmissiveFallback() async throws {
+        let storagePath = TestStoragePaths.path(for: "sc2") ?? ""
+        guard FileManager.default.fileExists(atPath: storagePath + "/.build.info") else {
+            throw XCTSkip("SC2 存储不存在,跳过")
+        }
+        var handle = CascBridge.CascStorageHandle.createLocal()
+        guard handle.open(std.string(storagePath)) == .None else { throw XCTSkip("存储打开失败") }
+        defer { handle.close() }
+        var listError = CascBridge.CascError.None
+        let rawEntries = handle.listDirectory(std.string(""), &listError)
+        var paths: [String] = []
+        paths.reserveCapacity(rawEntries.size())
+        for i in 0..<rawEntries.size() {
+            paths.append(String(rawEntries[i].fullPath).replacingOccurrences(of: "\\", with: "/"))
+        }
+        let assetsIndex = CascModelFileProvider.buildAssetsIndex(fromPaths: paths)
+        let service = ModelLoaderService(
+            provider: CascModelFileProvider(handle: handle, assetsIndex: assetsIndex))
+        let scene = try await service.load(
+            path: "campaigns/liberty.sc2campaign/base.sc2assets/assets/storymodesets/terran/sm_charbriefing/sm_charbriefing_02.m3",
+            format: .m3)
+        XCTAssertEqual(scene.meshes.count, 2)
+        let mat = scene.materials[scene.meshes[0].materialIndex]
+        XCTAssertTrue(mat.texturePath.hasSuffix("SM_hb_starmapui_diff.dds"),
+                      "Composite 应回退到子材质 emissive 贴图,实际: \(mat.texturePath)")
+        XCTAssertNotNil(mat.diffuseTexture, "emissive 贴图应成功解码")
+    }
+
+    /// DXT5nm 还原:Blizzard 法线贴图 X 存 alpha、Y 存 green,
+    /// swizzle 后应得标准 RGB 法线(Z 重建),alpha 恒 255。
+    func testDXT5nmNormalSwizzle() {
+        // 平法线(X=0,Y=0 → Z=1)+ 一个极限 X=1 像素
+        let px: [UInt8] = [255, 128, 0, 128,   0, 128, 0, 255]
+        let frame = ImageDecodeResult.ImageFrame(width: 2, height: 1,
+                                                 imageData: Data(px))
+        let out = ModelLoaderService.swizzleDXT5nmNormal(frame)
+        let b = [UInt8](out.imageData)
+        // 平法线:R/G 回写 128,Z≈255,A=255
+        XCTAssertEqual(b[0], 128); XCTAssertEqual(b[1], 128)
+        XCTAssertGreaterThanOrEqual(b[2], 254); XCTAssertEqual(b[3], 255)
+        // X=1(来自 alpha=255):Z=sqrt(1-1)=0 → B≈128
+        XCTAssertEqual(b[4], 255); XCTAssertEqual(b[5], 128)
+        XCTAssertTrue((126...129).contains(b[6]), "Z=0 时 B 应≈128,实际 \(b[6])")
+        XCTAssertEqual(b[7], 255)
+    }
+
+    /// HotS orphea_school18 细节层:Standard 材质应带出 _Norm/_Spec/_Emis 路径,
+    /// 法线经 DXT5nm 还原后 alpha 恒 255;三层贴图均真实解码(非占位)。
+    func testOrpheaSchool18DetailLayers() async throws {
+        let storagePath = TestStoragePaths.path(for: "hots") ?? ""
+        guard FileManager.default.fileExists(atPath: storagePath + "/.build.info") else {
+            throw XCTSkip("HotS 存储不存在,跳过")
+        }
+        var handle = CascBridge.CascStorageHandle.createLocal()
+        guard handle.open(std.string(storagePath)) == .None else { throw XCTSkip("存储打开失败") }
+        defer { handle.close() }
+        var listError = CascBridge.CascError.None
+        let rawEntries = handle.listDirectory(std.string(""), &listError)
+        var paths: [String] = []
+        paths.reserveCapacity(rawEntries.size())
+        for i in 0..<rawEntries.size() {
+            paths.append(String(rawEntries[i].fullPath).replacingOccurrences(of: "\\", with: "/"))
+        }
+        let assetsIndex = CascModelFileProvider.buildAssetsIndex(fromPaths: paths)
+        let service = ModelLoaderService(
+            provider: CascModelFileProvider(handle: handle, assetsIndex: assetsIndex))
+        let scene = try await service.load(
+            path: "mods/heroes.stormmod/base.stormassets/assets/units/heroes/storm_hero_orphea_school18/storm_hero_orphea_school18.m3",
+            format: .m3)
+        XCTAssertFalse(scene.meshes.isEmpty)
+        let mat = scene.materials[scene.meshes[0].materialIndex]
+        XCTAssertTrue(mat.texturePath.hasSuffix("Storm_Hero_Orphea_School18_Diff.dds"),
+                      "diffuse 路径不对: \(mat.texturePath)")
+        XCTAssertTrue(mat.normalPath.lowercased().hasSuffix("_norm.dds"),
+                      "应带法线层,实际: \(mat.normalPath)")
+        XCTAssertTrue(mat.specularPath.lowercased().hasSuffix("_spec.dds"),
+                      "应带高光层,实际: \(mat.specularPath)")
+        XCTAssertTrue(mat.emissivePath.lowercased().hasSuffix("_emis.dds"),
+                      "应带自发光层,实际: \(mat.emissivePath)")
+        XCTAssertNotNil(mat.diffuseTexture)
+        let norm = try XCTUnwrap(mat.normalTexture, "法线应成功解码")
+        XCTAssertEqual(norm.width, 1024)
+        XCTAssertEqual([UInt8](norm.imageData)[3], 255, "DXT5nm 还原后 alpha 应恒 255")
+        XCTAssertNotNil(mat.specularTexture, "高光应成功解码")
+        XCTAssertNotNil(mat.emissiveTexture, "自发光应成功解码")
+        // 离屏渲染存档(人工查看:法线/高光应让皮肤有立体感)
+        let built = ModelSceneBuilder.build(scene, hiddenMaterialTypes: M3MaterialKind.defaultHidden)
+        let zs = SCNScene()
+        zs.rootNode.addChildNode(built.rootNode)
+        zs.background.contents = NSColor(white: 0.1, alpha: 1)
+        let zcam = SCNNode()
+        zcam.camera = SCNCamera()
+        let (zcenter, zradius) = ModelSceneBuilder.framingBounds(
+            of: scene, hiddenMaterialTypes: M3MaterialKind.defaultHidden)
+        zcam.position = SCNVector3(zcenter.x, zcenter.y + zradius * 0.2,
+                                   zcenter.z + zradius * 2.2)
+        zcam.look(at: SCNVector3(zcenter.x, zcenter.y, zcenter.z))
+        zs.rootNode.addChildNode(zcam)
+        let zr = SCNRenderer(device: nil, options: nil)
+        zr.scene = zs
+        zr.pointOfView = zcam
+        let img = zr.snapshot(atTime: 0, with: CGSize(width: 640, height: 640),
+                              antialiasingMode: .none)
+        if let tif = img.tiffRepresentation,
+           let rep = NSBitmapImageRep(data: tif),
+           let png = rep.representation(using: .png, properties: [:]) {
+            try png.write(to: URL(fileURLWithPath: "/tmp/orphea_school18_layers.png"))
+        }
+    }
+
+    /// HotS pajamathur 回归:MODL v30 模型的材质全是 MADD(BufferMaterial,无 MAT_/CMP_),
+    /// 纹理路径在 MADD.valueData(SCHR 字符串数组)里,取 _Diff 作 diffuse。
+    /// 修复前材质无贴图路径 → 整模型白膜;且 defaultHidden 含 12 → 默认直接不渲染。
+    func testPajamathurMaddMaterial() async throws {
+        let storagePath = TestStoragePaths.path(for: "hots") ?? ""
+        guard FileManager.default.fileExists(atPath: storagePath + "/.build.info") else {
+            throw XCTSkip("HotS 存储不存在,跳过")
+        }
+        var handle = CascBridge.CascStorageHandle.createLocal()
+        guard handle.open(std.string(storagePath)) == .None else { throw XCTSkip("存储打开失败") }
+        defer { handle.close() }
+        var listError = CascBridge.CascError.None
+        let rawEntries = handle.listDirectory(std.string(""), &listError)
+        var paths: [String] = []
+        paths.reserveCapacity(rawEntries.size())
+        for i in 0..<rawEntries.size() {
+            paths.append(String(rawEntries[i].fullPath).replacingOccurrences(of: "\\", with: "/"))
+        }
+        let assetsIndex = CascModelFileProvider.buildAssetsIndex(fromPaths: paths)
+        let service = ModelLoaderService(
+            provider: CascModelFileProvider(handle: handle, assetsIndex: assetsIndex))
+        let scene = try await service.load(
+            path: "mods/heroes.stormmod/base.stormassets/assets/units/heroes/storm_hero_abathur_pajamathur/storm_hero_abathur_pajamathur.m3",
+            format: .m3)
+        XCTAssertFalse(scene.meshes.isEmpty)
+        XCTAssertTrue(scene.meshes.allSatisfy { $0.materialType == 12 },
+                      "该模型所有网格应为 BufferMaterial(12)")
+        let mat = scene.materials[scene.meshes[0].materialIndex]
+        XCTAssertTrue(mat.texturePath.hasSuffix("Storm_Hero_Abathur_Pajamathur_Diff.dds"),
+                      "MADD diffuse 应取 _Diff 贴图,实际: \(mat.texturePath)")
+        XCTAssertNotNil(mat.diffuseTexture, "diffuse 贴图应成功解码(非占位色)")
+        // BufferMaterial 默认必须可见:MADD 是 v30 主材质载体,默认隐藏会让整模型消失
+        XCTAssertFalse(M3MaterialKind.defaultHidden.contains(12))
+        // 离屏渲染存档(人工查看)
+        let built = ModelSceneBuilder.build(scene, hiddenMaterialTypes: M3MaterialKind.defaultHidden)
+        let zs = SCNScene()
+        zs.rootNode.addChildNode(built.rootNode)
+        zs.background.contents = NSColor(white: 0.1, alpha: 1)
+        let zcam = SCNNode()
+        zcam.camera = SCNCamera()
+        let (zcenter, zradius) = ModelSceneBuilder.framingBounds(
+            of: scene, hiddenMaterialTypes: M3MaterialKind.defaultHidden)
+        zcam.position = SCNVector3(zcenter.x, zcenter.y + zradius * 0.2,
+                                   zcenter.z + zradius * 2.2)
+        zcam.look(at: SCNVector3(zcenter.x, zcenter.y, zcenter.z))
+        zs.rootNode.addChildNode(zcam)
+        let zr = SCNRenderer(device: nil, options: nil)
+        zr.scene = zs
+        zr.pointOfView = zcam
+        let img = zr.snapshot(atTime: 0, with: CGSize(width: 640, height: 640),
+                              antialiasingMode: .none)
+        if let tif = img.tiffRepresentation,
+           let rep = NSBitmapImageRep(data: tif),
+           let png = rep.representation(using: .png, properties: [:]) {
+            try png.write(to: URL(fileURLWithPath: "/tmp/pajamathur.png"))
+        }
+    }
+
+    /// HotS abathur 两款 deathragdoll 回归:网格全部指向 Composite(Mat_Dissipate),
+    /// 贴图在其 Standard 子材质 Mat_Dissolve 上。这两个文件里无贴图子材质的
+    /// LAYR 路径只含结尾 NUL(非空字符串),修复前:空判绕过不了它们 → fallback 被
+    /// 占位;真贴图路径带结尾 NUL → 判扩展名失败 → Composite 材质最终无贴图(白膜)。
+    func testAbathurDeathRagdollMaterials() async throws {
+        let storagePath = TestStoragePaths.path(for: "hots") ?? ""
+        guard FileManager.default.fileExists(atPath: storagePath + "/.build.info") else {
+            throw XCTSkip("HotS 存储不存在,跳过")
+        }
+        var handle = CascBridge.CascStorageHandle.createLocal()
+        guard handle.open(std.string(storagePath)) == .None else { throw XCTSkip("存储打开失败") }
+        defer { handle.close() }
+        var listError = CascBridge.CascError.None
+        let rawEntries = handle.listDirectory(std.string(""), &listError)
+        var paths: [String] = []
+        paths.reserveCapacity(rawEntries.size())
+        for i in 0..<rawEntries.size() {
+            paths.append(String(rawEntries[i].fullPath).replacingOccurrences(of: "\\", with: "/"))
+        }
+        let assetsIndex = CascModelFileProvider.buildAssetsIndex(fromPaths: paths)
+        let service = ModelLoaderService(
+            provider: CascModelFileProvider(handle: handle, assetsIndex: assetsIndex))
+
+        for (skin, diff) in [("skelethur", "Storm_Hero_Abathur_Skelethur_Diff.dds"),
+                             ("ultimate", "Storm_Hero_Abathur_Ultimate_Diff.dds")] {
+            let path = "mods/heroes.stormmod/base.stormassets/assets/units/heroes/storm_hero_abathur_\(skin)_deathragdoll/storm_hero_abathur_\(skin)_deathragdoll.m3"
+            let scene = try await service.load(path: path, format: .m3)
+            XCTAssertEqual(scene.meshes.count, 3)
+            XCTAssertTrue(scene.meshes.allSatisfy { $0.materialType == 3 })
+            let compMat = scene.materials[scene.meshes[0].materialIndex]
+            XCTAssertTrue(compMat.texturePath.hasSuffix(diff),
+                          "\(skin) Composite 应取子材质 _Diff 贴图,实际: \(compMat.texturePath)")
+            XCTAssertNotNil(compMat.diffuseTexture, "\(skin) diffuse 贴图应成功解码")
+            // 离屏渲染存档(人工查看)
+            let built = ModelSceneBuilder.build(scene, hiddenMaterialTypes: M3MaterialKind.defaultHidden)
+            let zs = SCNScene()
+            zs.rootNode.addChildNode(built.rootNode)
+            zs.background.contents = NSColor(white: 0.1, alpha: 1)
+            let zcam = SCNNode()
+            zcam.camera = SCNCamera()
+            let (zcenter, zradius) = ModelSceneBuilder.framingBounds(
+                of: scene, hiddenMaterialTypes: M3MaterialKind.defaultHidden)
+            zcam.position = SCNVector3(zcenter.x, zcenter.y + zradius * 0.2,
+                                       zcenter.z + zradius * 2.2)
+            zcam.look(at: SCNVector3(zcenter.x, zcenter.y, zcenter.z))
+            zs.rootNode.addChildNode(zcam)
+            let zr = SCNRenderer(device: nil, options: nil)
+            zr.scene = zs
+            zr.pointOfView = zcam
+            let img = zr.snapshot(atTime: 0, with: CGSize(width: 640, height: 640),
+                                  antialiasingMode: .none)
+            if let tif = img.tiffRepresentation,
+               let rep = NSBitmapImageRep(data: tif),
+               let png = rep.representation(using: .png, properties: [:]) {
+                try png.write(to: URL(fileURLWithPath: "/tmp/abathur_\(skin)_ragdoll.png"))
+            }
+        }
+    }
+
     /// HotS terrain object 顶点自愈回归:MODL 顶点标志与实际布局不符时,
     /// 按标志算的 stride 不能整除数据块(7596B % 32 = 12),补 VertexColor 位后
     /// 7596/36 = 211 恰等于 region 顶点数;修复前近半顶点 NaN、几何错乱。
@@ -936,5 +1166,189 @@ final class ModelLoaderServiceTests: XCTestCase {
             handle.close()
         }
         print("SURVEY 完成,共 \(seq) 个")
+    }
+    /// 回归:m3a 动画库各动画必须有差异化轨道(曾因 SEQ→STC 一律回退 STC[0],
+    /// 11 个动画解析成完全相同的数据,切换无效)。以 orphea 表情库验证。
+    func testM3aAnimationsAreDistinct() async throws {
+        let storagePath = TestStoragePaths.path(for: "hots") ?? ""
+        guard FileManager.default.fileExists(atPath: storagePath + "/.build.info") else {
+            throw XCTSkip("HotS 存储不存在,跳过")
+        }
+        var handle = CascBridge.CascStorageHandle.createLocal()
+        guard handle.open(std.string(storagePath)) == .None else { throw XCTSkip("存储打开失败") }
+        defer { handle.close() }
+        var listError = CascBridge.CascError.None
+        let rawEntries = handle.listDirectory(std.string(""), &listError)
+        var paths: [String] = []
+        paths.reserveCapacity(rawEntries.size())
+        for i in 0..<rawEntries.size() {
+            paths.append(String(rawEntries[i].fullPath).replacingOccurrences(of: "\\", with: "/"))
+        }
+        let assetsIndex = CascModelFileProvider.buildAssetsIndex(fromPaths: paths)
+        let service = ModelLoaderService(
+            provider: CascModelFileProvider(handle: handle, assetsIndex: assetsIndex))
+        let scene = try await service.load(
+            path: "mods/heroes.stormmod/base.stormassets/assets/units/heroes/storm_hero_orphea_facialanims/storm_hero_orphea_facialanims.m3a",
+            format: .m3)
+        XCTAssertEqual(scene.animations.count, 11)
+        // 每个动画的非空轨道首帧值拼成签名,11 个动画至少出现 2 个不同签名
+        var signatures = Set<UInt32>()
+        for anim in scene.animations {
+            var hash: UInt32 = 5381
+            for (i, q) in anim.rotations.enumerated() where !q.keys.isEmpty {
+                for v in [Float(i), q.keys[0].vector.x, q.keys[0].vector.y] {
+                    hash = hash &* 33 &+ v.bitPattern
+                }
+            }
+            signatures.insert(hash)
+        }
+        XCTAssertGreaterThan(signatures.count, 1, "所有动画轨道完全相同,SEQ→STC 绑定失效")
+    }
+}
+
+/// 显示异常全量巡检(仅当 /tmp/survey_enabled 存在时跑,不进常规套件):
+/// 对两个存储的全部 .m3 走真实加载管线,但贴图读取短路为 nil(跳过解码,
+/// 全量 ~1.7 万模型才可能跑得完);贴图存在性改用在内存路径集合里核对。
+///
+/// 标记含义:
+///   白膜疑似 — 可见网格的材质没取到贴图路径,但模型里确有贴图引用(选材质逻辑漏了)
+///   贴图缺失 — 材质有贴图路径但本地存储没有该文件(未下载,非 bug)
+///   无网格   — 加载成功但没有网格(多为特效/灯光定义文件)
+///   NaN/索引越界 — 几何数据异常
+final class WhiteClaySurveyTests: XCTestCase {
+
+    /// 贴图读取短路:模型字节真实读,贴图扩展名直接返回 nil(省掉解码)。
+    private final class NoDecodeProvider: ModelLoaderService.FileProvider, @unchecked Sendable {
+        let base: CascModelFileProvider
+        init(base: CascModelFileProvider) { self.base = base }
+        static let texExts: Set<String> = [".dds", ".blp", ".tga", ".png", ".jpg", ".jpeg", ".bmp"]
+        func readFile(path: String) -> Data? {
+            let lower = path.lowercased()
+            if let dot = lower.lastIndex(of: "."),
+               Self.texExts.contains(String(lower[dot...])) { return nil }
+            return base.readFile(path: path)
+        }
+        func readFileByDataId(_ id: UInt32) -> Data? { base.readFileByDataId(id) }
+        func resolveAssetsPath(_ ref: String) -> String? { base.resolveAssetsPath(ref) }
+    }
+
+    func testWhiteClaySurvey() async throws {
+        guard FileManager.default.fileExists(atPath: "/tmp/survey_enabled") else {
+            throw XCTSkip("巡检模式未开启(touch /tmp/survey_enabled)")
+        }
+        let storages: [(String, String)] = [
+            ("SC2", TestStoragePaths.path(for: "sc2") ?? ""),
+            ("HotS", TestStoragePaths.path(for: "hots") ?? ""),
+        ]
+        var suspicious: [String] = []
+        for (tag, storagePath) in storages {
+            guard FileManager.default.fileExists(atPath: storagePath + "/.build.info") else { continue }
+            var handle = CascBridge.CascStorageHandle.createLocal()
+            handle.setCdnDownloadEnabled(false)  // 离线:缺失文件直接标记,不走 CDN
+            guard handle.open(std.string(storagePath)) == .None else { continue }
+            var listError = CascBridge.CascError.None
+            let rawEntries = handle.listDirectory(std.string(""), &listError)
+            var paths: [String] = []
+            paths.reserveCapacity(rawEntries.size())
+            for i in 0..<rawEntries.size() {
+                let entry = rawEntries[i]
+                let fp: String = String(entry.fullPath)
+                paths.append(fp.replacingOccurrences(of: "\\", with: "/"))
+            }
+            let pathSet = Set(paths.map { $0.lowercased() })
+            let assetsIndex = CascModelFileProvider.buildAssetsIndex(fromPaths: paths)
+            let provider = NoDecodeProvider(base: CascModelFileProvider(handle: handle, assetsIndex: assetsIndex))
+            let service = ModelLoaderService(provider: provider)
+
+            func textureExists(_ ref: String, modelPath: String) -> Bool {
+                for c in ModelLoaderService.textureCandidates(modelPath: modelPath, texturePath: ref)
+                where pathSet.contains(c.lowercased()) { return true }
+                return assetsIndex[ref.replacingOccurrences(of: "\\", with: "/").lowercased()] != nil
+            }
+
+            var counts: [String: Int] = [:]
+            var whiteClayPaths: [String] = []
+            let modelPaths = paths.filter { $0.lowercased().hasSuffix(".m3") }.sorted()
+            print("SURVEY-W \(tag): 共 \(modelPaths.count) 个 .m3")
+            for modelPath in modelPaths {
+                guard let scene = try? await service.load(path: modelPath, format: .m3) else {
+                    counts["加载失败", default: 0] += 1
+                    suspicious.append("[\(tag)] \(modelPath) 加载失败")
+                    continue
+                }
+                var flags: [String] = []
+                if scene.meshes.isEmpty { flags.append("无网格") }
+                let modelHasTexRef = scene.materials.contains { !$0.texturePath.isEmpty }
+                // 真白膜:可见网格 + 材质无贴图 + opaque 混合(占位灰会直接显示出来)。
+                // additive/blend/modulate 无贴图时占位色按混合模式不可见(特效网格),不算白膜。
+                var whiteClay = false, texMissing = false, fxNoTex = false
+                for mesh in scene.meshes where !M3MaterialKind.defaultHidden.contains(mesh.materialType) {
+                    guard mesh.materialIndex >= 0, mesh.materialIndex < scene.materials.count else { continue }
+                    let mat = scene.materials[mesh.materialIndex]
+                    if mat.texturePath.isEmpty {
+                        if mat.blendMode == .opaque {
+                            if modelHasTexRef { whiteClay = true }
+                        } else { fxNoTex = true }
+                    } else if !textureExists(mat.texturePath, modelPath: modelPath) {
+                        texMissing = true
+                    }
+                }
+                if whiteClay { flags.append("白膜") }
+                if fxNoTex { flags.append("特效无贴图(隐形)") }
+                if texMissing { flags.append("贴图缺失") }
+                for mesh in scene.meshes {
+                    if mesh.positions.contains(where: { $0.x.isNaN || $0.y.isNaN || $0.z.isNaN }) {
+                        flags.append("NaN"); break
+                    }
+                }
+                for mesh in scene.meshes
+                where mesh.indices.contains(where: { Int($0) >= mesh.positions.count }) {
+                    flags.append("索引越界"); break
+                }
+                for flag in flags {
+                    counts[flag, default: 0] += 1
+                    if flag != "无网格" && flag != "贴图缺失" && flag != "特效无贴图(隐形)" {
+                        suspicious.append("[\(tag)] \(modelPath) \(flag)")
+                    }
+                }
+                if whiteClay { whiteClayPaths.append(modelPath) }
+            }
+            print("SURVEY-W \(tag) 汇总: \(counts.sorted { $0.key < $1.key })")
+
+            // 第二遍:真白膜模型用真实 provider(带贴图解码)离屏渲染存档,供人工核对
+            try? FileManager.default.createDirectory(atPath: "/tmp/survey-w", withIntermediateDirectories: true)
+            let realService = ModelLoaderService(
+                provider: CascModelFileProvider(handle: handle, assetsIndex: assetsIndex))
+            for modelPath in whiteClayPaths.prefix(60) {
+                guard let scene = try? await realService.load(path: modelPath, format: .m3) else { continue }
+                let built = ModelSceneBuilder.build(scene, hiddenMaterialTypes: M3MaterialKind.defaultHidden)
+                let zs = SCNScene()
+                zs.rootNode.addChildNode(built.rootNode)
+                zs.background.contents = NSColor(white: 0.1, alpha: 1)
+                let zcam = SCNNode()
+                zcam.camera = SCNCamera()
+                let (fc, fr) = ModelSceneBuilder.framingBounds(
+                    of: scene, hiddenMaterialTypes: M3MaterialKind.defaultHidden)
+                zcam.position = SCNVector3(fc.x, fc.y + fr * 0.2, fc.z + fr * 2.2)
+                zcam.look(at: SCNVector3(fc.x, fc.y, fc.z))
+                zs.rootNode.addChildNode(zcam)
+                let zr = SCNRenderer(device: nil, options: nil)
+                zr.scene = zs
+                zr.pointOfView = zcam
+                let img = zr.snapshot(atTime: 0, with: CGSize(width: 400, height: 400),
+                                      antialiasingMode: .none)
+                if let tif = img.tiffRepresentation,
+                   let rep = NSBitmapImageRep(data: tif),
+                   let png = rep.representation(using: .png, properties: [:]) {
+                    let name = (modelPath as NSString).lastPathComponent
+                    try? png.write(to: URL(fileURLWithPath: "/tmp/survey-w/\(tag)_\(name).png"))
+                }
+            }
+            handle.close()
+        }
+        let report = "白膜/异常清单(\(suspicious.count) 条):\n" + suspicious.joined(separator: "\n") + "\n"
+        try? report.write(toFile: "/tmp/whiteclay-report.txt", atomically: true, encoding: .utf8)
+        print("SURVEY-W 异常清单(\(suspicious.count) 条):")
+        for line in suspicious { print("SURVEY-W  " + line) }
     }
 }
