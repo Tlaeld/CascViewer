@@ -112,3 +112,45 @@ NSTableView 桥接的懒渲染,这是刻意为之,必须保留数据层性能。
 - **3.4 节"详情面板卡片化"**:降级为 token 化(字体/间距/背景统一),未引入卡片视觉。
 - 已验证无需处理:NSTableView 默认 `.lastColumnOnlyAutoresizingStyle` 使侧栏单列自动拉满
   (旧代码 180/100 宽度无需移植);TypeChip 垂直 padding 3→4pt;InfoRow label 失 medium 字重。
+
+## 6b. 偏差记录(2026-08-21 晚,分栏比例修复)
+
+- **3.1 节垂直分栏改用 VSplitView:实测不可行,回退为确定性手写分栏**。
+  实证(诊断钩子 `--open-storage/--navigate/--dump-ui`,见下):
+  1. SwiftUI VSplitView 初始分布把多余空间全分给最后一个子视图,`idealHeight` 不生效,
+     文件列表被压到 `minHeight`(240pt),详情面板吃掉剩余全部空间;
+  2. 之前的"GeometryReader 测量 + 防抖写 @AppStorage"持久化方案会把被压缩的尺寸写回配置,
+     下次启动以它作 ideal 放大错误(用户机实测 previewHeight 被污染到 541pt),形成反馈循环;
+  3. 改手桥 NSSplitView 后,底部面板被布局约束钉死在 minimumThickness,
+     `setPosition`/用户拖动都会立即弹回(含 sizingOptions=[] 仍无效)。
+  最终方案:`VerticalSplitView`(纯 SwiftUI,显式底部高度 + 1pt Divider 叠 9pt 透明拖拽热区),
+  底部高度仅在拖动结束时写一次 `@AppStorage("mainWindow.detailHeight")`,默认 220pt。
+  位置:`CascViewer/UI/MainWindow/VerticalSplitView.swift`。
+- **诊断钩子(DEBUG only)**:`MainWindowView` 新增 `#if DEBUG` 的
+  `--open-storage <路径>` / `--navigate <a,b,c>` / `--dump-ui <png>`
+  启动参数,用于自动化复现真实存储下的布局问题(视图层级 dump + 窗口位图),Release 构建不含。
+- 已知观感(非本次缺陷,macOS 26 系统行为):文件列表空白区域会绘制圆角交替行条纹
+  (`usesAlternatingRowBackgroundColors` 的新样式),旧 UI 同样存在,未改动。
+
+## 6c. 偏差记录(2026-08-22,侧栏系统组件整体弃用)
+
+- **3.1 节 NavigationSplitView 侧栏:实测不可用,整体替换为自绘 `HorizontalSplitView`**。
+  实证(AX 转储 + CGEvent 驱动 + screencapture/layer 位图逐帧对照):
+  1. SwiftUI 自动装进标题栏的侧栏 toggle(AX 角色 AXToolbar>AXButton,desc="隐藏边栏")
+     在折叠后从标题左侧跳到最右侧(x=571→x=1555);`.toolbar(removing: .sidebarToggle)`
+     在 macOS 27 上无效(按钮依旧出现);
+  2. 折叠/展开过渡会把文件列表渲染卡死在"半透明"(vibrant 文字变灰、列头近隐形,
+     所有可见视图 alpha=1.0 无异常,但 app 自身 layer 渲染同样发灰;持续 60s+ 不自愈)。
+     注:6b 中"半透明系 Xnip 采集 artifact"的判断被本次复现推翻,特此更正;
+  3. 绑定 `columnVisibility` + `.animation(nil)` 可让我们的开关即时折叠且不再发灰,
+     但系统 toggle 仍在;且从窗口左缘拖拽展开会在松手时被绑定值拽回折叠态(系统 bug)。
+  最终方案:`HorizontalSplitView`(与 VerticalSplitView 同模式:显式宽度 180–400pt +
+  折叠标志 + 1pt Divider 叠 9pt 透明热区),宽度仅在拖动结束时写一次
+  `@AppStorage("mainWindow.sidebarWidth")`;折叠状态持久化于
+  `@AppStorage("mainWindow.sidebarCollapsed")`;折叠/展开即时生效、无系统过渡。
+  工具栏新增固定位置的侧栏开关(`sidebar.left` 图标,AX id `sidebarToggle`)。
+  位置:`CascViewer/UI/MainWindow/HorizontalSplitView.swift`。
+- **功能取舍**:折叠后不再支持"从窗口左缘拖出侧栏"(系统边缘手势随之移除),
+  恢复侧栏一律走工具栏开关;分隔条不支持拖过最小宽度自动折叠。
+- 验证:自动化验收四步(初始/折叠/展开/拖分隔条+80pt)全部渲染明亮无半透明,
+  标题栏系统按钮在所有步骤均为 NONE,拖动后 sidebarWidth 落盘 338.5 正确。

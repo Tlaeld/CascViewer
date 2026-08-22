@@ -3,10 +3,21 @@ import CascBridge
 
 struct ToolbarView: View {
     @EnvironmentObject var appState: AppState
+    @Binding var sidebarCollapsed: Bool
     @State private var showingOpenPanel = false
     @State private var showingSettings = false
     var body: some View {
         HStack(spacing: DS.Spacing.lg) {
+            // 自绘侧栏开关:系统 NavigationSplitView 的 toggle 折叠后会跳到标题栏
+            // 右侧且无法移除,其折叠过渡还会把列表渲染卡在半透明,故整体弃用。
+            Button {
+                sidebarCollapsed.toggle()
+            } label: {
+                Image(systemName: "sidebar.left")
+            }
+            .help(L("toggle_sidebar"))
+            .accessibilityIdentifier("sidebarToggle")
+
             Menu {
                 Button(L("open_local_storage")) {
                     showingOpenPanel = true

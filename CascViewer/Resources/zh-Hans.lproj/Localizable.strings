@@ -42,6 +42,7 @@
 
 /* Toolbar / Navigation */
 "open_storage" = "打开存储";
+"toggle_sidebar" = "切换边栏";
 "open_local_storage" = "打开本地存储";
 "open_online_storage" = "打开在线存储";
 "product" = "产品";

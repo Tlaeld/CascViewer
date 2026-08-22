@@ -42,6 +42,7 @@
 
 /* Toolbar / Navigation */
 "open_storage" = "Open Storage";
+"toggle_sidebar" = "Toggle Sidebar";
 "open_local_storage" = "Open Local Storage";
 "open_online_storage" = "Open Online Storage";
 "product" = "Product";
