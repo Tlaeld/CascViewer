@@ -31,20 +31,29 @@ CascViewer was born out of a simple need: **there was no visual CASC browsing to
 
 This project aims to fill that gap by bringing a native, modern macOS experience to CASC browsing. Feature design and workflow are heavily inspired by the Windows classic **CascView** by Ladislav Zezula, reimagined with SwiftUI and native macOS patterns.
 
+<p align="center">
+  <img src="docs/images/main-window.png" alt="Main window browsing Heroes of the Storm storage" width="760">
+</p>
+
 ## ✨ Features
 
 ### Storage Browsing
-- **Local Storage** — Browse CASC archives from installed Blizzard games (WoW, SC2, etc.)
+- **Local Storage** — Browse CASC archives from installed Blizzard games
 - **Online CDN Storage** — Connect directly to Blizzard CDN without local game installation, with automatic cache management
 - **Listfile Support** — Load custom listfiles to resolve obfuscated filenames (`FILE########.dat` → human-readable names)
 - **Directory Tree** — Hierarchical folder navigation with virtual folders for uncategorized files
 
+### 3D Model Viewing
+- **M3 Models** — Render M3 models with skeletal animation playback (SceneKit + SCNSkinner)
+- **Animation Switching** — Pick any embedded sequence, including animations from companion `.m3a` files
+- **Full Material Layers** — Diffuse, normal, specular and emissive maps with composite material support
+- **Free Camera** — Drag to orbit, scroll to zoom, middle/right-drag to pan
+
 ### Advanced Search
-- **Multi-mode Search** — Search by filename, path, or encoding key
+- **Multi-mode Search** — Search by filename, content, hex pattern, or install manifest tag
 - **Scope Selection** — Search entire storage or limit to current directory
 - **Regex Support** — Enable regular expressions for complex patterns
 - **File Type Filtering** — Filter by file extension or custom type patterns
-- **Tag Filtering** — Filter by install manifest tags (for supported games)
 - **Sortable Results** — Sort by name, size, or path with ascending/descending order
 
 ### File Operations
@@ -58,8 +67,7 @@ This project aims to fill that gap by bringing a native, modern macOS experience
 - **Built-in Viewer** — Optional built-in viewer or external application opening
 
 ### Install Manifest
-- **Manifest Browser** — Parse and view install manifest files with tag filtering
-- **Tag-based Filtering** — Filter files by install tags (locale, platform, etc.)
+- **Manifest Browser** — Parse and view install manifest files, filter files by install tags (locale, platform, etc.)
 
 ### UI & Localization
 - **Native macOS Design** — Classic three-pane layout with modern SwiftUI styling
@@ -74,22 +82,27 @@ This project aims to fill that gap by bringing a native, modern macOS experience
 - **Swift** 5.9+
 - **Git** (with submodule support)
 
-## 🚀 Building
+## ⬇️ Download
 
-### Clone the repository
+Pre-built releases are available on the [Releases](https://github.com/Tlaeld/CascViewer/releases) page.
+
+The app is **not signed with an Apple Developer certificate**. When launching a downloaded build, macOS may warn that the app "cannot be opened" or "is from an unidentified developer". To remove the quarantine attribute:
 
 ```bash
-git clone --recursive https://github.com/yourusername/CascViewer.git
-cd CascViewer
+sudo xattr -r -d com.apple.quarantine /Applications/CascViewer.app
 ```
 
-> **Note:** The `--recursive` flag is required to fetch the [CascLib](https://github.com/ladislav-zezula/CascLib) and [WhiteoutLib](https://github.com/FernandoS27/WhiteoutLib) submodules.
+## 🚀 Building
 
-> **Note:** Before the first build, fetch the submodules and build the WhiteoutLib static library:
->
-> ```bash
-> git submodule update --init --recursive && tools/build_whiteout.sh
-> ```
+### Clone and prepare
+
+```bash
+git clone --recursive https://github.com/Tlaeld/CascViewer.git
+cd CascViewer
+tools/build_whiteout.sh   # builds the WhiteoutLib static library (first time only)
+```
+
+The `--recursive` flag fetches the [CascLib](https://github.com/ladislav-zezula/CascLib) and [WhiteoutLib](https://github.com/FernandoS27/WhiteoutLib) submodules. If you already cloned without it, run `git submodule update --init --recursive` first.
 
 ### Build with Xcode
 
@@ -104,18 +117,6 @@ Then select **Product → Build** (⌘B) in Xcode.
 ```bash
 xcodebuild -project CascViewer.xcodeproj -scheme CascViewer -destination 'platform=macOS'
 ```
-
-## 💡 Note on Code Signing
-
-This application is **not signed with an Apple Developer certificate**. When downloading the pre-built release, macOS may display a warning saying the app "cannot be opened" or "is from an unidentified developer".
-
-To remove the quarantine attribute and run the app, open Terminal and execute:
-
-```bash
-sudo xattr -r -d com.apple.quarantine /Applications/CascViewer.app
-```
-
-After running the command, you can launch the app normally.
 
 ## 📖 Usage
 
@@ -135,11 +136,25 @@ After running the command, you can launch the app normally.
 
 ### Searching
 
+<p align="center">
+  <img src="docs/images/advanced-search.png" alt="Advanced search panel" width="640">
+</p>
+
 1. Type in the toolbar search box for quick filename search
 2. Or click **"Advanced Search"** to open the search panel with:
+   - Filename / content / hex / tag search modes
    - Regex, case sensitivity, and path inclusion options
-   - File type and tag filters
-   - Scope selection (entire storage or current directory)
+   - File type filters and scope selection
+
+### Viewing 3D Models
+
+<p align="center">
+  <img src="docs/images/model-viewer.png" alt="3D model viewer with skeletal animation" width="560">
+</p>
+
+1. Select an `.m3` file and click **"Open in Model Viewer"** in the info panel
+2. Drag to orbit around the model, scroll to zoom, middle/right-drag to pan
+3. Use the animation menu in the title bar to switch animation sequences
 
 ### Extracting Files
 

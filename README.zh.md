@@ -31,20 +31,29 @@ CascViewer 诞生于一个简单的需求：**macOS 平台上长期缺少一款�
 
 本项目旨在填补这一空白，为 macOS 带来原生的、现代化的 CASC 浏览体验。功能设计与工作流程大量参考了 Windows 经典工具 **CascView**（作者：Ladislav Zezula），并以 SwiftUI 和原生 macOS 设计模式重新实现。
 
+<p align="center">
+  <img src="docs/images/main-window.png" alt="主窗口浏览风暴英雄存储" width="760">
+</p>
+
 ## ✨ 功能特性
 
 ### 存储浏览
-- **本地存储** — 浏览已安装暴雪游戏（魔兽世界、星际争霸 II 等）的 CASC 归档文件
+- **本地存储** — 浏览已安装暴雪游戏的 CASC 归档文件
 - **在线 CDN 存储** — 无需本地游戏安装即可直连暴雪 CDN，支持自动缓存管理
 - **列表文件支持** — 加载自定义列表文件以解析混淆文件名（`FILE########.dat` → 人类可读名称）
 - **目录树** — 层级文件夹导航，为未分类文件提供虚拟文件夹
 
+### 3D 模型查看
+- **M3 模型** — 渲染 M3 模型并播放骨骼动画（SceneKit + SCNSkinner）
+- **动画切换** — 可切换模型内嵌的任意动画序列，包括伴随 `.m3a` 文件中的动画
+- **完整材质层** — 漫反射、法线、高光与自发光贴图，支持复合材质
+- **自由相机** — 拖动旋转、滚轮缩放、中键/右键拖动平移
+
 ### 高级搜索
-- **多模式搜索** — 按文件名、路径或编码密钥搜索
+- **多模式搜索** — 按文件名、内容、十六进制模式或安装清单标签搜索
 - **范围选择** — 搜索整个存储或限定当前目录
 - **正则表达式** — 启用正则表达式进行复杂模式匹配
 - **文件类型过滤** — 按文件扩展名或自定义类型模式过滤
-- **标签过滤** — 按安装清单标签过滤（适用于支持的游戏）
 - **可排序结果** — 按名称、大小或路径升序/降序排序
 
 ### 文件操作
@@ -58,8 +67,7 @@ CascViewer 诞生于一个简单的需求：**macOS 平台上长期缺少一款�
 - **内置查看器** — 可选使用内置查看器或外部应用程序打开
 
 ### 安装清单
-- **清单浏览器** — 解析并查看安装清单文件，支持标签过滤
-- **基于标签的过滤** — 按安装标签（语言、平台等）过滤文件
+- **清单浏览器** — 解析并查看安装清单文件，按安装标签（语言、平台等）过滤文件
 
 ### 界面与本地化
 - **原生 macOS 设计** — 经典三栏布局，现代 SwiftUI 风格
@@ -74,22 +82,27 @@ CascViewer 诞生于一个简单的需求：**macOS 平台上长期缺少一款�
 - **Swift** 5.9+
 - **Git**（需要子模块支持）
 
-## 🚀 构建
+## ⬇️ 下载
 
-### 克隆仓库
+预构建版本请前往 [Releases](https://github.com/Tlaeld/CascViewer/releases) 页面下载。
+
+本软件**未使用 Apple 开发者证书签名**。打开下载的版本时，macOS 可能会提示「无法打开」或「来自身份不明的开发者」。请在终端执行以下命令移除隔离属性：
 
 ```bash
-git clone --recursive https://github.com/yourusername/CascViewer.git
-cd CascViewer
+sudo xattr -r -d com.apple.quarantine /Applications/CascViewer.app
 ```
 
-> **注意：** `--recursive` 参数用于获取 [CascLib](https://github.com/ladislav-zezula/CascLib) 和 [WhiteoutLib](https://github.com/FernandoS27/WhiteoutLib) 子模块。
+## 🚀 构建
 
-> **注意：** 首次构建前需拉取子模块并构建 WhiteoutLib 静态库：
->
-> ```bash
-> git submodule update --init --recursive && tools/build_whiteout.sh
-> ```
+### 克隆并准备
+
+```bash
+git clone --recursive https://github.com/Tlaeld/CascViewer.git
+cd CascViewer
+tools/build_whiteout.sh   # 构建 WhiteoutLib 静态库（仅首次需要）
+```
+
+`--recursive` 参数用于获取 [CascLib](https://github.com/ladislav-zezula/CascLib) 和 [WhiteoutLib](https://github.com/FernandoS27/WhiteoutLib) 子模块。如果之前克隆时没带该参数，先执行 `git submodule update --init --recursive`。
 
 ### 使用 Xcode 构建
 
@@ -103,16 +116,6 @@ open CascViewer.xcodeproj
 
 ```bash
 xcodebuild -project CascViewer.xcodeproj -scheme CascViewer -destination 'platform=macOS'
-```
-
-## 💡 关于代码签名的说明
-
-本软件**未使用 Apple 开发者证书签名**。下载预构建版本后，macOS 可能会提示「无法打开」或「来自身份不明的开发者」。
-
-请在终端执行以下命令移除隔离属性后即可正常使用：
-
-```bash
-sudo xattr -r -d com.apple.quarantine /Applications/CascViewer.app
 ```
 
 ## 📖 使用指南
@@ -133,11 +136,25 @@ sudo xattr -r -d com.apple.quarantine /Applications/CascViewer.app
 
 ### 搜索
 
+<p align="center">
+  <img src="docs/images/advanced-search.png" alt="高级搜索面板" width="640">
+</p>
+
 1. 在工具栏搜索框中输入关键词进行快速文件名搜索
 2. 或点击 **"高级搜索"** 打开搜索面板：
+   - 文件名 / 内容 / 十六进制 / 标签四种搜索模式
    - 正则表达式、区分大小写、包含路径选项
-   - 文件类型和标签过滤
-   - 范围选择（整个存储或当前目录）
+   - 文件类型过滤和范围选择
+
+### 查看 3D 模型
+
+<p align="center">
+  <img src="docs/images/model-viewer.png" alt="带骨骼动画的 3D 模型查看器" width="560">
+</p>
+
+1. 选中 `.m3` 文件，点击信息面板中的 **"在模型查看器中打开"**
+2. 拖动旋转视角、滚轮缩放、中键/右键拖动平移
+3. 通过标题栏的动画菜单切换动画序列
 
 ### 提取文件
 
